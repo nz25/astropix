@@ -15,7 +15,10 @@ Run either way:
 
 from __future__ import annotations
 
+import json
 import os
+import pathlib
+import re
 import shutil
 import tempfile
 
@@ -529,6 +532,82 @@ def test_sigma_rejects_hot_pixels():
     a[::500] = 40000.0
     assert abs(stats.sigma(a) / 160.0 - 1.0) < 0.02, stats.sigma(a)
     assert a.std() > 400.0
+
+
+# --------------------------------------------------------------------------
+# tests: the record itself (D33)
+# --------------------------------------------------------------------------
+#
+# Everything in `results/` must be written by a cell in a numbered notebook, so
+# that the route from the archive to a published number is readable end to end.
+# This is a static read of the notebook JSON -- no execution, no Z:, no pandas --
+# because a check that needs the archive is a check that stops being run.
+#
+# It is deliberately *not* a reproducibility test.  Re-running an acquisition
+# yields a new snapshot rather than the old one (D19), and demanding byte
+# equality would forbid the artifacts that cost an hour to produce.
+
+WRITE_CALLS = ("to_csv(", "to_json(", "json.dump(", "refresh_index(",
+               "_write_index(")
+RESULT_SUFFIXES = (".csv", ".json")
+
+
+def _repo_root():
+    return pathlib.Path(__file__).resolve().parents[1]
+
+
+def results_writers():
+    """Map `results/` filename -> [(notebook, cell index)] that writes it.
+
+    Two ways a cell can name its output, both used in practice:
+    a literal (`to_csv(RESULTS / "ladder_census.csv")`) and a module-level alias
+    (`INDEX = RESULTS / "frame_index.csv"`, then `refresh_index(roots, INDEX)`).
+    The window of three lines covers a call wrapped across lines.
+    """
+    out = {}
+    for nbp in sorted((_repo_root() / "notebooks").glob("*.ipynb")):
+        nb = json.loads(nbp.read_text(encoding="utf-8"))
+        cells = [(i, "".join(c["source"])) for i, c in enumerate(nb["cells"])
+                 if c["cell_type"] == "code"]
+        alias = dict(re.findall(r"(\w+)\s*=\s*RESULTS\s*/\s*[\"']([^\"']+)[\"']",
+                                "\n".join(s for _, s in cells)))
+        for i, source in cells:
+            lines = source.splitlines()
+            for n, line in enumerate(lines):
+                if not any(v in line for v in WRITE_CALLS):
+                    continue
+                window = "\n".join(lines[n:n + 3])
+                names = set(re.findall(r"[\"']([\w.\-]+\.(?:csv|json))[\"']", window))
+                names |= {f for var, f in alias.items()
+                          if re.search(r"\b" + re.escape(var) + r"\b", window)}
+                for name in names:
+                    out.setdefault(name, []).append((nbp.name, i))
+    return out
+
+
+def test_every_results_file_has_a_generator():
+    """The rule D33 states.  An orphan here means a number was published that
+    nobody can regenerate -- which is how the three census CSVs were lost."""
+    root = _repo_root()
+    if not (root / "notebooks").is_dir() or not (root / "results").is_dir():
+        return
+    writers = results_writers()
+    orphans = sorted(f.name for f in (root / "results").iterdir()
+                     if f.suffix in RESULT_SUFFIXES and f.name not in writers)
+    assert not orphans, ("no notebook cell writes " + ", ".join(orphans)
+                         + " -- see DECISIONS D33")
+
+
+def test_only_numbered_notebooks_write_to_results():
+    """D33's other half: question notebooks are disposable, so nothing durable
+    may depend on one.  A `results/` file written by an unnumbered notebook is a
+    finding that has not graduated yet."""
+    root = _repo_root()
+    if not (root / "notebooks").is_dir():
+        return
+    stray = sorted({nb for hits in results_writers().values()
+                    for nb, _ in hits if not re.match(r"^\d\d_", nb)})
+    assert not stray, f"unnumbered notebooks writing to results/: {stray}"
 
 
 def main():

@@ -52,6 +52,7 @@ data/         gitignored; bulk frames live on Z:
 protocols/    capture protocols, written before each bench session
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
+vendor/       third-party binaries, licence beside each (D35)
 ```
 
 ## Environment
@@ -59,7 +60,8 @@ results/      committed CSV (sweeps) and JSON (constants with provenance)
 - Python 3.14 venv. Verified to resolve: numpy 2.5.2, astropy 8.0.1, scipy 1.18.1,
   photutils 3.0.0, sep, jupyterlab 4.6.3, zwoasi 0.2.0.
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
-- ZWO SDK: `C:\Users\denis\Documents\ASI SDK` — `lib/x64/ASICamera2.dll`, used through `zwoasi`.
+- ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, MIT), loaded with
+  `zwoasi.init(...)`. Full SDK at `C:\Users\denis\Documents\ASI SDK` (D35).
 - Frame archive: `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — ~15,000 frames.
   **C: has ~12 GB free.** Nothing bulky lands on C:.
 - Harvested from `learn_astro`: PTC sweep (61 gain steps), offset sweep, two linearity runs.

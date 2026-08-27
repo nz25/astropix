@@ -405,3 +405,101 @@ D9 made a 15 s and 240 s dark re-shoot conditional on the index confirming a gap
 shows darks at −10.0 °C for all twelve rungs of the D28 grid, at both gains. The condition failed;
 nothing is scheduled. D9's *selection* rule is unchanged and now demonstrably necessary — the
 folders really are mixed by temperature, and 391 of the matching darks are labelled `Light`.
+
+---
+
+## 2026-08-27 — Build session 3 (the notebook convention)
+
+### D33. Two kinds of notebook, and a session is not done until its notebook is
+Denis, mid-session: *"you're faster than I can follow — don't want this to die as well."* That
+is the `learn_astro` failure presenting differently. Build session 2 shipped a module, seven
+tests, a `results/` file and five document entries, and **zero notebooks**. An audit found that
+three of the five files in `results/` had no generator anywhere — they were written by inline
+terminal code that no longer existed — and that `frame_index.csv`'s generator, `refresh_index`,
+appeared in notebook 01 only inside a docstring.
+
+**Type A, build notebooks.** Numbered by the D16 build order, one per build step, chronological.
+They carry the cells that produced whatever reached `results/` and `FINDINGS`, plus the prose for
+why the step happened and what it settled. Together they *are* the chronological view of the
+project; D13 forbids a fifth Markdown file and does not need one, because CLAUDE.md already
+assigns the narrative to the notebooks.
+
+**The rule, stated so it can be checked.** Every file in `results/`, and every number published
+in `FINDINGS`, is written by a cell in a numbered notebook — or, from build step 5, by a committed
+`pjsr/` script that a notebook cell invokes and parses. Asserted by
+`test_every_results_file_has_a_generator`, which reads the notebook JSON and needs neither Z: nor
+an execution, so it runs anywhere; it would have failed on the three orphaned census CSVs.
+
+The bar is *a cell writes it*, not *it byte-reproduces*. Re-running acquisition correctly yields a
+**new** snapshot rather than the old one (D19), so a reproducibility test would forbid exactly the
+artifacts that cost an hour to make.
+
+**`DECISIONS` is deliberately outside the rule.** Denis's call, and it is the right line: most
+entries here are judgement — scope, layout, what was rejected and why — and there is no cell that
+produces an opinion. Where a decision *does* rest on a measurement it cites the `FINDINGS` entry or
+the `results/` file carrying it rather than restating the figure, so the evidence requirement is
+inherited rather than duplicated. A decision quoting a bare number with nothing behind it is the
+thing this avoids.
+
+**Type B, question notebooks.** Denis asks something about the library, the statistics, the data
+or a conclusion; the answer is a notebook that runs `astropix` against real frames. Disposable,
+never writes to `results/`. Reading Z: during a freeze is fine — D19 forbids the archive
+*changing* mid-analysis, not being read. If one turns up something worth keeping it graduates: a
+`FINDINGS` entry, and its code moves into the Type A notebook that owns that dataset.
+
+**Replay is not re-acquisition.** Analysis cells read committed artifacts in `results/` and re-run
+in seconds; acquisition — indexing over SMB, a PixInsight integration, a capture run — gets one
+guarded cell (`if REACQUIRE:`) whose job is to record the parameters, not to execute. Re-running
+acquisition correctly produces a *new* snapshot rather than the old one, which is D19, not a bug.
+Bit-identical replay of the analysis half was considered and dropped as over-engineering; what is
+required is that the route from archive to number is readable and re-runnable.
+
+**One-off analysis code lives in the notebook, not the library.** Denis's call. A census is a
+question asked of the index, not a property of it; the six-module budget is for physics and for
+rules like `classify`, and the library stays the distilled residue CLAUDE.md describes.
+
+**Rejected:** a fifth Markdown file for a chronological log (D13, and the notebooks already do
+it); putting `census()` in `fits.py` (spends the budget on aggregation).
+
+### D34. The observing night runs noon to noon
+Recovered while reconstructing the census generators: the vanished code binned frames by
+observing night — `DATE-OBS` minus 12 h — while notebook 01's committed cells used the calendar
+date. On calendar dates the NGC7000 grid reads as four nights per gain and contradicts D28. Now a
+single `observing_night()` in the notebook setup, used everywhere, with the rebuilt census CSVs
+byte-identical to the committed ones. Re-running the fixed cell shows each rung split **exactly
+in half** across its two nights (224/224, 112/112, 56/56, 28/28, 14/14, 7/7) — the interleaving of
+D28 is stronger than "interleaved", it is balanced.
+
+### D35. The ASI SDK DLL is vendored into `vendor/`, and the layout gains a seventh folder
+`vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, x64, 2.8 MB, sha256 recorded in its README),
+with ZWO's MIT `LICENSE.txt` beside it. Redistribution is explicitly permitted with the notice.
+
+**Why vendored at all.** `zwoasi` warns `ASI SDK library not found` on import and needs an
+absolute path handed to `init()`. Pointing that at `~/Documents/ASI SDK` makes the camera driver
+(D12, build step 6) depend on a path outside the repo, on one machine, that nothing verifies.
+Vendored, the path is repo-relative and the exact binary the driver ran against is recorded.
+
+**Only the DLL.** `ASICamera2.lib`, the C/C# headers and the OpenCV demos are build-time
+artifacts for compiled languages; `zwoasi` loads the DLL through `ctypes`. The full SDK stays at
+`C:\Users\denis\Documents\ASI SDK`.
+
+This adds a seventh top-level folder to D13's layout, which is a conversation rather than a
+commit — Denis asked for it explicitly. It holds no code and nothing imports from it, so it does
+not touch the six-module or ~1000-line budget. **Not a dependency of build steps 1-5**: indexing,
+statistics, the PTC re-analysis and the PixInsight contracts all run on frames that already exist.
+
+### D36. FINDINGS is correctable in place, with the correction marked
+Building `notebooks/02` regenerated the MAD-collapse table from the committed index and found the
+published light rows stale — computed before D27's reclassification and never re-run (9,005 +
+1,052 = 10,057, exactly). Corrected in place with a dated note saying what was wrong and why,
+rather than appended as a superseding entry.
+
+**The split is deliberate.** `DECISIONS` is append-only because a decision's *history* is the
+point — knowing what was rejected, and when, is what stops it being re-litigated. `FINDINGS`
+states what is true of the rig, and a future session reads it as current fact; leaving a known-wrong
+table in place to preserve a paper trail would plant exactly the kind of landmine this project is
+trying to avoid. So: correct the number, keep the note.
+
+**And a working rule.** The error survived because the table was hand-written from a query that
+was never re-run. Under D33 every such table is regenerated by a notebook cell, which is what
+caught it — the first thing the new convention paid for.

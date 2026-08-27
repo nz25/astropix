@@ -70,8 +70,17 @@ step 16 it can only return multiples of 1.4826 x 16 = 23.7216. Across the archiv
 |---|---|
 | bias + dark, gain 50 | **85.8%** of 1,807 |
 | bias + dark, gain 252 | **91.4%** of 1,374 |
-| lights, gain 50 | 14.2% of 7,845 (median sigma 47.4) |
-| lights, gain 252 | 0.0% of 1,160 (median sigma 269.8) |
+| flats, gain 50 | 0.0% of 1,312 (median sigma 344.0) |
+| flats, gain 252 | 0.0% of 540 (median sigma 874.7) |
+| lights, gain 50 | 13.9% of 8,003 (median sigma 47.4) |
+| lights, gain 252 | 0.0% of 2,054 (median sigma 590.1) |
+
+*Corrected 2026-08-27 while building `notebooks/02`, which regenerates this table from the
+committed index. The light rows first published here were computed **before** the D27
+reclassification and never re-run: 9,005 + 1,052 = 10,057 accounts for the difference exactly.
+The bias+dark rows are untouched, D27 having moved only frames between `flat` and `light`. The
+conclusion is unchanged and the correction slightly strengthens it — the reclassified frames
+are bright twilight lights, which is why the gain-252 median moved 269.8 -> 590.1.*
 
 So it is not a low-gain problem, as first thought: **nine tenths of every calibration frame in
 the archive, at both gains, reads out at exactly one ADC step.** That number is a property of
