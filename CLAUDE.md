@@ -6,6 +6,10 @@ How a session boots. Read these first, in this order:
 2. `DECISIONS.md` — what was already decided, and what was rejected and why
 3. `FINDINGS.md` — what we have measured about this rig so far
 4. `results/` — the numbers themselves, with provenance
+5. `LEGACY.md` — claims inherited from the retired attempts, none of them verified here.
+   A **queue that exists to be emptied**, not a fifth permanent document: each entry is checked
+   when the build step that needs it arrives, moved to its destination, and deleted. When it is
+   empty the file goes and this repo is back to four Markdown files (D38).
 
 Do not re-litigate a decision in `DECISIONS.md`. If one turns out to be wrong, append a new
 dated entry that supersedes it; never edit history.

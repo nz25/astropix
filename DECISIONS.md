@@ -523,3 +523,37 @@ that prompted this:
 
 `CLAUDE.md` carries the table of agreed purposes, so a session that reads its boot documents
 knows what each notebook is claiming to be.
+
+### D38. `LEGACY.md` — a fifth Markdown file that exists to be deleted
+D13 allows exactly four Markdown files, "and no fifth without deleting one". This is the fifth,
+and the exception is granted on one property no other document has: **its success condition is
+its own deletion.**
+
+D13 exists because `learn_astro` carried eight overlapping *permanent* documents and the
+knowledge thinned until restarting beat reading. A queue with a termination condition has the
+opposite failure mode — it either drains or visibly does not. So the exception is safe only while
+draining stays mechanical, which is what the schema and the tests are for.
+
+**What it holds.** 32 claims harvested from `astro/` and `learn_astro/`, none verified here. Five
+required fields per entry: `Claim`, `Source`, `Consumed by`, `How to check`, `Lands in`. The last
+two are what make it a work item rather than a note. Entries are grouped by the build step that
+consumes them and cited by number from wherever they land, so the trail survives the deletion.
+
+**What was excluded, deliberately:** anything MISSION scopes out (auto-STF, stretching); anything
+already independently confirmed here (the 12-bit shift, MAD on quantised data — D24); and method
+aphorisms, which are writing advice rather than hypotheses.
+
+**Nothing in it is treated as fact.** It came from a codebase without this project's provenance
+discipline, and `learn_astro/kb/measurements.md` explicitly retracts one of its own published
+fits (L27). Every number is a prediction to falsify — which is the more useful form in any case:
+if our own PTC independently reproduces their 9.382 e⁻/ADU, that is far stronger evidence than
+inheriting the number would have been.
+
+**Enforced by three tests** in `tests/test_record.py`: every entry carries all five fields, ids
+are unique, and the file must not survive empty — the last one asserts the termination condition
+rather than hoping for it.
+
+**Rejected:** copying `kb/` wholesale into `vendor/` (2 547 lines of another project's docs,
+mixing verified and unverified); citing the retired repos by path instead (they are retired and
+may be deleted); and folding the entries into the existing four (they are neither decisions nor
+findings until checked, and would distort both files).

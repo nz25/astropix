@@ -72,3 +72,58 @@ def test_only_numbered_notebooks_write_to_results():
                     for nb, _ in hits if not re.match(r"^\d\d_", nb)})
     assert not stray, f"unnumbered notebooks writing to results/: {stray}"
 
+
+
+# --------------------------------------------------------------------------
+# LEGACY.md is a queue, not a library
+# --------------------------------------------------------------------------
+#
+# It is the one file in this repo whose success condition is its own deletion
+# (DECISIONS D38).  The failure mode is obvious: entries get harvested and never
+# removed, and it quietly becomes a fifth permanent document -- exactly what
+# D13's four-file rule exists to prevent.  These tests make "queue, not library"
+# a property the suite checks rather than a habit anyone has to remember.
+
+LEGACY_FIELDS = ("**Claim.**", "**Source.**", "**Consumed by.**",
+                 "**How to check.**", "**Lands in.**")
+
+
+def legacy_entries():
+    """Map entry heading -> body, for every `### Lnn.` section in LEGACY.md."""
+    path = _repo_root() / "LEGACY.md"
+    if not path.exists():
+        return {}
+    text = path.read_text(encoding="utf-8")
+    parts = re.split(r"(?m)^### (L\d+\..*)$", text)
+    return {parts[i].strip(): parts[i + 1] for i in range(1, len(parts), 2)}
+
+
+def test_every_legacy_entry_names_its_exit():
+    """`Consumed by` and `Lands in` are what make the queue drain.  An entry
+    without them is a note, and notes accumulate."""
+    missing = {}
+    for head, body in legacy_entries().items():
+        absent = [f for f in LEGACY_FIELDS if f not in body]
+        if absent:
+            missing[head.split(".")[0]] = absent
+    assert not missing, f"LEGACY entries missing required fields: {missing}"
+
+
+def test_legacy_entry_numbers_are_unique():
+    """Entries are cited by number from wherever they land, so the number has to
+    stay a stable identifier even as neighbours are deleted."""
+    nums = [h.split(".")[0] for h in legacy_entries()]
+    dupes = sorted({n for n in nums if nums.count(n) > 1})
+    assert not dupes, f"duplicate LEGACY ids: {dupes}"
+
+
+def test_legacy_is_deleted_once_empty():
+    """The termination condition, asserted rather than hoped for: when the last
+    entry is harvested the file goes, and the repo is back to four Markdown
+    files (D13)."""
+    path = _repo_root() / "LEGACY.md"
+    if not path.exists():
+        return
+    assert legacy_entries(), (
+        "LEGACY.md has no entries left -- delete it, and drop its row from "
+        "CLAUDE.md's boot list (D38)")
