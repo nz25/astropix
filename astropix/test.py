@@ -1,0 +1,408 @@
+"""Tests for the astropix library.
+
+Not a seventh library module (D13's budget is about *modelling* code); this file
+carries no physics and nothing imports it.
+
+Everything here runs on synthetic frames written to a temp directory, so the
+suite needs neither Z: nor clear sky, and it is safe to run while the archive is
+frozen for a measurement (D19).
+
+Run either way:
+
+    python -m astropix.test          # no dependencies beyond the library
+    pytest astropix/test.py          # if pytest happens to be installed
+"""
+
+from __future__ import annotations
+
+import os
+import shutil
+import tempfile
+
+import numpy as np
+from astropy.io import fits as _afits
+
+from . import cfa
+from . import fits as F
+
+RNG = np.random.default_rng(20260827)
+STEP = 16          # the 12-bit ADC stored bit-shifted into 16-bit files
+
+
+# --------------------------------------------------------------------------
+# synthetic frames
+# --------------------------------------------------------------------------
+
+def _quantised(base, sigma, shape):
+    """Noise on the ADC grid: values are always exact multiples of 16, because
+    that is the only thing this camera can produce (see notebooks/01)."""
+    x = RNG.normal(base, sigma, shape)
+    return np.clip(np.round(x / STEP) * STEP, 0, F.FULL_SCALE).astype(np.uint16)
+
+
+def make_frame(kind, shape=(128, 128)):
+    """A frame of each type, built to have the *feature* each type is defined by
+    rather than to look pretty."""
+    ny, nx = shape
+    if kind == "bias":
+        return _quantised(1040, 24, shape), 0.001
+    if kind == "flat":
+        return _quantised(30000, 300, shape), 3.0
+    if kind == "saturated":
+        # a light that ran into dawn: long exposure, clipped everywhere
+        return np.full(shape, F.FULL_SCALE - 15, np.uint16), 15.0
+    if kind == "blown_flat":
+        # the same pixels, but at a flat's exposure
+        return np.full(shape, F.FULL_SCALE - 15, np.uint16), 3.0
+    if kind == "dark":
+        a = _quantised(1232, 100, shape)
+        # hot pixels: isolated single sites, the thing a star is not
+        a[7::37, 5::41] = 40000
+        return a, 60.0
+    if kind == "light":
+        a = _quantised(2000, 100, shape)
+        # stars: 4x4 in the mosaic, so 2x2 within each sub-plane -- connected
+        # both horizontally and vertically, which is the discriminator
+        for y in range(6, ny - 6, 24):
+            for x in range(6, nx - 6, 24):
+                a[y:y + 4, x:x + 4] = 20000
+        return a, 60.0
+    raise ValueError(kind)
+
+
+def write_frame(path, kind, shape=(128, 128), gain=252, ccd_temp=-10.0):
+    data, exptime = make_frame(kind, shape)
+    hdu = _afits.PrimaryHDU(data)
+    h = hdu.header
+    h["IMAGETYP"] = kind.capitalize()
+    h["EXPTIME"] = exptime
+    h["EXPOSURE"] = exptime
+    h["GAIN"] = gain
+    h["OFFSET"] = 15
+    h["SET-TEMP"] = -10
+    h["CCD-TEMP"] = ccd_temp
+    h["BAYERPAT"] = "RGGB"
+    h["EGAIN"] = 0.516568422317505
+    h["DATE-OBS"] = "2026-08-27T00:00:00"
+    h["INSTRUME"] = "ZWO ASI585MC Pro"
+    hdu.writeto(path, overwrite=True)
+    return path
+
+
+# --------------------------------------------------------------------------
+# cfa
+# --------------------------------------------------------------------------
+
+def test_split_takes_the_four_bayer_positions():
+    a = np.arange(36).reshape(6, 6)
+    p = cfa.split(a)
+    assert set(p) == set(cfa.PLANES)
+    assert all(v.shape == (3, 3) for v in p.values())
+    # every mosaic pixel lands in exactly one plane, none twice
+    got = sorted(int(v) for pl in p.values() for v in pl.ravel())
+    assert got == list(range(36))
+    assert p["R"][0, 0] == 0 and p["G1"][0, 0] == 1
+    assert p["G2"][0, 0] == 6 and p["B"][0, 0] == 7
+
+
+def test_split_returns_views_not_copies():
+    """Views matter: the index splits thousands of blocks and must not copy."""
+    a = np.zeros((4, 4), np.uint16)
+    cfa.split(a)["R"][0, 0] = 5
+    assert a[0, 0] == 5
+
+
+def test_split_drops_an_odd_trailing_row_and_column():
+    """All four planes must come back the same shape.  Plain striding on a 5x5
+    would give (3,3), (3,2), (2,3), (2,2), which breaks anything that stacks
+    them -- and would do it silently, on some other sensor, years from now."""
+    p = cfa.split(np.zeros((5, 5)))
+    assert {v.shape for v in p.values()} == {(2, 2)}
+    assert {v.shape for v in cfa.split(np.zeros((2160, 3840))).values()} == {(1080, 1920)}
+
+
+def test_split_rejects_what_it_cannot_handle():
+    for bad, kwargs in [(np.zeros((4, 4)), {"pattern": "GRBG"}),
+                        (np.zeros((4, 4, 3)), {})]:
+        try:
+            cfa.split(bad, **kwargs)
+        except ValueError:
+            continue
+        raise AssertionError("expected ValueError")
+
+
+def test_label_planes_by_flux_finds_the_greens():
+    """The two greens share a filter, so their medians agree most closely; R
+    runs above B under broadband sky on this rig."""
+    a = np.zeros((4, 4), np.uint16)
+    a[0::2, 0::2] = 300      # R
+    a[0::2, 1::2] = 500      # G1
+    a[1::2, 0::2] = 505      # G2
+    a[1::2, 1::2] = 200      # B
+    labels, _ = cfa.label_planes_by_flux(cfa.split(a))
+    assert labels == {"R": "R", "G1": "G1", "G2": "G2", "B": "B"}
+
+
+def test_label_planes_by_flux_detects_a_row_flip():
+    """A vertical flip swaps R and B.  The point of the check is that it says so
+    instead of quietly mislabelling a colour."""
+    a = np.zeros((4, 4), np.uint16)
+    a[0::2, 0::2] = 200      # sits in the 'R' slot but holds blue
+    a[0::2, 1::2] = 500
+    a[1::2, 0::2] = 505
+    a[1::2, 1::2] = 300
+    labels, _ = cfa.label_planes_by_flux(cfa.split(a))
+    assert labels["R"] == "B" and labels["B"] == "R"
+
+
+# --------------------------------------------------------------------------
+# features
+# --------------------------------------------------------------------------
+
+def test_bright_pixel_stats_separates_stars_columns_and_hot_pixels():
+    """The whole dark/light decision rests on this function."""
+    z = np.zeros((20, 20), np.float32)
+
+    star = z.copy(); star[8:10, 8:10] = 100          # 2x2 blob
+    n, h, v = F._bright_pixel_stats(star, 50)
+    assert (n, h, v) == (4, 4, 4)
+
+    hot = z.copy(); hot[3, 3] = 100; hot[11, 15] = 100
+    n, h, v = F._bright_pixel_stats(hot, 50)
+    assert (n, h, v) == (2, 0, 0)
+
+    col = z.copy(); col[:, 7] = 100                  # hot column: v only
+    n, h, v = F._bright_pixel_stats(col, 50)
+    assert n == 20 and h == 0 and v == 20
+    assert min(h, v) == 0, "the weaker axis must not mistake a column for stars"
+
+    assert F._bright_pixel_stats(z, 50) == (0, 0, 0)
+
+
+def test_features_see_the_bit_shift():
+    blocks, _ = F.sample_blocks(_tmp_frame("dark"))
+    assert F.frame_features(blocks)["mult16_frac"] == 1.0
+
+
+def test_features_separate_stars_from_hot_pixels():
+    dark = F.frame_features(F.sample_blocks(_tmp_frame("dark"))[0])
+    light = F.frame_features(F.sample_blocks(_tmp_frame("light"))[0])
+    assert dark["clump_frac"] < F.LIGHT_MIN_CLUMP <= light["clump_frac"]
+    assert dark["tail_frac"] > 0, "hot pixels should still register as a tail"
+
+
+def test_sample_blocks_reads_the_asked_for_geometry():
+    blocks, header = F.sample_blocks(_tmp_frame("flat"), n_blocks=4, block_rows=16)
+    assert len(blocks) == 4
+    assert all(b.shape == (16, 128) for b in blocks)
+    assert all(b.dtype == np.uint16 for b in blocks)
+    assert header["GAIN"] == 252
+
+
+# --------------------------------------------------------------------------
+# classification
+# --------------------------------------------------------------------------
+
+def test_every_type_classifies_as_itself():
+    for kind in ("bias", "dark", "flat", "light"):
+        rec = F.scan_frame(_tmp_frame(kind))
+        assert rec["measured_type"] == kind, (kind, rec["measured_type"], rec["level"],
+                                              rec["clump_frac"], rec["tail_frac"])
+
+
+def test_a_clipped_frame_falls_back_on_exposure():
+    """Identical pixels, different exposures, different answers.
+
+    A clipped frame has no pixel evidence left -- level pins to full scale,
+    sigma and clump to zero -- so this branch is an inference and the test
+    pins down exactly what it infers from.  Every flat in the archive is 1-3 s,
+    so a clipped long exposure is a light that ran into dawn.
+    """
+    dawn = F.scan_frame(_tmp_frame("saturated"))
+    blown = F.scan_frame(_tmp_frame("blown_flat"))
+    assert dawn["sat_frac"] == blown["sat_frac"] == 1.0
+    assert dawn["level"] == blown["level"]
+    assert dawn["measured_type"] == "light"
+    assert blown["measured_type"] == "flat"
+
+
+def test_saturation_stays_recoverable_as_a_quality_flag():
+    """Folding saturation into the type must not lose it: sat_frac is what
+    downstream excludes on, and it is a stored column."""
+    rec = F.scan_frame(_tmp_frame("saturated"))
+    assert rec["sat_frac"] >= F.SATURATED_FRAC
+    assert F.scan_frame(_tmp_frame("light"))["sat_frac"] < F.SATURATED_FRAC
+
+
+def test_a_bright_long_exposure_is_twilight_not_a_flat():
+    """Found in the ladder: 64 frames at gain 252 / 240-480 s sit above the flat
+    level cut without clipping.  They are dawn sky, not a panel, and level alone
+    cannot tell the difference -- exposure can."""
+    twilight = {"level": 20000.0, "sat_frac": 0.0, "clump_frac": 0.0, "tail_frac": 0.0}
+    assert F.classify(twilight, 240.0) == "light"
+    assert F.classify(twilight, 3.0) == "flat"
+
+
+def test_a_clipped_bias_is_still_a_bias():
+    """Exposure settles bias before the clipping branch is reached."""
+    feats = {"level": 65520.0, "sat_frac": 1.0, "clump_frac": 0.0, "tail_frac": 0.0}
+    assert F.classify(feats, 0.001) == "bias"
+
+
+def test_the_label_is_evidence_not_truth():
+    """D18: a flat captured under a Light subframe type must still read as a
+    flat, and the disagreement must be recorded rather than resolved."""
+    path = os.path.join(_TMP, "mislabelled.fit")
+    write_frame(path, "flat")
+    with _afits.open(path, mode="update") as hdul:
+        hdul[0].header["IMAGETYP"] = "Light"
+    rec = F.scan_frame(path)
+    assert rec["measured_type"] == "flat"
+    assert rec["declared_type"] == "light"
+    assert rec["type_agrees"] is False
+
+
+def test_exposure_decides_bias_before_any_pixel_argument():
+    feats = {"level": 1040.0, "sat_frac": 0.0, "clump_frac": 0.9, "tail_frac": 0.1}
+    assert F.classify(feats, 0.001) == "bias"
+    assert F.classify(feats, 60.0) == "light"
+
+
+# --------------------------------------------------------------------------
+# the index
+# --------------------------------------------------------------------------
+
+def test_index_round_trip_is_incremental_and_never_forgets():
+    d = os.path.join(_TMP, "archive")
+    os.makedirs(d, exist_ok=True)
+    paths = [write_frame(os.path.join(d, k + ".fit"), k)
+             for k in ("bias", "dark", "flat", "light")]
+    csv_path = os.path.join(_TMP, "idx.csv")
+
+    rows = F.refresh_index(d, csv_path, verbose=False)
+    assert len(rows) == 4
+    assert {r["measured_type"] for r in rows.values()} == {"bias", "dark", "flat", "light"}
+
+    # unchanged (path, size, mtime) -> not re-read.  Over SMB this is the
+    # difference between a 40-minute refresh and a fresh 4-hour pass.
+    before = {p: r["indexed_at"] for p, r in rows.items()}
+    again = F.refresh_index(d, csv_path, verbose=False)
+    assert all(again[p]["indexed_at"] == t for p, t in before.items())
+
+    # a changed frame is re-read
+    os.utime(paths[0], (0, 0))
+    again = F.refresh_index(d, csv_path, verbose=False)
+    assert again[paths[0]]["mtime"] == repr(os.stat(paths[0]).st_mtime)
+
+    # a vanished frame is marked, never dropped: a published constant must stay
+    # traceable to the frame it was measured on (D19)
+    os.remove(paths[1])
+    again = F.refresh_index(d, csv_path, verbose=False)
+    assert len(again) == 4
+    assert again[paths[1]]["status"] == "missing"
+    assert again[paths[1]]["measured_type"] == "dark"
+
+
+def test_index_records_an_unreadable_frame_instead_of_dying():
+    d = os.path.join(_TMP, "broken")
+    os.makedirs(d, exist_ok=True)
+    write_frame(os.path.join(d, "good.fit"), "dark")
+    with open(os.path.join(d, "truncated.fit"), "wb") as fh:
+        fh.write(b"SIMPLE  =                    T" + b" " * 100)
+    rows = F.refresh_index(d, os.path.join(_TMP, "broken.csv"), verbose=False)
+    assert len(rows) == 2
+    statuses = sorted(r["status"].split(":")[0] for r in rows.values())
+    assert statuses == ["ok", "unreadable"]
+
+
+def test_walk_prunes_the_retired_camera():
+    """`_canon` holds frames from a retired camera and has its own
+    bias/dark/flat/light beneath it.  Point the walk one level too high and they
+    land in exactly the buckets where they would look plausible."""
+    d = os.path.join(_TMP, "bytype")
+    for sub in ("light", os.path.join("_canon", "light")):
+        os.makedirs(os.path.join(d, sub), exist_ok=True)
+        write_frame(os.path.join(d, sub, "f.fit"), "light")
+    found = list(F.walk(d))
+    assert len(found) == 1 and "_canon" not in found[0]
+    assert len(list(F.walk(d, exclude=()))) == 2, "the skip must be the reason"
+
+
+def test_index_marks_a_frame_from_another_rig():
+    """Marked, not dropped: a foreign frame in the archive is a cleanup item,
+    and silence would hide it."""
+    d = os.path.join(_TMP, "foreign")
+    os.makedirs(d, exist_ok=True)
+    p = write_frame(os.path.join(d, "alien.fit"), "light")
+    with _afits.open(p, mode="update") as hdul:
+        hdul[0].header["INSTRUME"] = "Canon EOS 6D"
+    write_frame(os.path.join(d, "ours.fit"), "light")
+    rows = F.refresh_index(d, os.path.join(_TMP, "foreign.csv"), verbose=False)
+    assert len(rows) == 2
+    assert rows[p]["status"] == "other rig: Canon EOS 6D"
+    assert rows[p]["measured_type"] == "light"     # still described, just fenced
+
+
+def test_capture_settings_are_read_but_the_type_label_is_kept_separate():
+    _, header = F.sample_blocks(_tmp_frame("light"))
+    s = F.capture_settings(header)
+    assert s["gain"] == 252 and s["offset"] == 15
+    assert s["exptime"] == 60.0 and s["ccd_temp"] == -10.0
+    assert s["imagetyp"] == "Light"          # present, and used as evidence only
+
+
+def test_read_keeps_the_numbers_the_camera_wrote():
+    data, header = F.read(_tmp_frame("dark"))
+    assert data.dtype == np.uint16, "floating the data would invent precision"
+    assert np.all(data % 16 == 0)
+
+
+# --------------------------------------------------------------------------
+# harness
+# --------------------------------------------------------------------------
+
+_TMP = None
+_CACHE = {}
+
+
+def _tmp_frame(kind):
+    if kind not in _CACHE:
+        _CACHE[kind] = write_frame(os.path.join(_TMP, kind + ".fit"), kind)
+    return _CACHE[kind]
+
+
+def setup_module(module=None):
+    global _TMP
+    if _TMP is None:
+        _TMP = tempfile.mkdtemp(prefix="astropix-test-")
+
+
+def teardown_module(module=None):
+    global _TMP
+    if _TMP:
+        shutil.rmtree(_TMP, ignore_errors=True)
+        _TMP = None
+        _CACHE.clear()
+
+
+def main():
+    setup_module()
+    tests = [(n, f) for n, f in sorted(globals().items())
+             if n.startswith("test_") and callable(f)]
+    failed = []
+    try:
+        for name, fn in tests:
+            try:
+                fn()
+                print(f"  ok    {name}")
+            except Exception as exc:
+                failed.append(name)
+                print(f"  FAIL  {name}: {type(exc).__name__}: {exc}")
+    finally:
+        teardown_module()
+    print(f"\n{len(tests) - len(failed)}/{len(tests)} passed")
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
