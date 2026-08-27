@@ -88,17 +88,40 @@ short by up to 367 frames at gain 50.
 
 ### The NGC 7000 set is the exception, and the most useful thing in the archive
 
-2,002 lights, and the only substantial subset shot to a deliberate design:
+2,002 lights, and the only substantial subset shot to a deliberate design — a **2 x 6 grid**
+(D28), both gains, six sub-exposure lengths, with **total integration held constant across every
+rung**:
 
-| gain 50 | 15 s | 30 s | 60 s | 120 s | 240 s | 480 s |
-|---|---:|---:|---:|---:|---:|---:|
-| frames | 448 | 224 | 112 | 56 | 28 | 14 |
-| total integration | 6720 s | 6720 s | 6720 s | 6720 s | 6720 s | 6720 s |
+| | 15 s | 30 s | 60 s | 120 s | 240 s | 480 s | per rung |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| **gain 50** | 448 | 224 | 112 | 56 | 28 | 14 | **6 720 s** |
+| **gain 252** | 416 | 208 | 104 | 52 | 26 | 13 | **6 240 s** |
 
-**Equal total integration time at every rung**, repeated at gain 252, across eight nights
-(2025-08-08 … 2025-09-19), all commanded −10 °C and all achieved between −10.5 and −9.0 °C. It
-holds total time fixed and varies only sub-exposure length, which is exactly the comparison
-`SNR(T, t)` asks for, and it is temperature-consistent in a way the rest of the archive is not.
+Every cell is exact. Holding total time fixed and varying only sub-exposure length is precisely
+the comparison `SNR(T, t)` asks for, and it was shot deliberately that way.
 
-Gain 252 departs from the pattern at the 60 s rung — 404 frames against the ~104 the design
-implies — so that rung carries roughly four times the integration of its neighbours.
+**The ladder nights and the stray nights are different things.** The folder also contains 300
+frames from 2025-08-08 and 2025-08-09 which are *not* part of the grid: 60 s only, gain 252, and
+sitting at a sky level of 11 272 and 24 054 ADU against the ladder's 4 500–4 720 on the same
+exposure — between 2.4x and 5.1x brighter, so moonlit or twilight, or a different framing. The
+gain-252 counts above exclude them; included, the 60 s rung reads 404 frames and appears to
+break the design, which it does not.
+
+**Within each gain the ladder is repeated whole, per night, at a consistent sky.** Gain 50 ran
+complete on four nights (2025-08-19, 08-20, 09-18, 09-19), gain 252 on three (08-17, 08-18,
+08-19). Median sky at 15 s varies by under 4% across the nights of either gain. All frames
+commanded −10 °C, all achieved between −10.5 and −9.0 °C — this subset is
+temperature-consistent in a way the rest of the archive is not.
+
+**And 2025-08-19 carries both gains**, each a complete ladder: 219 frames at gain 50 and 221 at
+gain 252, same night, same target, same sky. Every other night is single-gain, so a cross-gain
+comparison drawn from the set as a whole confounds gain with observing conditions — the two
+gains are otherwise a month apart. **That one night is the controlled gain comparison**, and it
+is the most valuable night in the archive.
+
+*Corrected 2026-08-27, shortly after first publication. The original entry showed only the
+gain-50 ladder, described gain 252 as "repeated" without its numbers, and reported its 60 s rung
+as departing from the design. Denis flagged that the set was shot at two gains, which prompted
+the recheck: the grid is exact at both gains, and the apparent anomaly was 300 frames from two
+unrelated 60 s sessions in the same folder. The confound between gain and night, and the single
+night that resolves it, were missed entirely.*
