@@ -1,140 +1,125 @@
-"""Robust noise statistics on a CFA sub-plane.
+"""Pixels to numbers, and the frame verdict those numbers support.
 
-The estimator is fixed by evidence, not by taste (DECISIONS D24): **reject
-outliers with a MAD-scaled cut, then take the standard deviation of the
-survivors.**  Neither half works alone.  MAD is an order statistic of deviations
-that are quantised to 16 file-ADU, so it can only return multiples of
-1.4826 x 16 = 23.72 -- on this rig it reads exactly one ADC step on ~90% of all
-calibration frames, and it returns *zero* below about half a step.  Plain
-standard deviation is nearly immune to the grid, because rounding error averages
-over millions of pixels instead of being read off one order statistic, but it is
-not immune to stars and hot pixels.
+Nothing here opens a file.  Everything takes arrays and returns numbers, which
+is why almost all of it is testable without a FITS file, a Z: mount, or a sky.
 
-Two corrections separate this from a naive clipped std, and both matter at the
-1% level that the PTC intercept -- the read noise -- is fit at:
+Two layers:
 
-**Quantisation (Sheppard).**  Rounding to a grid of step *q* behaves like adding
-an independent uniform error of width *q*, and variances of independent things
-add, so every variance measured on this rig is inflated by a constant
-q^2/12 = 21.33 file-ADU^2.  It is an *additive* offset, so on a variance-vs-signal
-plot it moves the intercept and leaves the slope alone: it lands squarely on
-R(gain) and not at all on g(gain).  Subtract it.
+1.  `frame_features` reduces sampled blocks to the handful of numbers the
+    classifier needs, every statistic per CFA sub-plane (D4).
+2.  `classify` turns those numbers plus one trusted capture setting into a
+    frame type (D18).
 
-**Truncation.**  Clipping at +-k sigma throws away the tails of the very
-distribution being measured, so the survivors' std runs low -- 1.5% at k = 3.
-The shrinkage factor is analytic for a Gaussian, so divide it back out rather
-than choosing k large enough not to care.
-
-Where the corrections stop working is a measured question, not an assumed one:
-Sheppard's model needs the noise to dither the quantiser, and below roughly one
-step the rounding stops being random and becomes a deterministic function of the
-signal.  `astropix.test.quantiser_bias` maps that floor; `results/quantiser_bias.csv`
-records it.
+**The `sigma` here is MAD, and MAD is the wrong estimator for noise.** On this
+rig every stored value is a multiple of 16, and MAD -- an order statistic of the
+quantised deviations -- can only return multiples of 1.4826 x 16 = 23.72
+(D24).  It is kept because it is a perfectly good *classification* feature: all
+`bright_pixels` needs is a roughly-right scale for "unusually bright".  It is
+not a noise measurement and nothing may feed it to a fit.  The real estimator is
+build step 2 and will land beside it.
 """
 
 from __future__ import annotations
 
-import math
-
 import numpy as np
 
-QUANTUM = 16.0    # file-ADU per ADC count: a 12-bit ADC bit-shifted into 16 bits
-CLIP_K = 4.0      # rejection window, in robust sigmas
-CLIP_ITERS = 3
+from . import spatial
 
 MAD_TO_SIGMA = 1.4826
 
+FULL_SCALE = 65535
 
-def sheppard_variance(quantum=QUANTUM):
-    """The variance a quantiser of step `quantum` adds to everything it stores."""
-    return quantum * quantum / 12.0
+# --- classifier thresholds (calibrated in notebooks/01) ----------------------
+BIAS_MAX_EXPTIME = 0.01     # s; a bias is the shortest exposure the camera takes
+FLAT_MIN_LEVEL = 0.15       # fraction of 16-bit full scale
+LIGHT_MIN_CLUMP = 0.25      # bright pixels sharing a bright neighbour both ways
+LIGHT_MIN_TAIL = 1e-5       # bright-pixel fraction, guards against empty tails
+SATURATED_FRAC = 0.5        # clipped everywhere: a quality flag, not a type
+FLAT_MAX_EXPTIME = 5.0      # s; measured -- every flat in the archive is 1-3 s
 
 
-def _truncation_factor(k):
-    """var(survivors) / var(parent) for a Gaussian clipped at +-k sigma.
+def frame_features(blocks):
+    """Reduce sampled blocks to the handful of numbers the classifier uses.
 
-    1 - 2k phi(k) / (2 Phi(k) - 1).  At k = 3 this is 0.971, so an uncorrected
-    3-sigma clipped std reads 1.5% low -- comfortably larger than the read-noise
-    precision this project needs.
+    Every statistic is per CFA sub-plane (D4).  Level and spread are medians
+    *across* blocks rather than pooled over them, so that a sky gradient or
+    vignetting inflates `block_spread` -- where it is informative -- instead of
+    contaminating `sigma`, where it would be a lie.
     """
-    if not np.isfinite(k) or k > 12.0:
-        return 1.0
-    phi = math.exp(-0.5 * k * k) / math.sqrt(2.0 * math.pi)
-    mass = math.erf(k / math.sqrt(2.0))          # 2 Phi(k) - 1
-    return 1.0 - 2.0 * k * phi / mass
+    per_plane = {p: {"med": [], "sig": []} for p in spatial.PLANES}
+    n_tot = n_h = n_v = n_px = 0
+    block_meds = []
+
+    for blk in blocks:
+        planes = spatial.split(blk)
+        meds = []
+        for name, pl in planes.items():
+            pl = pl.astype(np.float32)
+            med = float(np.median(pl))
+            sig = float(MAD_TO_SIGMA * np.median(np.abs(pl - med)))
+            per_plane[name]["med"].append(med)
+            per_plane[name]["sig"].append(sig)
+            meds.append(med)
+            n, nh, nv = spatial.bright_pixels(pl, med + spatial.TAIL_K * max(sig, 1.0))
+            n_tot += n
+            n_h += nh
+            n_v += nv
+            n_px += pl.size
+        block_meds.append(float(np.mean(meds)))
+
+    med = {p: float(np.median(per_plane[p]["med"])) for p in spatial.PLANES}
+    sig = {p: float(np.median(per_plane[p]["sig"])) for p in spatial.PLANES}
+    level = float(np.mean(list(med.values())))
+    sample = np.concatenate([b.ravel() for b in blocks])
+
+    feats = {
+        "level": level,
+        "sigma": float(np.mean(list(sig.values()))),
+        # large-scale structure: vignetting, amp glow, sky gradient
+        "block_spread": float((max(block_meds) - min(block_meds)) / max(level, 1.0)),
+        "tail_frac": n_tot / max(n_px, 1),
+        # weaker axis: a star clumps both ways, a hot column only vertically
+        "clump_frac": min(n_h, n_v) / max(n_tot, 1),
+        "clump_h": n_h / max(n_tot, 1),
+        "clump_v": n_v / max(n_tot, 1),
+        # 12-bit ADC stored bit-shifted x16 => every value a multiple of 16
+        "mult16_frac": float(np.mean(sample % 16 == 0)),
+        "sat_frac": float(np.mean(sample >= FULL_SCALE - 15)),
+    }
+    for p in spatial.PLANES:
+        feats["med_" + p.lower()] = med[p]
+        feats["sig_" + p.lower()] = sig[p]
+    return feats
 
 
-def clipped_std(a, k=CLIP_K, iters=CLIP_ITERS, quantum=QUANTUM):
-    """Std of the survivors of a MAD-scaled cut, truncation-corrected.
+def classify(features, exptime):
+    """Decide the frame type from the pixels (D18).
 
-    Returns (sigma_uncorrected, centre, kept_fraction).  `sigma_uncorrected`
-    still carries the quantiser's q^2/12; `sigma` applies that subtraction.
-
-    The rejection window is floored at one quantum.  Without the floor a frame
-    whose MAD comes back zero -- which happens whenever the noise is under about
-    half a step, and it is the *normal* case for bias frames here -- would open a
-    zero-width window and reject every pixel that is not exactly at the median.
-    D24's "the cut only needs to be roughly right" is what makes the floor safe:
-    a distribution narrower than one step has no resolvable outliers to reject.
+    Order matters.  Exposure is a trusted capture setting, so the bias case is
+    settled before any pixel argument is made.  Level separates flats, which sit
+    an order of magnitude above the pedestal.  What remains -- dark or light at
+    the same exposure and pedestal -- is separated by whether its bright pixels
+    are blobs (a PSF) or isolated sites (hot pixels).
     """
-    x = np.asarray(a, dtype=np.float64).ravel()
-    if x.size < 2:
-        return float("nan"), float("nan"), 0.0
+    if exptime is not None and float(exptime) <= BIAS_MAX_EXPTIME:
+        return "bias"
 
-    centre = float(np.median(x))
-    scale = MAD_TO_SIGMA * float(np.median(np.abs(x - centre)))
-    kept = 1.0
+    bright = (features["level"] >= FLAT_MIN_LEVEL * FULL_SCALE
+              or features["sat_frac"] >= SATURATED_FRAC)
+    if bright:
+        # A frame sitting far above the pedestal saw a lot of light.  Level
+        # alone cannot say what kind: a flat panel and a twilight sky look the
+        # same, and once clipped every other feature is degenerate too (sigma
+        # and clump go to zero).  So this branch is an *inference*, not a
+        # measurement, and it leans on the one thing left -- a capture setting,
+        # which D18 keeps trusted.  Every flat in this archive is 1-3 s, so a
+        # bright long exposure is sky, not a panel: a light that ran into dawn
+        # or started in twilight.  Saturation stays recorded in `sat_frac`, a
+        # quality attribute orthogonal to what the frame is (D25, D27).
+        return "flat" if float(exptime) <= FLAT_MAX_EXPTIME else "light"
 
-    for _ in range(iters):
-        window = k * max(scale, quantum)
-        m = np.abs(x - centre) <= window
-        if m.sum() < 2:
-            break
-        surv = x[m]
-        centre = float(surv.mean())
-        raw = float(surv.std())
-        kept = float(m.mean())
-        if raw <= 0.0:
-            scale = 0.0
-            break
-        # k_eff, not k: when the window is held open by the quantum floor the
-        # clip is far out in the tails and there is nothing to correct back.
-        scale = raw / math.sqrt(_truncation_factor(window / raw))
+    if (features["clump_frac"] >= LIGHT_MIN_CLUMP
+            and features["tail_frac"] >= LIGHT_MIN_TAIL):
+        return "light"
+    return "dark"
 
-    return scale, centre, kept
-
-
-def sigma(a, k=CLIP_K, iters=CLIP_ITERS, quantum=QUANTUM):
-    """The shipping estimator: robust, truncation- and Sheppard-corrected.
-
-    Returns noise in file-ADU.  Returns 0.0, not a negative or a nan, when the
-    corrected variance goes non-positive -- that is a frame whose noise this
-    quantiser cannot resolve, and the honest reading is "below the grid", which
-    the caller must handle rather than feed to a fit.
-    """
-    raw, _, _ = clipped_std(a, k=k, iters=iters, quantum=quantum)
-    if not np.isfinite(raw):
-        return float("nan")
-    return math.sqrt(max(raw * raw - sheppard_variance(quantum), 0.0))
-
-
-def pair_variance(a, b, k=CLIP_K, iters=CLIP_ITERS, quantum=QUANTUM):
-    """Temporal variance from two frames at identical settings, in file-ADU^2.
-
-    var(a - b) / 2.  This is the estimator the PTC wants, because differencing
-    cancels every fixed pattern -- pixel-response non-uniformity, amp glow, the
-    dust motes in a flat -- and leaves only what changed between two reads.  A
-    single frame's spatial variance cannot separate those from shot noise.
-
-    The difference is quantised twice, once per frame, so it carries 2 x q^2/12;
-    halving it brings the correction back to the same q^2/12 subtracted
-    everywhere else.
-    """
-    d = np.asarray(a, dtype=np.float64) - np.asarray(b, dtype=np.float64)
-    raw, _, _ = clipped_std(d, k=k, iters=iters, quantum=quantum)
-    return 0.5 * raw * raw - sheppard_variance(quantum)
-
-
-def pair_sigma(a, b, **kw):
-    """Per-frame noise in file-ADU, from a pair difference."""
-    return math.sqrt(max(pair_variance(a, b, **kw), 0.0))

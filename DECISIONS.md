@@ -363,143 +363,120 @@ marked `unreadable: OSError` and fenced out of `status == "ok"`.
 
 ---
 
-## 2026-08-27 — Build session 2 (step 2, `stats.py`)
+## 2026-08-27 — Build session 4 (reset)
 
-### D30. The estimator carries two corrections, and declares a floor — completes D24
-D24 fixed the *shape* of the estimator (robust cut, then std). Measuring its bias against a known
-truth (`results/quantiser_bias.csv`) showed the shape alone is not enough at the precision
-`R(gain)` needs, and added two terms:
+### D30. The record is reset to the index, and three policies move to `CLAUDE.md`
+Sessions 2 and 3 built `stats.py`, notebook 02 and a set of conventions on top of an index whose
+own notebook could not rebuild it. Rather than patch that, the state is reset to the point the
+archive index was the only artifact, and rebuilt from there. **Removed:** `astropix/stats.py`,
+`notebooks/02`, every file in `results/`, the `FINDINGS` entries derived from them, and the
+former D30–D36. All of it remains in git history at `9019bfe`; nothing is lost, it is
+de-published.
 
-1. **Sheppard.** Subtract q²/12 = 21.33 file-ADU² from every variance. It is additive, so it
-   moves the PTC *intercept* — the read noise — and leaves the slope, `g(gain)`, untouched.
-2. **Truncation.** Divide out the analytic shrinkage a ±kσ clip inflicts on the survivors' std
-   (~0.7% at k = 4, 1.5% at k = 3), computed from the *effective* k the window reached, not the
-   nominal one — the rejection window is floored at one quantum, and where that floor holds the
-   window open there is nothing to correct back.
+**Kept deliberately:** D1–D29, because D24–D29 are the recorded reasons for thresholds still live
+in `fits.py` — `FLAT_MAX_EXPTIME`, `EXCLUDE_DIRS`, saturation as a quality flag. Deleting the
+reasoning while keeping the code is the failure this project exists to avoid. `vendor/` is kept
+too; the DLL is real and its licence is beside it.
 
-**And a stated floor: 0.5 quantiser steps, 8 file-ADU.** Above one step the estimator is exact to
-three decimals; at half a step it reads 1.6% low; at a quarter step, in the grid phase the real
-pedestals sit at, every pixel rounds to one value and it returns **0.0**. Returning zero is the
-design: a frame whose noise the quantiser cannot resolve must not hand a fit a plausible number.
-Callers exclude on it; they do not extrapolate through it.
+**Two kept entries now cite files that are gone.** D28 cites `results/ladder_census.csv` and
+D29 cites `results/unreadable_frames.csv`. History is not edited, so the citations stand as
+written; both files are at `9019bfe`, and both conclusions are re-derivable from a rebuilt index.
+Treat them as claims awaiting a citation until a notebook regenerates the evidence.
 
-**Consequence for the index.** MAD on this grid is non-monotonic (1.483 at one step, 0.741 at
-two, 1.112 at four), so the `sigma` column of `results/frame_index.csv` cannot be rescaled into a
-noise measurement by any correction curve. It stays what D24 called it — a classification feature.
-Where a real single-frame sigma is wanted, the frame is re-measured.
+**Three policies move out of here and into `CLAUDE.md`** ("How work is recorded"): reusable code
+lives in the package, notebooks stay minimal and import the library, and nothing reaches
+`results/` except through a notebook. They belong in the boot document because they govern every
+session, not one. `DECISIONS` records *what was chosen and rejected*; `CLAUDE.md` records *how we
+work*. The third is asserted by `tests/test_record.py`.
 
-**Rejected:** choosing k large enough that truncation is negligible (it trades a known analytic
-correction for an unknown outlier-rejection failure, on frames that contain hot pixels); carrying
-the quantiser bias as an error bar instead of a subtraction (it is a constant, not an uncertainty).
+**Rejected:** rolling the git history back to `f09bdcc` and force-pushing. `CLAUDE.md` says never
+edit history, the two commits are already on the remote, and the notebook 01 committed there had
+no cell that writes the index at all — the rollback would have restored exactly the orphaned
+state that prompted it.
 
-### D31. `pair_variance` is the PTC's estimator, not a single frame's spatial spread
-`var(a − b)/2` over two frames at identical settings. Differencing cancels every *fixed* pattern —
-pixel-response non-uniformity, amp glow, dust motes — and leaves only what changed between two
-reads. A flat's spatial spread cannot separate 2% PRNU from shot noise; the pair difference is
-blind to it by construction, and `test_pair_difference_cancels_fixed_pattern` asserts exactly that.
-The difference is quantised twice, so it carries 2 × q²/12; halving brings the correction back to
-the same q²/12 subtracted everywhere else.
+### D31. `sweep.py` becomes `asi.py` — supersedes D13 and D16's module list
+The sixth module is `asi.py`: the `zwoasi`/`ASICamera2.dll` wrapper and everything camera-facing.
+D13 and D16 called it `sweep.py`, naming it after one use rather than after what it owns. Sweep
+orchestration is a caller, and callers of a camera live in notebooks until they earn a module.
 
-### D32. No dark re-shoot — D9's conditional gaps are closed
-D9 made a 15 s and 240 s dark re-shoot conditional on the index confirming a gap. The census
-shows darks at −10.0 °C for all twelve rungs of the D28 grid, at both gains. The condition failed;
-nothing is scheduled. D9's *selection* rule is unchanged and now demonstrably necessary — the
-folders really are mixed by temperature, and 391 of the matching darks are labelled `Light`.
+### D32. Tests live in `tests/`, outside the budget — supersedes D23
+D23 kept the suite in `astropix/test.py` and exempted it from the line budget. It is now a
+package, `tests/`, with one `test_<module>.py` per library module plus `test_record.py` for the
+repo rule. `tests` rather than `test` because Python's standard library already owns `test`, and
+shadowing it is the kind of failure that shows up somewhere unrelated. Run with `python -m tests`
+or `pytest tests`; still no dependency beyond the library, so it runs on the capture machine
+mid-session.
 
----
+### D33. Build step 3 is not settled — the reordering is open
+D16 step 3 is "re-analyse the harvested sweeps"; the alternative is bench capture first, with
+`asi.py` and a setup notebook ahead of the PTC. Left open deliberately rather than decided in
+passing. **What is known:** a re-analysis of the harvested 61-step sweep does settle the
+`EGAIN` unit question — measured gain agreed with header `EGAIN` to 2% once the factor of 16 was
+accounted for. That result is not carried forward here; it is in this session's transcript only,
+and would have to be re-derived by whichever path is chosen.
 
-## 2026-08-27 — Build session 3 (the notebook convention)
+### D34. `cfa.py` becomes `spatial.py`, and `fits.py` gives up pixel interpretation — supersedes D31's list
+`fits.py` was two modules wearing one name: FITS reading and index maintenance on one side,
+`frame_features`, `classify` and seven classification thresholds on the other. They shared a file
+and nothing else. Split along one invariant, stated in `CLAUDE.md`:
 
-### D33. Two kinds of notebook, and a session is not done until its notebook is
-Denis, mid-session: *"you're faster than I can follow — don't want this to die as well."* That
-is the `learn_astro` failure presenting differently. Build session 2 shipped a module, seven
-tests, a `results/` file and five document entries, and **zero notebooks**. An audit found that
-three of the five files in `results/` had no generator anywhere — they were written by inline
-terminal code that no longer existed — and that `frame_index.csv`'s generator, `refresh_index`,
-appeared in notebook 01 only inside a docstring.
+> **Only `spatial.py` and `stats.py` touch pixel arrays.**
 
-**Type A, build notebooks.** Numbered by the D16 build order, one per build step, chronological.
-They carry the cells that produced whatever reached `results/` and `FINDINGS`, plus the prose for
-why the step happened and what it settled. Together they *are* the chronological view of the
-project; D13 forbids a fifth Markdown file and does not need one, because CLAUDE.md already
-assigns the narrative to the notebooks.
+- **`spatial.py`** (was `cfa.py`) — *where* things are. `split`, `PLANES`, `bright_pixels`
+  (public, was `fits._bright_pixel_stats`), `TAIL_K`. Later: vignetting, amp glow, source
+  detection (D22). All of those are "where in the frame", and none of them belonged in a module
+  named after a Bayer pattern.
+- **`stats.py`** — *how much* things vary, plus the verdict those numbers support.
+  `frame_features`, `classify`, the thresholds, `FULL_SCALE`.
+- **`fits.py`** — files in, index rows out. 325 → 216 lines.
 
-**The rule, stated so it can be checked.** Every file in `results/`, and every number published
-in `FINDINGS`, is written by a cell in a numbered notebook — or, from build step 5, by a committed
-`pjsr/` script that a notebook cell invokes and parses. Asserted by
-`test_every_results_file_has_a_generator`, which reads the notebook JSON and needs neither Z: nor
-an execution, so it runs anywhere; it would have failed on the three orphaned census CSVs.
+Dependency chain is one-way, `fits.py` → `stats.py` → `spatial.py`, which is what makes almost
+every test runnable on a bare numpy array.
 
-The bar is *a cell writes it*, not *it byte-reproduces*. Re-running acquisition correctly yields a
-**new** snapshot rather than the old one (D19), so a reproducibility test would forbid exactly the
-artifacts that cost an hour to make.
+**`classify` sits in `stats.py` and returns a verdict, not a statistic.** Acknowledged wart; the
+alternative was leaving it beside `scan_frame`. It reads a features *dict*, never pixels, so the
+invariant holds either way — but it and `frame_features` are read together and change together
+(D25 and D27 each moved both), and seven classification thresholds in a module called `fits` was
+the smell that started this.
 
-**`DECISIONS` is deliberately outside the rule.** Denis's call, and it is the right line: most
-entries here are judgement — scope, layout, what was rejected and why — and there is no cell that
-produces an opinion. Where a decision *does* rest on a measurement it cites the `FINDINGS` entry or
-the `results/` file carrying it rather than restating the figure, so the evidence requirement is
-inherited rather than duplicated. A decision quoting a bare number with nothing behind it is the
-thing this avoids.
+**`label_planes_by_flux` is deleted.** It guessed which sub-plane held red, from the data, as a
+check on `BAYERPAT`. Nothing ever called it but its own two tests. **RGGB is a project constant**
+— one rig, one sensor, one orientation — and `split` already raises on any other pattern, so the
+guesser was a check on a guard that already existed. `bayerpat` remains a column in the index, so
+if a frame from elsewhere ever appears the check is a groupby, not a module.
 
-**Type B, question notebooks.** Denis asks something about the library, the statistics, the data
-or a conclusion; the answer is a notebook that runs `astropix` against real frames. Disposable,
-never writes to `results/`. Reading Z: during a freeze is fine — D19 forbids the archive
-*changing* mid-analysis, not being read. If one turns up something worth keeping it graduates: a
-`FINDINGS` entry, and its code moves into the Type A notebook that owns that dataset.
+**Pure code motion: the index CSV is byte-identical either way.** Done before the scan only
+because `results/` is empty and there is nothing to invalidate. Library: 417 lines of ~1000.
 
-**Replay is not re-acquisition.** Analysis cells read committed artifacts in `results/` and re-run
-in seconds; acquisition — indexing over SMB, a PixInsight integration, a capture run — gets one
-guarded cell (`if REACQUIRE:`) whose job is to record the parameters, not to execute. Re-running
-acquisition correctly produces a *new* snapshot rather than the old one, which is D19, not a bug.
-Bit-identical replay of the analysis half was considered and dropped as over-engineering; what is
-required is that the route from archive to number is readable and re-runnable.
+### D35. The library takes one frame; the notebook takes the loop — supersedes D15
+`fits.py` owned `walk`, `load_index`, `_write_index` and a 70-line `refresh_index` that
+walked the archive, decided what to re-read, checkpointed, marked vanished frames and printed
+progress. None of that is about a FITS file. Orchestration moves to `notebooks/01`, and the
+package keeps only what is true of a single frame:
 
-**One-off analysis code lives in the notebook, not the library.** Denis's call. A census is a
-question asked of the index, not a property of it; the six-module budget is for physics and for
-rules like `classify`, and the library stays the distilled residue CLAUDE.md describes.
+| stays in `astropix` | moved to the notebook |
+|---|---|
+| `read`, `sample_blocks`, `capture_settings` | walking the four archive roots |
+| `scan_frame` — every column the index records about one frame, `status` included | the loop, progress, checkpointing |
+| `needs_rescan`, `stat_row` — the per-frame incremental decision | reading and writing the CSV |
+| `sha256` | marking vanished frames `missing` |
 
-**Rejected:** a fifth Markdown file for a chronological log (D13, and the notebooks already do
-it); putting `census()` in `fits.py` (spends the budget on aggregation).
+`fits.py`: 216 → 138 lines. Library total 339 of ~1000. D15 folded the index into `fits.py` to
+avoid a seventh module; the module was never the problem, the loop was.
 
-### D34. The observing night runs noon to noon
-Recovered while reconstructing the census generators: the vanished code binned frames by
-observing night — `DATE-OBS` minus 12 h — while notebook 01's committed cells used the calendar
-date. On calendar dates the NGC7000 grid reads as four nights per gain and contradicts D28. Now a
-single `observing_night()` in the notebook setup, used everywhere, with the rebuilt census CSVs
-byte-identical to the committed ones. Re-running the fixed cell shows each rung split **exactly
-in half** across its two nights (224/224, 112/112, 56/56, 28/28, 14/14, 7/7) — the interleaving of
-D28 is stronger than "interleaved", it is balanced.
+**`needs_rescan` deliberately did not move.** Deciding whether *one* frame changed is per-frame
+work, it is the single most consequential line in the scan — wrong one way and every refresh
+re-reads 15,000 frames, wrong the other and a changed frame is never re-read — and it carries a
+real trap: `mtime` round-trips through CSV, so the comparison is on `repr` strings rather than
+floats. That belongs in tested code. Five tests cover it, including the CSV round-trip.
 
-### D35. The ASI SDK DLL is vendored into `vendor/`, and the layout gains a seventh folder
-`vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, x64, 2.8 MB, sha256 recorded in its README),
-with ZWO's MIT `LICENSE.txt` beside it. Redistribution is explicitly permitted with the notice.
+**Accepted cost.** The D19 guarantees that used to be asserted by
+`test_index_round_trip_is_incremental_and_never_forgets` — rows never deleted, atomic write,
+vanished frames marked — are now notebook code and untested. Mitigated, not solved, by a dry run
+of the notebook against a synthetic archive covering a first pass, an unchanged re-run, a touched
+frame and a deleted frame. If that loop grows a third behaviour, it has earned a test and should
+come back into the package.
 
-**Why vendored at all.** `zwoasi` warns `ASI SDK library not found` on import and needs an
-absolute path handed to `init()`. Pointing that at `~/Documents/ASI SDK` makes the camera driver
-(D12, build step 6) depend on a path outside the repo, on one machine, that nothing verifies.
-Vendored, the path is repo-relative and the exact binary the driver ran against is recorded.
-
-**Only the DLL.** `ASICamera2.lib`, the C/C# headers and the OpenCV demos are build-time
-artifacts for compiled languages; `zwoasi` loads the DLL through `ctypes`. The full SDK stays at
-`C:\Users\denis\Documents\ASI SDK`.
-
-This adds a seventh top-level folder to D13's layout, which is a conversation rather than a
-commit — Denis asked for it explicitly. It holds no code and nothing imports from it, so it does
-not touch the six-module or ~1000-line budget. **Not a dependency of build steps 1-5**: indexing,
-statistics, the PTC re-analysis and the PixInsight contracts all run on frames that already exist.
-
-### D36. FINDINGS is correctable in place, with the correction marked
-Building `notebooks/02` regenerated the MAD-collapse table from the committed index and found the
-published light rows stale — computed before D27's reclassification and never re-run (9,005 +
-1,052 = 10,057, exactly). Corrected in place with a dated note saying what was wrong and why,
-rather than appended as a superseding entry.
-
-**The split is deliberate.** `DECISIONS` is append-only because a decision's *history* is the
-point — knowing what was rejected, and when, is what stops it being re-litigated. `FINDINGS`
-states what is true of the rig, and a future session reads it as current fact; leaving a known-wrong
-table in place to preserve a paper trail would plant exactly the kind of landmine this project is
-trying to avoid. So: correct the number, keep the note.
-
-**And a working rule.** The error survived because the table was hand-written from a query that
-was never re-run. Under D33 every such table is regenerated by a notebook cell, which is what
-caught it — the first thing the new convention paid for.
+**`scan_frame` gained `status`.** The rig check (D26) was in `refresh_index`; it is per-frame, so
+it belongs with the frame description. A foreign frame is still described and fenced, never
+dropped.

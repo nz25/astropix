@@ -36,23 +36,57 @@ request, not pedantry.
 - **A measurement must name the model coefficient it pins down.** If a sweep does not feed a term
   in the SNR equation, we do not run it.
 
+## How work is recorded
+
+These three are rules, not conventions. The previous two attempts at this project died because
+work outran the record of it, and the record is the only thing that survives a restart.
+
+- **Reusable code lives in the `astropix/` package.** If a function will be called twice, it
+  belongs in a module with a test. One-off analysis belongs in a notebook and stays there.
+- **The library does one frame; the notebook does the loop.** `astropix` reads a frame, measures
+  it, and describes it. Walking directories, deciding what to re-read, checkpointing, progress
+  and assembling a table are *orchestration*, and they belong in the notebook that does them,
+  where they can be read and changed without touching the library. What must never move into a
+  notebook is physics: a measurement, a threshold, a correction. If a notebook cell starts
+  deciding what a number *means*, the meaning is in the wrong place.
+- **Nothing appears in `results/` except through a notebook.** Every file there is written by a
+  cell in a numbered notebook, so the route from frames to a published number is readable end to
+  end. Asserted by `tests/test_record.py`, which reads the notebook JSON and needs neither Z: nor
+  an execution.
+
+The bar is *a cell writes it*, not *it byte-reproduces*: re-running an acquisition correctly
+yields a **new** snapshot, and demanding byte equality would forbid the artifacts that cost hours
+to make.
+
 ## Library budget
 
-Six modules — `fits.py`, `cfa.py`, `stats.py`, `model.py`, `sweep.py`, `pixinsight.py` — and
+Six modules — `fits.py`, `spatial.py`, `stats.py`, `model.py`, `asi.py`, `pixinsight.py` — and
 roughly 1000 lines total until the model passes its validation gate. A seventh module, or
 crossing the budget, is a conversation, not a commit. Notebooks are the workspace and the
 narrative; the library is only the distilled residue; `results/` is the record of truth.
 
+**Two invariants keep the first three apart.** *Only `spatial.py` and `stats.py` touch pixel
+arrays* — `fits.py` moves bytes and never interprets a value. And *nothing in the package
+loops over frames*: every function here takes one frame, or one array, and returns. `spatial.py`
+asks *where* things are: the Bayer lattice, bright-pixel connectivity, later vignetting and
+source detection. `stats.py` asks *how much* they vary, and carries the frame verdict those
+numbers support. The dependency chain is one-way: `fits.py` → `stats.py` → `spatial.py`.
+
+`tests/` does not count against either limit — it carries no physics, nothing imports it, and a
+budget that discourages tests is a budget working against itself. It mirrors the package: one
+`test_<module>.py` per library module.
+
 ## Layout
 
 ```
-astropix/     the library
+astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how much)
+tests/        one test_<module>.py per library module; outside the budget
 notebooks/    numbered, narrative, markdown + code
 data/         gitignored; bulk frames live on Z:
 protocols/    capture protocols, written before each bench session
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
-vendor/       third-party binaries, licence beside each (D35)
+vendor/       third-party binaries, licence beside each
 ```
 
 ## Environment
@@ -61,7 +95,7 @@ vendor/       third-party binaries, licence beside each (D35)
   photutils 3.0.0, sep, jupyterlab 4.6.3, zwoasi 0.2.0.
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
 - ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, MIT), loaded with
-  `zwoasi.init(...)`. Full SDK at `C:\Users\denis\Documents\ASI SDK` (D35).
+  `zwoasi.init(...)` from `asi.py`. Full SDK at `C:\Users\denis\Documents\ASI SDK`.
 - Frame archive: `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — ~15,000 frames.
   **C: has ~12 GB free.** Nothing bulky lands on C:.
 - Harvested from `learn_astro`: PTC sweep (61 gain steps), offset sweep, two linearity runs.
