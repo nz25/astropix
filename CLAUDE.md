@@ -29,6 +29,14 @@ request, not pedantry.
   folders mix gain and temperature inside one exposure folder, *and* some flats and darks were
   captured under a Light subframe type. Capture settings in the header (gain, offset, exposure,
   set-temp, achieved temp) are trusted; the type label is not.
+- **Two data sources, and only one of them owes us anything.** `Z:` holds ~15,000 historic
+  frames shot across a year of ordinary imaging, before this project or any of its conventions
+  existed: mixed setpoints, mixed gains, labels that do not always match the pixels. That is a
+  **test corpus**, not a controlled dataset, and it is not expected to comply with anything here.
+  Frames captured *for* this project — bench runs and deliberate on-sky tests — are shot to a
+  protocol and land in `data/`.
+- **If archive data or a classifier verdict looks unreliable, reshoot.** Reasoning around
+  suspect frames costs more than re-taking them and leaves a number nobody can defend.
 - **The archive is frozen while an analysis is producing numbers for `results/`.** Refresh the
   index between runs, never during. New frames land in `raw\_inbox\`, not in the archive.
 - **If something cannot be done properly, say so and state the fallback.** Never substitute a
@@ -38,7 +46,7 @@ request, not pedantry.
 
 ## How work is recorded
 
-These three are rules, not conventions. The previous two attempts at this project died because
+These are rules, not conventions. The previous two attempts at this project died because
 work outran the record of it, and the record is the only thing that survives a restart.
 
 - **Reusable code lives in the `astropix/` package.** If a function will be called twice, it
@@ -49,6 +57,10 @@ work outran the record of it, and the record is the only thing that survives a r
   where they can be read and changed without touching the library. What must never move into a
   notebook is physics: a measurement, a threshold, a correction. If a notebook cell starts
   deciding what a number *means*, the meaning is in the wrong place.
+- **Every notebook has a purpose, agreed before it is created.** A numbered notebook opens by
+  saying what it is for and what it is not for, and that purpose is agreed in conversation
+  first. A notebook nobody asked for is scope growth with a table of contents. The purpose is
+  also the context that stops later readers misreading the data — see `01` below.
 - **Nothing appears in `results/` except through a notebook.** Every file there is written by a
   cell in a numbered notebook, so the route from frames to a published number is readable end to
   end. Asserted by `tests/test_record.py`, which reads the notebook JSON and needs neither Z: nor
@@ -57,6 +69,12 @@ work outran the record of it, and the record is the only thing that survives a r
 The bar is *a cell writes it*, not *it byte-reproduces*: re-running an acquisition correctly
 yields a **new** snapshot, and demanding byte equality would forbid the artifacts that cost hours
 to make.
+
+Notebook purposes, as agreed:
+
+| notebook | exists to |
+|---|---|
+| `01_frame_index` | index the historic frames on `Z:` — material of varied reliability, useful as **test data** for exercising code against real pixels, and as the route into the NGC 7000 exposure-ladder set |
 
 ## Library budget
 
@@ -82,7 +100,7 @@ budget that discourages tests is a budget working against itself. It mirrors the
 astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how much)
 tests/        one test_<module>.py per library module; outside the budget
 notebooks/    numbered, narrative, markdown + code
-data/         gitignored; bulk frames live on Z:
+data/         gitignored; frames captured *for* this project (bench and tests)
 protocols/    capture protocols, written before each bench session
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
@@ -96,7 +114,8 @@ vendor/       third-party binaries, licence beside each
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
 - ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, MIT), loaded with
   `zwoasi.init(...)` from `asi.py`. Full SDK at `C:\Users\denis\Documents\ASI SDK`.
-- Frame archive: `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — ~15,000 frames.
+- Historic archive (test corpus): `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` —
+  15,102 frames, indexed in `results/frame_index.csv`.
   **C: has ~12 GB free.** Nothing bulky lands on C:.
 - Harvested from `learn_astro`: PTC sweep (61 gain steps), offset sweep, two linearity runs.
 
@@ -104,4 +123,9 @@ vendor/       third-party binaries, licence beside each
 
 ZWO ASI585MC Pro (OSC, RGGB, 3840x2160, 2.9 um, 12-bit ADC stored bit-shifted into 16-bit FITS)
 on a SharpStar SQA55 (263-264 mm, f/4.8), ZWO AM5N mount, ASIAIR Plus, ZWO EAF.
-32 mm f/4 guide scope. No filters. Cooling setpoint fixed at -10 C.
+32 mm f/4 guide scope. No filters.
+
+**Cooling: -10 C** for every bench run and for the model's first pass, which treats temperature
+as fixed rather than as an axis. That is a project convention adopted *after* most of the
+archive was shot, and a simplification to be revisited when the thermal term is explored, not a
+property of the historic data (which also contains -20 C material).

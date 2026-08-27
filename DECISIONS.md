@@ -480,3 +480,46 @@ come back into the package.
 **`scan_frame` gained `status`.** The rig check (D26) was in `refresh_index`; it is per-frame, so
 it belongs with the frame description. A foreign frame is still described and fenced, never
 dropped.
+
+### D36. The `Z:` archive is a test corpus; project data is shot for the purpose
+The index made it tempting to read the archive as a rig that had failed a temperature policy —
+14% of frames off setpoint, two setpoints, 684 labels disagreeing with their pixels. That
+reading is wrong, and correcting it is the decision.
+
+**Those frames predate this project and every convention in it.** They are ~15,000 frames from a
+year of ordinary imaging: material of varied reliability, valuable as **test data** for
+exercising code against real pixels, and as the route into the NGC 7000 exposure ladder. They
+are not expected to comply with anything here, and non-compliance is not a finding about the
+sensor.
+
+**`CLAUDE.md`'s −10 °C is a bench convention and a modelling simplification**, adopted after most
+of the archive was shot. The model's first pass treats temperature as fixed rather than as an
+axis; that is a scope boundary to revisit when the thermal term is explored, not a claim about
+historic data. The line said "fixed at −10 C" and now says which of those two things it means.
+
+**Two sources, different expectations.** `Z:` is the corpus. `data/` holds frames captured *for*
+this project — bench runs and deliberate on-sky tests, shot to a protocol. The layout entry for
+`data/` said "bulk frames live on Z:", which had it backwards.
+
+**And a preference, stated so it is not re-argued each time: reshoot rather than reason around
+suspect data.** Where an archive subset or a classifier verdict looks unreliable, re-taking the
+frames costs less than the argument and leaves a number that can be defended. This is why the
+684 disagreements are recorded in `FINDINGS` as an open observation rather than resolved by
+inference.
+
+### D37. Every notebook has an agreed purpose before it exists
+Added to `CLAUDE.md` under "How work is recorded", alongside the three rules already there.
+
+A numbered notebook opens by saying what it is for and what it is not for, and that purpose is
+agreed in conversation before the notebook is written. Two reasons, and the second is the one
+that prompted this:
+
+1. **A notebook nobody asked for is scope growth with a table of contents.** Two prior attempts
+   at this project died that way.
+2. **The purpose is the context that stops a later reader misreading the data.** Without
+   "`01` indexes historic frames of varied reliability, for testing", the temperature spread in
+   that index looks like a rig fault instead of a description of a corpus — which is precisely
+   the mistake this session made before Denis corrected it.
+
+`CLAUDE.md` carries the table of agreed purposes, so a session that reads its boot documents
+knows what each notebook is claiming to be.
