@@ -360,3 +360,48 @@ frame of its run by sequence number (`dark/002` 0098-0100, `flat/20260320` 0059-
 Listed in `results/unreadable_frames.csv`. Safe to delete — no calibration set loses coverage —
 but under D20 nothing is deleted from the archive until the model is validated, so they stay,
 marked `unreadable: OSError` and fenced out of `status == "ok"`.
+
+---
+
+## 2026-08-27 — Build session 2 (step 2, `stats.py`)
+
+### D30. The estimator carries two corrections, and declares a floor — completes D24
+D24 fixed the *shape* of the estimator (robust cut, then std). Measuring its bias against a known
+truth (`results/quantiser_bias.csv`) showed the shape alone is not enough at the precision
+`R(gain)` needs, and added two terms:
+
+1. **Sheppard.** Subtract q²/12 = 21.33 file-ADU² from every variance. It is additive, so it
+   moves the PTC *intercept* — the read noise — and leaves the slope, `g(gain)`, untouched.
+2. **Truncation.** Divide out the analytic shrinkage a ±kσ clip inflicts on the survivors' std
+   (~0.7% at k = 4, 1.5% at k = 3), computed from the *effective* k the window reached, not the
+   nominal one — the rejection window is floored at one quantum, and where that floor holds the
+   window open there is nothing to correct back.
+
+**And a stated floor: 0.5 quantiser steps, 8 file-ADU.** Above one step the estimator is exact to
+three decimals; at half a step it reads 1.6% low; at a quarter step, in the grid phase the real
+pedestals sit at, every pixel rounds to one value and it returns **0.0**. Returning zero is the
+design: a frame whose noise the quantiser cannot resolve must not hand a fit a plausible number.
+Callers exclude on it; they do not extrapolate through it.
+
+**Consequence for the index.** MAD on this grid is non-monotonic (1.483 at one step, 0.741 at
+two, 1.112 at four), so the `sigma` column of `results/frame_index.csv` cannot be rescaled into a
+noise measurement by any correction curve. It stays what D24 called it — a classification feature.
+Where a real single-frame sigma is wanted, the frame is re-measured.
+
+**Rejected:** choosing k large enough that truncation is negligible (it trades a known analytic
+correction for an unknown outlier-rejection failure, on frames that contain hot pixels); carrying
+the quantiser bias as an error bar instead of a subtraction (it is a constant, not an uncertainty).
+
+### D31. `pair_variance` is the PTC's estimator, not a single frame's spatial spread
+`var(a − b)/2` over two frames at identical settings. Differencing cancels every *fixed* pattern —
+pixel-response non-uniformity, amp glow, dust motes — and leaves only what changed between two
+reads. A flat's spatial spread cannot separate 2% PRNU from shot noise; the pair difference is
+blind to it by construction, and `test_pair_difference_cancels_fixed_pattern` asserts exactly that.
+The difference is quantised twice, so it carries 2 × q²/12; halving brings the correction back to
+the same q²/12 subtracted everywhere else.
+
+### D32. No dark re-shoot — D9's conditional gaps are closed
+D9 made a 15 s and 240 s dark re-shoot conditional on the index confirming a gap. The census
+shows darks at −10.0 °C for all twelve rungs of the D28 grid, at both gains. The condition failed;
+nothing is scheduled. D9's *selection* rule is unchanged and now demonstrably necessary — the
+folders really are mixed by temperature, and 391 of the matching darks are labelled `Light`.

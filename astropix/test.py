@@ -24,6 +24,7 @@ from astropy.io import fits as _afits
 
 from . import cfa
 from . import fits as F
+from . import stats
 
 RNG = np.random.default_rng(20260827)
 STEP = 16          # the 12-bit ADC stored bit-shifted into 16-bit files
@@ -383,6 +384,151 @@ def teardown_module(module=None):
         shutil.rmtree(_TMP, ignore_errors=True)
         _TMP = None
         _CACHE.clear()
+
+
+# --------------------------------------------------------------------------
+# the quantiser-bias simulation (D24's open item, for step 3)
+# --------------------------------------------------------------------------
+#
+# Every value this camera stores is a multiple of 16, so a noise estimator never
+# sees the noise -- it sees the noise after rounding.  When sigma is large
+# against the step that is harmless; when it is comparable, it is not, and ~90%
+# of the calibration frames in this archive read out at *one* step of scatter.
+#
+# The simulation is a loop over a known truth: draw Gaussian noise at a sigma we
+# chose, round it to the grid, run the estimator we intend to ship, and compare.
+# Sweeping sigma gives a bias curve, and the curve is the error budget for
+# R(gain) -- the read noise is the PTC's intercept, and the quantiser's q^2/12
+# lands entirely on the intercept.
+#
+# `phase` is not a detail.  Where the true mean sits relative to the grid changes
+# the answer below one step, because there the rounding is no longer scrambling
+# anything -- it is a deterministic function of the signal.  The measured
+# pedestals on this rig are 1040.0 and 1232.0, both *exact* grid points, which is
+# the least forgiving phase.  "grid" simulates that; "random" averages over it.
+
+BIAS_SIGMA_STEPS = (0.25, 0.5, 1.0, 2.0, 4.0, 8.0)
+
+
+def quantiser_bias(sigma_steps, n=200_000, trials=4, quantum=stats.QUANTUM,
+                   phase="grid", seed=20260828):
+    """Estimated / true sigma for each estimator, at one true sigma.
+
+    Returns a dict of ratios: `mad` and `std_raw` are the two D24 measured, both
+    uncorrected; `sigma` is the shipping estimator with both corrections; `pair`
+    is the pair-difference route the PTC uses.  1.0 is unbiased.
+    """
+    rng = np.random.default_rng(seed)
+    true = sigma_steps * quantum
+    acc = {"mad": [], "std_raw": [], "sigma": [], "pair": []}
+
+    for _ in range(trials):
+        base = 1232.0
+        if phase == "random":
+            base += rng.uniform(0.0, quantum)
+        elif phase != "grid":
+            raise ValueError(phase)
+
+        def draw():
+            return np.round(rng.normal(base, true, n) / quantum) * quantum
+
+        a, b = draw(), draw()
+
+        med = np.median(a)
+        acc["mad"].append(stats.MAD_TO_SIGMA * float(np.median(np.abs(a - med))))
+        raw, _, _ = stats.clipped_std(a, quantum=quantum)
+        acc["std_raw"].append(raw)
+        acc["sigma"].append(stats.sigma(a, quantum=quantum))
+        acc["pair"].append(stats.pair_sigma(a, b, quantum=quantum))
+
+    return {k: float(np.mean(v)) / true for k, v in acc.items()}
+
+
+def bias_table(sigma_steps=BIAS_SIGMA_STEPS, **kw):
+    """The bias curve, as rows ready for results/quantiser_bias.csv."""
+    rows = []
+    for phase in ("grid", "random"):
+        for s in sigma_steps:
+            r = quantiser_bias(s, phase=phase, **kw)
+            rows.append({"phase": phase, "sigma_steps": s,
+                         "sigma_file_adu": s * stats.QUANTUM,
+                         **{k: round(v, 5) for k, v in r.items()}})
+    return rows
+
+
+# --------------------------------------------------------------------------
+# tests: stats.py
+# --------------------------------------------------------------------------
+
+def test_truncation_correction_recovers_sigma_off_grid():
+    """With the grid effectively absent, the clip must not shrink the answer.
+    An uncorrected 4-sigma clipped std reads ~0.7% low; the target is 0.2%."""
+    rng = np.random.default_rng(7)
+    x = rng.normal(0.0, 100.0, 2_000_000)
+    est = stats.sigma(x, quantum=1e-9)
+    assert abs(est / 100.0 - 1.0) < 0.002, est
+
+
+def test_mad_is_blind_on_the_grid():
+    """D24's reason for rejecting MAD, reproduced: at one step of true noise it
+    can only return multiples of 23.72, and it errs by tens of percent."""
+    r1 = quantiser_bias(1.0)
+    assert abs(r1["mad"] - 1.0) > 0.2, r1
+    r_small = quantiser_bias(0.25)
+    assert r_small["mad"] < 0.01, r_small          # returns essentially zero
+
+
+def test_sheppard_correction_removes_the_bias():
+    """At and above one step, both corrections applied, the estimator is within
+    2% -- and the *uncorrected* std is measurably worse at one step."""
+    for s in (1.0, 2.0, 4.0, 8.0):
+        r = quantiser_bias(s)
+        assert abs(r["sigma"] - 1.0) < 0.02, (s, r)
+    one = quantiser_bias(1.0)
+    assert one["std_raw"] - 1.0 > 0.02, one
+    assert abs(one["sigma"] - 1.0) < abs(one["std_raw"] - 1.0), one
+
+
+def test_pair_difference_agrees_with_single_frame():
+    """The PTC's estimator and the single-frame one must measure the same thing
+    on data with no fixed pattern to separate them."""
+    for s in (1.0, 4.0):
+        r = quantiser_bias(s)
+        assert abs(r["pair"] - 1.0) < 0.02, (s, r)
+
+
+def test_pair_difference_cancels_fixed_pattern():
+    """The whole reason the PTC differences frames.  A flat carries pixel-response
+    non-uniformity that a single frame's spatial spread cannot tell from shot
+    noise; the pair difference must be blind to it."""
+    rng = np.random.default_rng(3)
+    prnu = rng.normal(1.0, 0.02, 200_000)          # 2% fixed pattern
+    level, shot = 20000.0, 160.0
+
+    def frame():
+        return np.round((level * prnu + rng.normal(0.0, shot, prnu.size)) / 16.0) * 16.0
+
+    a, b = frame(), frame()
+    assert stats.sigma(a) > 1.5 * shot                       # spatial: sees the PRNU
+    assert abs(stats.pair_sigma(a, b) / shot - 1.0) < 0.02   # temporal: does not
+
+
+def test_estimator_survives_a_collapsed_mad():
+    """A frame with no resolvable noise must return 0.0, not nan, and must not
+    reject every pixel -- the zero-width-window trap the quantum floor closes."""
+    flat = np.full(10_000, 1232.0)
+    raw, centre, kept = stats.clipped_std(flat)
+    assert kept == 1.0 and centre == 1232.0, (raw, centre, kept)
+    assert stats.sigma(flat) == 0.0
+
+
+def test_sigma_rejects_hot_pixels():
+    """The half MAD is there for: std alone must not survive this, sigma must."""
+    rng = np.random.default_rng(11)
+    a = np.round(rng.normal(1232.0, 160.0, 100_000) / 16.0) * 16.0
+    a[::500] = 40000.0
+    assert abs(stats.sigma(a) / 160.0 - 1.0) < 0.02, stats.sigma(a)
+    assert a.std() > 400.0
 
 
 def main():
