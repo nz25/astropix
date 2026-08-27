@@ -112,7 +112,7 @@ astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how
 tests/        one test_<module>.py per library module; outside the budget
 notebooks/    numbered, narrative, markdown + code
 data/         gitignored; frames captured *for* this project (bench and tests)
-protocols/    capture protocols, written before each bench session
+protocols/    bench pre-flight and capture protocols; `bench-setup.md` is *run*, not just read
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
 vendor/       third-party binaries, licence beside each

@@ -581,3 +581,27 @@ measurements with the camera on a table.
 
 **Consequence for `results/`:** it stays empty of constants until the bench runs. `frame_index.csv`
 is the only artifact, and it indexes a test corpus rather than measuring the sensor (D36).
+
+### D40. `protocols/` opens, and its items cite `LEGACY` rather than restating it
+`protocols/bench-setup.md` is the first file in a folder D13 allocated and nothing had used. It
+is a **pre-flight to be run**, not a document to be read: an ordered sequence of actions before
+the first frame of any bench session.
+
+**Each item cites the `LEGACY` entry that justifies it instead of repeating the reasoning.** That
+keeps a claim in exactly one place while it is unverified — writing L01's white-balance argument
+into both files is the duplication D13 exists to prevent. As an entry is verified and harvested
+out of `LEGACY`, the action stays and its citation is replaced by the destination it landed in.
+The protocol is therefore useful immediately, before any of it is confirmed.
+
+**Item 0 is ours, not inherited: run the iPad for ten minutes before the first frame.** It is a
+precaution against an untested hypothesis — LED backlights dim as they warm, which fits the
+timescale of L31's unexplained 1.79% instability at gain 100 and survives the settling check the
+retired project ran. It costs ten minutes of a session lasting hours.
+
+**And it carries its own removal condition**, which is the part worth keeping: *if the L31
+stability trace shows a flat line from cold, delete item 0.* A precaution whose reason has been
+falsified is a ritual, and rituals are how a protocol grows until nobody reads it.
+
+**Rejected:** adding the warm-up to `LEGACY.md`. That file holds claims *inherited* from the
+retired attempts; putting our own ideas in it blurs what it is and breaks the story that it
+empties itself.

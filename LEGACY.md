@@ -483,8 +483,22 @@ at a fixed light level.** It does not affect a PTC, which plots variance against
 and never against exposure time.
 **Source.** `learn_astro/kb/measurements.md`, 2026-08-26.
 **Consumed by.** Any bench measurement using exposures of order seconds.
-**How to check.** Repeat a fixed exposure many times over several minutes at both gains and look
-at the time series rather than the spread.
+**How to check.** Their comparison could not settle it: gain 100 and gain 200 differ in
+*exposure length* (1.08–2.48 s vs 0.33–0.77 s) **and** in *elapsed time* (~70 s vs ~11 s), so the
+confound was built in. A clean version, ~15 minutes at one gain and no ladder: fix everything,
+capture continuously for five minutes with timestamps, and plot mean level against wall-clock
+time; then repeat interleaving a short and a long exposure throughout. The first separates drift
+from noise, the second separates elapsed time from exposure duration.
+
+**One candidate they did not test: backlight thermal drift.** LED backlights dim as they warm, a
+panel at 100% brightness reaches equilibrium over minutes, and that fits the leftover timescale.
+It also survives their settling check — re-running minutes later does not help if the panel is
+still heating rather than having settled once. `protocols/bench-setup.md` item 0 carries a
+ten-minute warm-up as a precaution against this; **if the trace is flat from cold, delete that
+item** rather than keeping a ritual whose reason has been falsified.
+
+The separate 5.5% single-rung outlier looks like a different mechanism — an occasional bad frame
+rather than drift. A notification, or the Screen Wake Lock briefly lapsing.
 **Lands in.** `FINDINGS` if reproduced, or deleted from here if it turns out to be an artefact of
 their setup.
 
