@@ -557,3 +557,27 @@ rather than hoping for it.
 mixing verified and unverified); citing the retired repos by path instead (they are retired and
 may be deleted); and folding the entries into the existing four (they are neither decisions nor
 findings until checked, and would distort both files).
+
+### D39. No data is harvested from the retired projects — supersedes D33 and D16's step 3
+Denis's call, 2026-08-27. The old sweeps are not re-analysed and their frames are not used. What
+crosses over is **claims, not data**, and those go through `LEGACY.md` as hypotheses this project
+verifies for itself (D38).
+
+D33 left the ordering of build step 3 open between re-analysing the harvested sweeps and
+capturing fresh. That question is now closed: there is nothing to re-analyse. D16's step 3,
+"re-analyse the harvested PTC / offset / linearity sweeps", is void, and every constant in
+MISSION's table comes from a measurement this project makes.
+
+**The reason is the one the whole record discipline rests on.** A number inherited from a
+codebase without this project's provenance rules cannot carry `{value, unit, uncertainty,
+source_frames, measured_on, notebook}` (D14), so it could never enter the model anyway. Held as
+a *prediction* instead it is worth more: an independent measurement that lands on 9.382 e⁻/ADU
+is far stronger evidence than the number would have been on its own.
+
+**The cost, stated plainly: D16's promise that "steps 1 to 4 need no hardware" no longer holds.**
+`asi.py` and a working bench become prerequisites for `model.py` rather than build step 6. The
+"no clear sky" half survives — the PTC, dark current, linearity and offset are all desk
+measurements with the camera on a table.
+
+**Consequence for `results/`:** it stays empty of constants until the bench runs. `frame_index.csv`
+is the only artifact, and it indexes a test corpus rather than measuring the sensor (D36).

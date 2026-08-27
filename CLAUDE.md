@@ -128,7 +128,8 @@ vendor/       third-party binaries, licence beside each
 - Historic archive (test corpus): `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` —
   15,102 frames, indexed in `results/frame_index.csv`.
   **C: has ~12 GB free.** Nothing bulky lands on C:.
-- Harvested from `learn_astro`: PTC sweep (61 gain steps), offset sweep, two linearity runs.
+- Retired attempts `astro/` and `learn_astro/` still exist on disk. **Their data is not
+  used** (D39); their *claims* are in `LEGACY.md` as hypotheses to check.
 
 ## The rig
 
