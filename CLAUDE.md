@@ -10,6 +10,9 @@ How a session boots. Read these first, in this order:
    A **queue that exists to be emptied**, not a fifth permanent document: each entry is checked
    when the build step that needs it arrives, moved to its destination, and deleted. When it is
    empty the file goes and this repo is back to four Markdown files (D38).
+   **Scan it whenever a build step or a notebook begins** — entries are grouped by the step that
+   consumes them, and each carries a `Consumed by` line saying when it is due. Reading L01 before
+   the first bench frame is the difference between a measurement and a silently corrupted one.
 
 Do not re-litigate a decision in `DECISIONS.md`. If one turns out to be wrong, append a new
 dated entry that supersedes it; never edit history.
@@ -61,6 +64,10 @@ work outran the record of it, and the record is the only thing that survives a r
   where they can be read and changed without touching the library. What must never move into a
   notebook is physics: a measurement, a threshold, a correction. If a notebook cell starts
   deciding what a number *means*, the meaning is in the wrong place.
+- **A build step opens by harvesting its `LEGACY` entries, and closes by deleting them.** Before
+  writing the code, read what the retired attempts claimed about it and decide which claims this
+  step will check. Afterwards, each verified entry moves to its destination and leaves `LEGACY`.
+  A step that ends with its entries still queued has not finished.
 - **Every notebook has a purpose, agreed before it is created.** A numbered notebook opens by
   saying what it is for and what it is not for, and that purpose is agreed in conversation
   first. A notebook nobody asked for is scope growth with a table of contents. The purpose is
