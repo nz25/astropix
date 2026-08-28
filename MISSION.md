@@ -40,8 +40,10 @@ data-driven. Ranking needs only terms we can measure ourselves.
 
 Per pixel, per CFA channel, for one sub of length `t` at a given gain:
 
+All pixel values here are **ADC counts** — the project's one unit, defined in `CLAUDE.md` (D41).
+
 ```
-electrons        e     = (ADU − pedestal) · g(gain)
+electrons        e     = (ADU − pedestal) · g(gain)      ADU = ADC counts
 signal           S_obj = F_obj · t
 noise variance   σ²    = (F_obj + F_sky + D(T)) · t  +  R(gain)²
                          └──────── shot noise ───────┘  └─ read ─┘
@@ -70,12 +72,12 @@ Every one carries provenance; none is taken from a spec sheet without checking.
 
 | Constant | Source |
 |---|---|
-| `g(gain)` — e⁻/ADU **in file units** | PTC sweep. Note the 12-bit ADC is bit-shifted ×16 into 16-bit files; header `EGAIN` is in 12-bit units and must not be used directly |
+| `g(gain)` — e⁻ per **ADC count** | PTC sweep. Same unit as header `EGAIN`, which is therefore a direct check on the result rather than a trap (`CLAUDE.md`, D41 — supersedes the earlier file-units definition) |
 | `R(gain)` — read noise, e⁻ | PTC sweep, re-measured at −10 °C |
 | HCG threshold | dedicated fine gain sweep (ZWO's own figure moved 252 → ~200) |
 | `D(T)` — dark current, e⁻/px/s | dark-current-vs-temperature sweep |
-| `pedestal` — ADU | offset sweep |
-| ADC ceiling / full well | linearity sweep |
+| `pedestal` — ADC counts | offset sweep |
+| ADC ceiling / full well — ADC counts, ceiling ≤ 4095 | linearity sweep |
 | `η` — stacking efficiency | measured from real stacks, not assumed √N |
 | `F_sky` — sky flux | extracted per frame from the light frames themselves |
 

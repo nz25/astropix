@@ -605,3 +605,55 @@ falsified is a ritual, and rituals are how a protocol grows until nobody reads i
 **Rejected:** adding the warm-up to `LEGACY.md`. That file holds claims *inherited* from the
 retired attempts; putting our own ideas in it blurs what it is and breaks the story that it
 empties itself.
+
+### D41. One unit for the whole project: the ADC count — supersedes MISSION's file-units `g(gain)`
+The camera digitises to 12 bits and stores the value bit-shifted ×16 into a 16-bit FITS
+container. That has been true since the first frame; what changes here is that we stop
+*compensating* for it at every use site and instead convert once, at the edge.
+
+**Everything this project measures, publishes or models is in ADC counts = stored / 16.** Full
+scale 4095, gain-252 pedestal 77. The canonical statement lives in `CLAUDE.md` under "Rules that
+are not negotiable", and every other document cites it rather than restating it — the same
+discipline D40 applied to `protocols/` and `LEGACY`.
+
+**The reason is a trap with a countdown on it.** Header `EGAIN` is quoted per ADC count, so in
+file units it must be divided by 16 before use or electron counts inflate 16×. That rider was
+repeated in seven places, and a fact that has to be remembered at every use site eventually is
+not. In ADC counts `EGAIN` simply applies, and every external figure — L25's table, the ZWO
+datasheet, SharpCap — is directly comparable instead of needing a conversion first.
+
+**The conversion is exact, and that is not an assumption.** `mult16_frac` is 1.000000 at min,
+mean and max across all 15,090 readable frames (`FINDINGS`, 2026-08-27), so `x >> 4` loses
+nothing and stays integer. `stats.to_adc` performs it and **raises rather than truncates**: a
+value with low bits set did not come from this camera's raw path, and shifting it away would turn
+a file we do not understand into a plausible number. `frame_features` measures `mult16_frac` on
+the stored values *first*, because reading the check off converted data would be circular.
+
+**Four places keep stored units, deliberately**, and `CLAUDE.md` names them so they are not
+"fixed" later: the raw reader `fits.read` and its `% 16` test; `mult16_frac` itself; L01's
+white-balance step-of-16 diagnostic in `protocols/bench-setup.md`, which goes vacuous when the
+step is 1; and the PixInsight boundary, where PI normalises by 65535 and the conversion is
+therefore `v × 65535 >> 4`, never `v × 4095` (L20 — 65535/16 is 4095.9375).
+
+**Consequences.** `stats.FULL_SCALE` becomes `ADC_FULL_SCALE = 4095`, and `sat_frac` tests
+`>= 4095` exactly instead of the `65535 - 15` fudge that existed only because 65535 is
+unreachable. `FLAT_MIN_LEVEL` is a *fraction* of full scale and so needs no change. The
+bright-pixel floor `max(sig, 1.0)` now means one quantiser step rather than a sixteenth of one,
+which is the correct semantics and will lower `tail_frac` on the 546 frames whose sub-plane MAD
+is exactly zero — all saturated lights, typed by the `sat_frac` branch before clumping is
+consulted, so no `measured_type` should move.
+
+**D24 is not edited.** This file is append-only and its arithmetic (MAD lands on multiples of
+1.4826 × 16 = 23.72) is correct in the units it was written in. In ADC counts the same statement
+reads: MAD returns multiples of 1.4826, one quantiser step. The reasoning is untouched.
+
+**Not yet done at the time of writing:** `results/frame_index.csv` is still in stored units and
+must be rebuilt by re-running `notebooks/01` — with the existing CSV moved aside first, since
+`needs_rescan` skips unchanged frames and would otherwise preserve the old numbers under a fresh
+timestamp. `FINDINGS` and `notebooks/02` restate their figures afterwards. `CLAUDE.md` carries a
+dated pending line until that lands.
+
+**Rejected:** converting the index arithmetically instead of re-running it — the file would no
+longer be what `stats.py` produces, which is exactly the traceability D33 exists to protect.
+Also rejected: converting inside `fits.read`, which would destroy the evidence for the check that
+licenses the conversion, and would make `fits.py` interpret a value.

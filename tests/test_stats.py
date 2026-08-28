@@ -8,7 +8,46 @@ from astropy.io import fits as _afits
 from astropix import fits as F
 from astropix import stats
 
-from .synthetic import STEP, tmp_frame, tmpdir, write_frame
+from .synthetic import SENSOR_CEILING, STEP, tmp_frame, tmpdir, write_frame
+
+
+# --------------------------------------------------------------------------
+# units -- the one conversion in the project (CLAUDE.md, D41)
+# --------------------------------------------------------------------------
+
+def test_to_adc_is_exact_and_stays_integer():
+    stored = np.array([0, 16, 1232, 65520], np.uint16)
+    counts = stats.to_adc(stored)
+    assert np.array_equal(counts, [0, 1, 77, stats.ADC_FULL_SCALE])
+    assert np.issubdtype(counts.dtype, np.integer), "must not silently become float"
+
+
+def test_to_adc_refuses_rather_than_truncates():
+    """A value with low bits set did not come from this camera's raw path.
+    Shifting it away would turn a file we do not understand into a plausible
+    number, which is the failure this project keeps legislating against."""
+    try:
+        stats.to_adc(np.array([1232, 1233], np.uint16))
+    except ValueError:
+        return
+    raise AssertionError("to_adc accepted a value that is not a multiple of 16")
+
+
+def test_features_come_back_in_adc_counts():
+    """The synthetic dark is written at a stored level of 1232; measured, it
+    must read 77 -- the same pedestal in the project's unit."""
+    blocks, _ = F.sample_blocks(tmp_frame("dark"))
+    feats = stats.frame_features(blocks)
+    assert feats["level"] == 1232 / STEP
+    assert feats["med_r"] == feats["med_b"] == 77.0
+    assert feats["level"] <= stats.ADC_FULL_SCALE
+
+
+def test_saturation_is_exact_at_full_scale():
+    """65520 stored is 4095 counts -- the ceiling, with no fudge factor."""
+    blocks, _ = F.sample_blocks(tmp_frame("saturated"))
+    assert stats.frame_features(blocks)["sat_frac"] == 1.0
+    assert SENSOR_CEILING >> stats.ADC_SHIFT == stats.ADC_FULL_SCALE
 
 
 # --------------------------------------------------------------------------
@@ -16,6 +55,7 @@ from .synthetic import STEP, tmp_frame, tmpdir, write_frame
 # --------------------------------------------------------------------------
 
 def test_features_see_the_bit_shift():
+    """Measured on the stored values, before the conversion it licenses."""
     blocks, _ = F.sample_blocks(tmp_frame("dark"))
     assert stats.frame_features(blocks)["mult16_frac"] == 1.0
 
@@ -66,14 +106,15 @@ def test_a_bright_long_exposure_is_twilight_not_a_flat():
     """Found in the ladder: 64 frames at gain 252 / 240-480 s sit above the flat
     level cut without clipping.  They are dawn sky, not a panel, and level alone
     cannot tell the difference -- exposure can."""
-    twilight = {"level": 20000.0, "sat_frac": 0.0, "clump_frac": 0.0, "tail_frac": 0.0}
+    twilight = {"level": 1250.0, "sat_frac": 0.0, "clump_frac": 0.0, "tail_frac": 0.0}
     assert stats.classify(twilight, 240.0) == "light"
     assert stats.classify(twilight, 3.0) == "flat"
 
 
 def test_a_clipped_bias_is_still_a_bias():
     """Exposure settles bias before the clipping branch is reached."""
-    feats = {"level": 65520.0, "sat_frac": 1.0, "clump_frac": 0.0, "tail_frac": 0.0}
+    feats = {"level": float(stats.ADC_FULL_SCALE), "sat_frac": 1.0,
+             "clump_frac": 0.0, "tail_frac": 0.0}
     assert stats.classify(feats, 0.001) == "bias"
 
 
@@ -91,6 +132,6 @@ def test_the_label_is_evidence_not_truth():
 
 
 def test_exposure_decides_bias_before_any_pixel_argument():
-    feats = {"level": 1040.0, "sat_frac": 0.0, "clump_frac": 0.9, "tail_frac": 0.1}
+    feats = {"level": 65.0, "sat_frac": 0.0, "clump_frac": 0.9, "tail_frac": 0.1}
     assert stats.classify(feats, 0.001) == "bias"
     assert stats.classify(feats, 60.0) == "light"

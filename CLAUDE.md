@@ -30,8 +30,27 @@ request, not pedantry.
   Interpolated pixels have correlated noise and silently invalidate every variance estimate.
 - **Every measured constant carries provenance** — `value, unit, uncertainty, source_frames,
   measured_on, notebook`. The model refuses to run on constants that lack it.
-- **Spec sheets are hypotheses, not facts.** Header `EGAIN` in particular is in 12-bit ADC units
-  while the files are 16-bit (bit-shifted x16); using it directly inflates electron counts 16x.
+- **Spec sheets are hypotheses, not facts.** A vendor number is something to reproduce, never
+  something to import. Where one is used as a prediction it is named as such.
+- **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
+  and stores the value bit-shifted x16 into a 16-bit FITS container, so a stored value is 16x the
+  number the ADC actually produced. Measured, not assumed — `mult16_frac` is 1.000000 at min,
+  mean and max across every indexed frame (`FINDINGS`, 2026-08-27).
+  **Everything this project measures, publishes or models is in ADC counts = stored / 16.** Full
+  scale is **4095**, the gain-252 pedestal is **77**, and header `EGAIN` — quoted per ADC count —
+  applies directly, with no factor to remember. That is the whole point of the convention (D41).
+  Cite this rule; do not restate it.
+  - `stats.to_adc` is the only conversion, and it raises rather than truncate.
+  - `fits.read` returns stored values untouched: the check that licenses the conversion cannot be
+    run on data that has already been converted.
+  - **Stored units survive in exactly four places, all deliberate.** The raw reader and its
+    `% 16` test; `mult16_frac` itself, which is the check and not a curiosity; L01's
+    white-balance step-of-16 diagnostic in `protocols/bench-setup.md`, which goes vacuous in ADC
+    counts; and the PixInsight boundary, where PI normalises by 65535, so a PI value converts as
+    `v * 65535 >> 4` and **never** as `v * 4095` (L20 — 65535/16 is 4095.9375).
+  - *Pending, 2026-08-28:* `results/frame_index.csv`, and the `FINDINGS` numbers drawn from it,
+    are still in stored units until the index is rebuilt. Nothing else is. Remove this line when
+    the rebuild lands.
 - **Trust neither folder nor `IMAGETYP` for frame type — determine it from the pixels.** Dark
   folders mix gain and temperature inside one exposure folder, *and* some flats and darks were
   captured under a Light subframe type. Capture settings in the header (gain, offset, exposure,
@@ -134,7 +153,7 @@ vendor/       third-party binaries, licence beside each
 
 ## The rig
 
-ZWO ASI585MC Pro (OSC, RGGB, 3840x2160, 2.9 um, 12-bit ADC stored bit-shifted into 16-bit FITS)
+ZWO ASI585MC Pro (OSC, RGGB, 3840x2160, 2.9 um, 12-bit ADC — see the units rule above)
 on a SharpStar SQA55 (263-264 mm, f/4.8), ZWO AM5N mount, ASIAIR Plus, ZWO EAF.
 32 mm f/4 guide scope. No filters.
 

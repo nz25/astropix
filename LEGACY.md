@@ -390,8 +390,9 @@ as gain amplifies the outlier tail.
 | 300 | 0.284 | 0.97 | 1 083 | 10.12 |
 | 600 | 0.009 | 0.85 | 26 | 4.92 |
 
-Divide `e⁻/ADU` by 16 for our file units. "Full well" is the **ADC-limited** well, not the
-physical one.
+These are already in this project's unit — **e⁻ per ADC count** (`CLAUDE.md`, D41) — so the table
+is directly comparable to our own PTC with no conversion. "Full well" is the **ADC-limited** well,
+not the physical one.
 **Source.** `learn_astro/kb/measurements.md`, 2026-08-25.
 **Consumed by.** Build step 3 — as the prediction our own PTC either reproduces or refutes.
 **How to check.** Our own sweep, measured independently, compared afterwards. Not used as input.

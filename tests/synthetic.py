@@ -18,7 +18,13 @@ from astropy.io import fits as _afits
 from astropix import stats
 
 RNG = np.random.default_rng(20260827)
-STEP = 16          # the 12-bit ADC stored bit-shifted into 16-bit files
+
+# Synthetic frames are written in **stored** units, on purpose: a synthetic FITS
+# has to look like what the camera writes, or it stops exercising the conversion
+# `frame_features` performs.  Features measured from them come back in ADC
+# counts, 16x smaller (CLAUDE.md, D41).
+STEP = 1 << stats.ADC_SHIFT
+SENSOR_CEILING = stats.ADC_FULL_SCALE * STEP     # 65520 -- what the sensor can produce
 
 _TMP = None
 _CACHE = {}
@@ -44,7 +50,7 @@ def _quantised(base, sigma, shape):
     """Noise on the ADC grid: values are always exact multiples of 16, because
     that is the only thing this camera can produce (see notebooks/01)."""
     x = RNG.normal(base, sigma, shape)
-    return np.clip(np.round(x / STEP) * STEP, 0, stats.FULL_SCALE).astype(np.uint16)
+    return np.clip(np.round(x / STEP) * STEP, 0, SENSOR_CEILING).astype(np.uint16)
 
 
 def make_frame(kind, shape=(128, 128)):
@@ -57,10 +63,10 @@ def make_frame(kind, shape=(128, 128)):
         return _quantised(30000, 300, shape), 3.0
     if kind == "saturated":
         # a light that ran into dawn: long exposure, clipped everywhere
-        return np.full(shape, stats.FULL_SCALE - 15, np.uint16), 15.0
+        return np.full(shape, SENSOR_CEILING, np.uint16), 15.0
     if kind == "blown_flat":
         # the same pixels, but at a flat's exposure
-        return np.full(shape, stats.FULL_SCALE - 15, np.uint16), 3.0
+        return np.full(shape, SENSOR_CEILING, np.uint16), 3.0
     if kind == "dark":
         a = _quantised(1232, 100, shape)
         # hot pixels: isolated single sites, the thing a star is not
