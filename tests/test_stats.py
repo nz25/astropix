@@ -60,6 +60,36 @@ def test_features_see_the_bit_shift():
     assert stats.frame_features(blocks)["mult16_frac"] == 1.0
 
 
+def test_summary_stats_are_in_counts_and_bracket_the_frame():
+    """The whole-frame summary shares the row's unit and the row's sample."""
+    blocks, _ = F.sample_blocks(tmp_frame("dark"))
+    f = stats.frame_features(blocks)
+    assert f["min"] <= f["median"] <= f["max"] <= stats.ADC_FULL_SCALE
+    assert f["median"] == 1232 / STEP          # the pedestal, in counts
+    assert f["sampled_px"] == sum(b.size for b in blocks)
+
+
+def test_pooled_std_is_channel_balance_not_noise():
+    """The reason D4 is a rule and not a preference.
+
+    Two blocks of identical noise; the second has an ordinary OSC channel
+    imbalance laid over it.  Per-plane `sig_*` is unmoved, because each plane
+    still sees only its own pixels.  The pooled `std` triples, because it is
+    now measuring the distance between colours.  Anything that fed `std` to a
+    noise fit would read that imbalance as read noise.
+    """
+    flat = np.full((64, 64), 1600, np.uint16)
+    flat[::2, 1::2] = flat[1::2, ::2] = 1600      # G1, G2
+    colour = flat.copy()
+    colour[::2, ::2] = 800                        # R, half the green level
+    colour[1::2, 1::2] = 960                      # B
+
+    neutral = stats.frame_features([flat])
+    skewed = stats.frame_features([colour])
+    assert neutral["std"] == skewed["sig_r"] == 0.0, "noiseless by construction"
+    assert skewed["std"] > 10.0, "the colour offset has to show up somewhere"
+
+
 def test_features_separate_stars_from_hot_pixels():
     dark = stats.frame_features(F.sample_blocks(tmp_frame("dark"))[0])
     light = stats.frame_features(F.sample_blocks(tmp_frame("light"))[0])

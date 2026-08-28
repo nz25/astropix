@@ -15,6 +15,15 @@ is the only conversion in the project, and `frame_features` applies it once,
 after checking the container is the one we think it is.  Everything downstream
 of that line is in counts; nothing below needs to remember a factor of 16.
 
+`frame_features` also returns a whole-frame summary -- `mean`, `median`, `min`,
+`max`, `std` over the pooled sample -- which exists for orientation and for
+notebook `02`, not for the classifier, which reads none of it.  **`std` there is
+across the CFA planes and is therefore dominated by channel balance**, not by
+noise: on an archive flat the R-to-G offset is ~35x the per-plane spread, on a
+light ~4x.  `sig_*` is the uncontaminated per-plane counterpart.  That gap is
+the whole reason D4 exists, and the two columns sit side by side so it can be
+seen rather than asserted.
+
 **The `sigma` here is MAD, and MAD is the wrong estimator for noise.** MAD is an
 order statistic of quantised deviations, so it can only return multiples of
 1.4826 counts -- one quantiser step -- and read noise on this rig lives below
@@ -109,10 +118,21 @@ def frame_features(blocks):
     med = {p: float(np.median(per_plane[p]["med"])) for p in spatial.PLANES}
     sig = {p: float(np.median(per_plane[p]["sig"])) for p in spatial.PLANES}
     level = float(np.mean(list(med.values())))
-    sample = np.concatenate([b.ravel() for b in blocks])
+    sample = np.concatenate([b.ravel() for b in blocks]).astype(np.float32)
 
     feats = {
         "level": level,
+        # Whole-frame summary, pooled across planes and blocks.  Context, not
+        # evidence: nothing in `classify` reads these.  `std` in particular is
+        # a mixture of four colour populations -- see the module docstring.
+        "mean": float(sample.mean()),
+        "median": float(np.median(sample)),
+        "min": float(sample.min()),
+        "max": float(sample.max()),
+        "std": float(sample.std()),
+        # the denominator behind every number in this row: the frame is
+        # sampled, not read whole, so it will not match a full-frame tool
+        "sampled_px": int(sample.size),
         "sigma": float(np.mean(list(sig.values()))),
         # large-scale structure: vignetting, amp glow, sky gradient
         "block_spread": float((max(block_meds) - min(block_meds)) / max(level, 1.0)),
