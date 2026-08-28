@@ -1,0 +1,86 @@
+{
+  "hcg_threshold_gain": {
+    "value": 200,
+    "unit": "ZWO gain units (0.1 dB)",
+    "uncertainty": 2,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "lowest gain of the high-conversion-gain branch; the fine grid steps by 2, which is the uncertainty.  ZWO predict 252, the retired project measured 200 (L26)"
+  },
+  "read_noise_at_hcg": {
+    "value": 1.0768,
+    "unit": "ADC counts",
+    "uncertainty": 0.0005,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "pair-difference sigma / sqrt(2), mean over four CFA planes (L10)"
+  },
+  "project_offset": {
+    "value": 0,
+    "unit": "offset units",
+    "uncertainty": 5,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "smallest offset clipping under 0.1% at every gain measured; the arm steps by 5.  ZWO recommend 15 (L13)"
+  },
+  "pedestal_per_offset_unit": {
+    "value": 4.0032,
+    "unit": "ADC counts per offset unit",
+    "uncertainty": 0.0091,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "the digital term A; L27 predicts ~4.0 and gain-independent"
+  },
+  "pedestal_fit": {
+    "value": {
+      "lcg": {
+        "A": 60.0861,
+        "B": 2.665683
+      },
+      "hcg": {
+        "A": 59.6217,
+        "B": 0.965156
+      }
+    },
+    "unit": "ADC counts, at offset 15",
+    "uncertainty": {
+      "lcg": 0.6201,
+      "hcg": 16.1746
+    },
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "pedestal = A + B * 10**(gain/200), fitted per conversion-gain branch, split at gain 200; uncertainty is the worst residual (L27)"
+  },
+  "pedestal_drift_rate": {
+    "value": -0.00133,
+    "unit": "ADC counts per minute",
+    "uncertainty": 0.25409,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "gain 100, offset 15, 450 frames over 15 min at -10 C"
+  },
+  "bias_exposure": {
+    "value": 3.2e-05,
+    "unit": "s",
+    "uncertainty": 0.0,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "the camera's minimum exposure, read from the Exposure control"
+  },
+  "setpoint": {
+    "value": -10.0,
+    "unit": "C",
+    "uncertainty": 0.5,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "held for a continuous 10 minutes before the first frame; uncertainty is the sensor's own 0.5 C quantisation"
+  }
+}
