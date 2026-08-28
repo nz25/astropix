@@ -40,7 +40,7 @@ data-driven. Ranking needs only terms we can measure ourselves.
 
 Per pixel, per CFA channel, for one sub of length `t` at a given gain:
 
-All pixel values here are **ADC counts** — the project's one unit, defined in `CLAUDE.md` (D41).
+All pixel values here are **ADC counts** — the project's one unit, defined in `CLAUDE.md`.
 
 ```
 electrons        e     = (ADU − pedestal) · g(gain)      ADU = ADC counts
@@ -72,7 +72,7 @@ Every one carries provenance; none is taken from a spec sheet without checking.
 
 | Constant | Source |
 |---|---|
-| `g(gain)` — e⁻ per **ADC count** | PTC sweep. Same unit as header `EGAIN`, which is therefore a direct check on the result rather than a trap (`CLAUDE.md`, D41 — supersedes the earlier file-units definition) |
+| `g(gain)` — e⁻ per **ADC count** | PTC sweep. Same unit as header `EGAIN`, which is therefore a direct check on the result rather than a trap (`CLAUDE.md`) |
 | `R(gain)` — read noise, e⁻ | PTC sweep, re-measured at −10 °C |
 | HCG threshold | dedicated fine gain sweep (ZWO's own figure moved 252 → ~200) |
 | `D(T)` — dark current, e⁻/px/s | dark-current-vs-temperature sweep |

@@ -127,3 +127,94 @@ def test_legacy_is_deleted_once_empty():
     assert legacy_entries(), (
         "LEGACY.md has no entries left -- delete it, and drop its row from "
         "CLAUDE.md's boot list (D38)")
+
+
+# --------------------------------------------------------------------------
+# The document graph: canonical, archive, and Denis's
+# --------------------------------------------------------------------------
+#
+# D42 split the four Markdown files three ways and made the citation graph
+# one-way and downhill.  Prose policies decay silently -- the two-hop lookup it
+# replaced grew back over three sessions without anyone deciding to -- so the
+# shape is asserted here rather than remembered.
+
+CANONICAL = ("MISSION.md", "CLAUDE.md")
+
+# The one block allowed to name the other two files, because its purpose is to
+# say they are not read for rules.  A de-reference is the opposite of a citation.
+DEREF_HEADING = "## Document status"
+
+CITES = re.compile(r"\bDECISIONS\b|\bFINDINGS\b|\bD\d{1,2}\b")
+
+
+def _without_deref_block(text):
+    """CLAUDE.md's `## Document status` section, up to the next `## ` heading."""
+    if DEREF_HEADING not in text:
+        return text
+    head, rest = text.split(DEREF_HEADING, 1)
+    tail = re.split(r"(?m)^## ", rest, maxsplit=1)
+    return head + ("## " + tail[1] if len(tail) > 1 else "")
+
+
+def test_canonical_docs_cite_nothing_out():
+    """D42: every live rule is stated in MISSION.md or CLAUDE.md, in full.  A
+    citation out of them means a rule you cannot follow without opening a second
+    document -- which is how three copies of the units rule came to exist.
+
+    `LEGACY` and `Lnn` are deliberately still allowed: LEGACY.md is a boot
+    document until it empties itself, and its entries are hypotheses to check,
+    not rules to follow."""
+    offenders = {}
+    for name in CANONICAL:
+        path = _repo_root() / name
+        if not path.exists():
+            continue
+        body = path.read_text(encoding="utf-8")
+        if name == "CLAUDE.md":
+            body = _without_deref_block(body)
+        for n, line in enumerate(body.splitlines(), 1):
+            if CITES.search(line):
+                offenders.setdefault(name, []).append((n, line.strip()[:70]))
+    assert not offenders, (
+        "canonical documents must state rules in full, not cite them: "
+        f"{offenders}")
+
+
+def test_nothing_cites_findings():
+    """D43: FINDINGS.md is Denis's, and a leaf.  It cites `results/`; nothing
+    cites it.  That is what lets him rewrite or empty it without breaking
+    anything.
+
+    DECISIONS.md is exempt entirely.  It is append-only history that is never
+    edited, its pre-D42 mentions stand as written, and D42-D45 are the very
+    entries that de-reference the file.  What this guards is everything still
+    live: the canonical documents, LEGACY, the notebooks and the package."""
+    root = _repo_root()
+    offenders = {}
+    for path in sorted(root.rglob("*")):
+        if path.suffix not in (".md", ".py", ".ipynb") or not path.is_file():
+            continue
+        rel = path.relative_to(root).as_posix()
+        if rel.startswith((".git/", "venv/", "astro/", "learn_astro/")):
+            continue
+        if rel in ("FINDINGS.md", "DECISIONS.md", "tests/test_record.py"):
+            continue
+        body = path.read_text(encoding="utf-8", errors="replace")
+        if rel == "CLAUDE.md":
+            body = _without_deref_block(body)
+        hits = [line.strip()[:70] for line in body.splitlines()
+                if "FINDINGS" in line]
+        if hits:
+            offenders[rel] = hits
+    assert not offenders, (
+        "FINDINGS.md is Denis's and is cited from nowhere; a measured number "
+        f"belongs in results/ and a rule in CLAUDE.md: {offenders}")
+
+
+def test_legacy_lands_somewhere_real():
+    """D42 retargeted `Lands in`.  "Lands in prose" is not a destination: it is
+    how a number arrives with no unit, uncertainty or source frame, which D14
+    exists to forbid."""
+    bad = {h.split(".")[0]: "Lands in FINDINGS" for h, b in legacy_entries().items()
+           if re.search(r"\*\*Lands in\.\*\*[^\n]*FINDINGS", b)}
+    assert not bad, f"LEGACY entries still landing in FINDINGS: {bad}"

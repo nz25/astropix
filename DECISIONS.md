@@ -657,3 +657,118 @@ dated pending line until that lands.
 longer be what `stats.py` produces, which is exactly the traceability D33 exists to protect.
 Also rejected: converting inside `fits.read`, which would destroy the evidence for the check that
 licenses the conversion, and would make `fits.py` interpret a value.
+
+---
+
+## 2026-08-28 — Build session 5
+
+### D42. The documents split three ways: canonical, archive, and Denis's — supersedes D13's four-file symmetry
+D13 gave four Markdown files equal standing and `CLAUDE.md` a boot order that read all of them.
+In practice that made every rule a two-hop lookup: `CLAUDE.md` stated a rule and cited `D41`,
+which stated it again with the reasoning, and `FINDINGS` restated the numbers a third time. Three
+copies of a rule is three chances for them to disagree, and no way to tell which one is live.
+
+**The four files no longer have equal standing.**
+
+- **`MISSION.md` and `CLAUDE.md` are canonical.** Every live rule is stated in one of them, in
+  full. Nothing a session must follow sits behind a citation. They reference each other and
+  `results/` and nothing else.
+- **`DECISIONS.md` is the archive.** Still append-only, still the record of what was chosen and
+  rejected and why. It is *history*, consulted for the reasoning behind a rule, never to find out
+  what the rule is. It drops out of the boot order.
+- **`FINDINGS.md` is Denis's** — see D43.
+
+The direction of citation is now one-way and downhill: the archive cites the canonical documents,
+the canonical documents cite `results/`, and `results/` cites the frames. Nothing cites upward.
+
+**What moved to stay canonical.** The classifier's known blind spot — the 684 `light`-labelled
+frames measuring as `dark`, and the warning that selecting `measured_type == "light"` may be
+short by up to 367 frames — was only ever in `FINDINGS`. It changes how frames are selected, so
+it is a rule, and it now sits in `CLAUDE.md` under the frame-type rule it qualifies. The x16
+container fact now cites `results/frame_index.csv` directly instead of prose about it, which is
+one link shorter and one interpretation fewer.
+
+**`LEGACY`'s `Lands in` field is retargeted.** Ten entries named `FINDINGS` as their destination.
+A measured number now lands in `results/` with provenance; a rule lands in `CLAUDE.md`; a choice
+lands here. "Lands in prose" was never a real destination — it is how a number arrives without a
+unit, an uncertainty or a source frame, which D14 exists to forbid.
+
+**The four `FINDINGS` citations already in this file are not edited.** This file is append-only.
+They stand as historical text; from here, entries cite `results/`.
+
+**Enforced, not just agreed.** `tests/test_record.py` asserts that the canonical documents carry
+no citation out (excepting the one "Document status" block that names the other two in order to
+de-reference them), and that nothing in the repo cites `FINDINGS.md`.
+
+**Rejected:** keeping bare `D41`-style tags in `CLAUDE.md` as provenance-only markers. A tag you
+are not meant to follow is decoration, and it is how the two-hop lookup grows back. Also
+rejected: deleting `DECISIONS.md` outright. The reasoning behind a live threshold is the thing
+this project exists to preserve; de-referencing it is not the same as discarding it.
+
+### D43. `FINDINGS.md` is Denis's, and it is not a log
+It changes owner. It is his own notes on what he has learned from this rig — kept small, written
+for him, and **overwritten freely** rather than appended to. The dated-entries-and-marked-
+corrections contract it carried is dropped: git is its log, and a file that must never lose a
+sentence grows until nobody reads it, which is exactly how `learn_astro` died.
+
+**The consequence that matters: nothing may depend on it.** It is cited from nowhere, so it can
+be rewritten or emptied without breaking anything. Anything load-bearing that lived there has
+moved — to `CLAUDE.md` if it is a rule, to `results/` if it is a number, to here if it is a
+choice. An agent does not write to it unless asked.
+
+**Rejected:** leaving it as the shared findings log and merely relaxing the append-only rule. The
+problem was never the rule; it was that a file Denis wants to keep small was also the place ten
+`LEGACY` entries and two notebooks pointed at. Ownership without dereferencing would have lasted
+one session.
+
+### D44. The index is rebuilt in ADC counts, and D41's predictions are checked
+D41 left the rebuild undone. It is done: `results/frame_index.csv`, 15,102 rows, 15,090 readable,
+12 zero-byte, snapshot `2026-08-28T10:58:06`, with the previous CSV moved aside first so
+`needs_rescan` could not preserve stale numbers under a fresh timestamp.
+
+Compared row-by-row against the stored-unit index at `a7d81ab`:
+
+- **The conversion is exact everywhere.** `old.level / new.level` is 16.0 at min, median *and*
+  max across all 15,102 rows — not 16.0 on average, 16.0 on every frame.
+- **No frame changed `measured_type`.** D41 predicted none should; zero did. The thresholds D24
+  through D28 reasoned about are unaffected by the unit change, which is what licenses keeping
+  their reasoning without re-deriving it.
+- **One prediction did not hold, and it cost nothing.** D41 expected the bright-pixel floor
+  `max(sig, 1.0)` — one quantiser step in counts rather than a sixteenth of one — to lower
+  `tail_frac` on the frames whose sub-plane MAD is exactly zero. It did not: mean `tail_frac`
+  moved from 0.00896739 to 0.00896736, and **no frame moved from a non-zero `tail_frac` to
+  zero**. 546 frames have at least one sub-plane MAD of zero and 532 of them already read
+  `tail_frac == 0` in both indices. The 520 with *all four* planes at zero are all lights with a
+  median `sat_frac` of 1.0 — saturated frames, typed by the `sat_frac` branch before clumping is
+  consulted, so the floor never reached them. Recorded because a prediction that turns out
+  immaterial is still a prediction that was checked.
+
+Six columns are new this run — `mean`, `median`, `min`, `max`, `std`, `sampled_px` — whole-frame
+orientation for `notebooks/02`, read by nothing in `classify`. `std` there is pooled across the
+CFA planes and so is dominated by channel balance rather than noise; `sig_*` is the uncontaminated
+counterpart, and the two sit side by side so the gap D4 exists to prevent can be seen.
+
+### D45. The controlled gain comparison is one night: 2025-08-19
+Rescued from a `FINDINGS` correction footnote before that file changed owner (D43), because it is
+a constraint on how the NGC 7000 set may be used, not an observation about it.
+
+The set is a 2 x 6 grid (D28), and **verified exact at both gains** against the rebuilt index:
+gain 50 runs 448/224/112/56/28/14 and gain 252 runs 416/208/104/52/26/13, every rung landing on
+exactly 6 720 s and 6 240 s of integration respectively.
+
+**But gain is confounded with night everywhere except one date.** Gain 252 ran 2025-08-17, 08-18
+and 08-19; gain 50 ran 08-19, 08-20, 09-18 and 09-19 — a month apart but for the overlap. Only
+**2025-08-19 carries both gains, each a complete ladder**, 221 frames at gain 252 and 219 at gain
+50, same target, same sky. Any cross-gain comparison drawn from the set as a whole is comparing
+observing conditions as much as gain. **Cross-gain comparisons come from 2025-08-19.**
+
+**And the folder is not the dataset.** It also holds **301** frames from 2025-08-08 and 08-09 that
+are not part of the grid — 300 at 60 s plus a single 120 s frame — at sky levels of 704 and 1 503
+counts against the ladder's 281–295 at the same exposure, so moonlit, twilit or differently
+framed. Included, they make the 60 s rung read 404 and the 120 s rung 53, and the design looks
+broken when it is not. That single stray 120 s frame is the whole of the second discrepancy; the
+earlier record described the strays as "300 frames, 60 s only" and missed it.
+
+Sky is otherwise consistent within a gain: median level at the 15 s rung varies under 4% across
+the gain-50 nights and under 5% across the gain-252 nights. All frames commanded −10 °C, all
+achieved between −10.5 and −9.0 °C — the one temperature-consistent subset in the archive.

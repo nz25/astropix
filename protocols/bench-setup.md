@@ -64,7 +64,7 @@ If the cooler draws nothing at all: a previous hard-killed process can leave the
 **Power-cycle the 12 V, do not debug it.** **(L03)**
 
 Our own archive shows what skipping this costs — 2,132 frames more than 1 °C off setpoint, some
-flats commanded −20 °C that read +4.5 °C (`FINDINGS`, 2026-08-27).
+flats commanded −20 °C that read +4.5 °C (`results/frame_index.csv`).
 
 ## 5. Set the ROI, and check it is even
 

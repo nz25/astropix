@@ -3,19 +3,33 @@
 How a session boots. Read these first, in this order:
 
 1. `MISSION.md` — what we are optimising and how we know we succeeded
-2. `DECISIONS.md` — what was already decided, and what was rejected and why
-3. `FINDINGS.md` — what we have measured about this rig so far
-4. `results/` — the numbers themselves, with provenance
-5. `LEGACY.md` — claims inherited from the retired attempts, none of them verified here.
+2. this file — how we work, and the rules that are not negotiable
+3. `results/` — the numbers themselves, with provenance
+4. `LEGACY.md` — claims inherited from the retired attempts, none of them verified here.
    A **queue that exists to be emptied**, not a fifth permanent document: each entry is checked
    when the build step that needs it arrives, moved to its destination, and deleted. When it is
-   empty the file goes and this repo is back to four Markdown files (D38).
+   empty the file goes and this repo is back to four Markdown files.
    **Scan it whenever a build step or a notebook begins** — entries are grouped by the step that
    consumes them, and each carries a `Consumed by` line saying when it is due. Reading L01 before
    the first bench frame is the difference between a measurement and a silently corrupted one.
 
-Do not re-litigate a decision in `DECISIONS.md`. If one turns out to be wrong, append a new
-dated entry that supersedes it; never edit history.
+## Document status
+
+**`MISSION.md` and this file are canonical.** Every live rule is stated in one of them, in
+full. Nothing you are required to follow lives behind a citation: if understanding a rule means
+opening a second document, the rule is in the wrong place. If a rule turns out to be wrong,
+change it *here* — deliberately, in conversation — never work around it, and never leave the
+written rule and the working practice disagreeing.
+
+The repo holds two other Markdown files, and neither is read for rules. They are named here
+once, so a new session knows not to reach for them, and are cited from nowhere:
+
+- **`DECISIONS.md` is the archive.** Append-only history of what was chosen, what was rejected,
+  and why. Open it when you want the reasoning *behind* a rule — never to find out what the
+  rule is. Never edit it; a reversal is a new dated entry.
+- **`FINDINGS.md` is Denis's.** His own notes on what he has learned. Do not cite it, do not
+  treat it as authority, and do not write to it unless he asks. It is overwritten freely as his
+  understanding improves; git is its log.
 
 ## The user
 
@@ -35,10 +49,10 @@ request, not pedantry.
 - **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
   and stores the value bit-shifted x16 into a 16-bit FITS container, so a stored value is 16x the
   number the ADC actually produced. Measured, not assumed — `mult16_frac` is 1.000000 at min,
-  mean and max across every indexed frame (`FINDINGS`, 2026-08-27).
+  mean and max across all 15,090 readable frames in `results/frame_index.csv`.
   **Everything this project measures, publishes or models is in ADC counts = stored / 16.** Full
   scale is **4095**, the gain-252 pedestal is **77**, and header `EGAIN` — quoted per ADC count —
-  applies directly, with no factor to remember. That is the whole point of the convention (D41).
+  applies directly, with no factor to remember. That is the whole point of the convention.
   Cite this rule; do not restate it.
   - `stats.to_adc` is the only conversion, and it raises rather than truncate.
   - `fits.read` returns stored values untouched: the check that licenses the conversion cannot be
@@ -48,13 +62,17 @@ request, not pedantry.
     white-balance step-of-16 diagnostic in `protocols/bench-setup.md`, which goes vacuous in ADC
     counts; and the PixInsight boundary, where PI normalises by 65535, so a PI value converts as
     `v * 65535 >> 4` and **never** as `v * 4095` (L20 — 65535/16 is 4095.9375).
-  - *Pending, 2026-08-28:* `results/frame_index.csv`, and the `FINDINGS` numbers drawn from it,
-    are still in stored units until the index is rebuilt. Nothing else is. Remove this line when
-    the rebuild lands.
 - **Trust neither folder nor `IMAGETYP` for frame type — determine it from the pixels.** Dark
   folders mix gain and temperature inside one exposure folder, *and* some flats and darks were
   captured under a Light subframe type. Capture settings in the header (gain, offset, exposure,
   set-temp, achieved temp) are trusted; the type label is not.
+  - **The classifier has one known blind spot, and it is not resolved.** 684 archive frames
+    labelled `light` measure as `dark` — the only off-diagonal cell in the index. 317 at gain 252
+    sit exactly on the pedestal and look like genuine darks shot under a `Light` subframe type;
+    367 at gain 50 carry real signal above pedestal and name bright targets, but show no
+    connected bright structure, so they may be lights the clump test missed. Until a dozen of
+    each are opened whole, **anything selecting `measured_type == "light"` may be short by up to
+    367 frames at gain 50**, and anything selecting darks may be contaminated by up to 317.
 - **Two data sources, and only one of them owes us anything.** `Z:` holds ~15,000 historic
   frames shot across a year of ordinary imaging, before this project or any of its conventions
   existed: mixed setpoints, mixed gains, labels that do not always match the pixels. That is a
@@ -149,7 +167,7 @@ vendor/       third-party binaries, licence beside each
   15,102 frames, indexed in `results/frame_index.csv`.
   **C: has ~12 GB free.** Nothing bulky lands on C:.
 - Retired attempts `astro/` and `learn_astro/` still exist on disk. **Their data is not
-  used** (D39); their *claims* are in `LEGACY.md` as hypotheses to check.
+  used**; their *claims* are in `LEGACY.md` as hypotheses to check.
 
 ## The rig
 

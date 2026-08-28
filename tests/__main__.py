@@ -49,7 +49,7 @@ def _legacy_reminder():
     if not groups:
         return
     print(f"\nLEGACY: {sum(groups.values())} inherited claims still unverified "
-          f"-- scan before starting a build step (CLAUDE.md item 5)")
+          f"-- scan before starting a build step (CLAUDE.md item 4)")
     for name, n in groups.items():
         # The suite must never fail on its own output: these headings come
         # from a Markdown file and carry en/em dashes, which a console on a

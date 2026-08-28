@@ -4,7 +4,7 @@ The counterpart to `stats.py`.  That module asks how much a set of pixels
 varies; this one asks where they are and what they are next to.  Both work on
 plain arrays and neither opens a file.
 
-The rule this module exists to enforce (DECISIONS D4): every noise statistic is
+The rule this module exists to enforce (`CLAUDE.md`): every noise statistic is
 computed on the raw mosaic, split into its four Bayer sub-planes.  Debayering
 interpolates, and an interpolated pixel's noise is correlated with its
 neighbours', which silently destroys every variance estimate downstream.

@@ -6,10 +6,11 @@ Claims inherited from the two retired attempts at this project, `astro/` and `le
 project holds; it is knowledge someone else's project claimed, kept because rediscovering it
 would cost bench nights. Each entry is verified when the build step that needs it arrives, then
 **moved to its destination and deleted from here**. When the file is empty it is deleted, and
-this repo is back to four Markdown files (D13).
+this repo is back to four Markdown files.
 
-Entries are cited by number from wherever they land — `DECISIONS`, `FINDINGS`, `CLAUDE.md`,
-`protocols/`, `pjsr/` — so the trail survives after this file is gone.
+Entries are cited by number from wherever they land — `results/`, `CLAUDE.md`, `DECISIONS`,
+`protocols/`, `pjsr/` — so the trail survives after this file is gone. A measured number lands in
+`results/` with its provenance, never in prose alone.
 
 **Schema.** No entry is admitted without all five fields. `Consumed by` and `Lands in` are what
 make the queue drain; an entry without them is a note, not a work item.
@@ -89,7 +90,7 @@ for a continuous settle period before returning.
 **Consumed by.** Build step 6, and every bench protocol.
 **How to check.** Log temperature every second from cooler-on to settled; the curve is the
 answer. Our own archive already shows the failure mode this guards against — 2,132 frames more
-than 1 °C off setpoint (`FINDINGS`, 2026-08-27).
+than 1 °C off setpoint (`results/frame_index.csv`).
 **Lands in.** `asi.py` (`cool_to` with a settle window) and `protocols/bench-setup.md`.
 
 ### L05. The gain range is 0–600, and the ROI must be even
@@ -190,7 +191,8 @@ the archive already holds the frames.
 **How to check.** Run it on our own indexed archive at gain 50 and 252 and compare against
 whatever the bench PTC returns. Two datasets with nothing in common agreeing is far stronger
 evidence than either alone.
-**Lands in.** `FINDINGS` as a cross-validation, and a notebook cell.
+**Lands in.** `results/constants_ptc.json`, as a cross-check field beside the bench value,
+and the notebook cell that computes it.
 
 ### L12. Saturation and linearity must be measured per CFA channel
 **Claim.** The four channels have different sensitivities, so under a white-ish source they
@@ -203,7 +205,8 @@ the pixel**.
 **Consumed by.** The linearity measurement.
 **How to check.** Per-channel bend levels; if they agree while the saturating exposures differ,
 the ADC is the limit.
-**Lands in.** `FINDINGS`, and `DECISIONS` if it changes how full well is defined.
+**Lands in.** `results/` as per-channel bend levels, and `DECISIONS` if it changes how full
+well is defined.
 
 ### L13. Clipping is a fraction, not a minimum — and cold pixels are not clipping
 **Claim.** An offset check flagged "the offset is too low and data is being clipped" because the
@@ -230,8 +233,9 @@ measurable signal at either end there is nothing to fit a doubling temperature t
 **Consumed by.** The `D(T)` measurement, which MISSION lists as a model constant.
 **How to check.** Take darks at the extremes of the achievable temperature range and see whether
 the difference exceeds its own uncertainty before attempting a fit.
-**Lands in.** `FINDINGS`, and `MISSION`'s constants table if `D(T)` turns out to be
-unmeasurable rather than merely small.
+**Lands in.** `results/` as `D(T)` with its detection floor — an upper bound is a result and
+is recorded as one — and `MISSION`'s constants table if `D(T)` turns out to be unmeasurable
+rather than merely small.
 
 ### L15. Per-pixel statistics across a stack of lights are meaningless before registration
 **Claim.** Measuring σ in a star-free patch as more frames were averaged tracked √N to N ≈ 8 then
@@ -370,7 +374,7 @@ API facts stand; the numbers are predictions.
 bias frame. Expect an *ordering* rather than equality: PI's multiresolution rejects harder than
 our clip, PI's plain σ rejects nothing, and ours should sit between them with the spread widening
 as gain amplifies the outlier tail.
-**Lands in.** `FINDINGS` as contract 1's result, and `pixinsight.py`.
+**Lands in.** `results/` as contract 1's measured ordering, and `pixinsight.py`.
 
 ---
 
@@ -396,8 +400,9 @@ not the physical one.
 **Source.** `learn_astro/kb/measurements.md`, 2026-08-25.
 **Consumed by.** Build step 3 — as the prediction our own PTC either reproduces or refutes.
 **How to check.** Our own sweep, measured independently, compared afterwards. Not used as input.
-**Lands in.** `results/constants_ptc.json` if reproduced; `FINDINGS` either way, since a
-disagreement is as informative as a match.
+**Lands in.** `results/constants_ptc.json` either way — reproduced as the measured value, or
+recorded beside it as the vendor prediction it failed to match. A disagreement is as informative
+as a match, and both need the same provenance.
 
 ### L26. The HCG threshold is gain 200, not 252
 **Claim.** Read noise falls **3.39 → 1.13 e⁻** between gain 190 and 200 — a 67% drop in one step
@@ -413,7 +418,8 @@ fine gain sweep.
 the read-noise cliff, the same cliff in ADU (ruling out a scaling artefact), and a
 **discontinuity in the pedestal** at the same gain — 1360→1104 at offset 15, 2288→2064 at
 offset 30.
-**Lands in.** `results/constants_ptc.json` and `FINDINGS`.
+**Lands in.** `results/constants_ptc.json`, as the measured HCG threshold with the vendor's
+252 recorded beside it as the prediction.
 
 ### L27. The pedestal has two branches, and the offset is purely digital
 **Claim.** Pedestal fits `A + B × amplification` **per conversion-gain branch**, not across the
@@ -427,10 +433,11 @@ within 0.2%") which is explicitly retracted as least-squares dominated by high-g
 **Source.** `learn_astro/kb/measurements.md`, offset sweep 2026-08-26.
 **Consumed by.** Build step 3, the offset choice; `pedestal` is a MISSION constant.
 **How to check.** Our own bias frames already show the pedestal is *exactly* constant per gain
-(1040.0 at gain 50, 1232.0 at gain 252, std 0.0 — `FINDINGS` 2026-08-27), which is a start.
+(65.0 at gain 50, 77.0 at gain 252, std 0.0 across 520 bias frames —
+`results/frame_index.csv`, ADC counts), which is a start.
 Also claimed: read noise must **not** depend on offset — worst disagreement 0.38% across 61
 gains — which is a prediction that could have failed.
-**Lands in.** `results/` as the pedestal constant, and `FINDINGS`.
+**Lands in.** `results/` as the pedestal constant, per conversion-gain branch.
 
 ### L28. The linear limit is 63 744 reported ADU, below the hard clip
 **Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
@@ -464,8 +471,8 @@ gain is nonsense read literally — a bucket does not shrink because you amplifi
 **Source.** `astro/docs/sensor-notes/asi585mc-gain-curves.md`.
 **Consumed by.** Build step 3, when comparing our measurement against the vendor's.
 **How to check.** Arithmetic on their published table; no data needed.
-**Lands in.** `FINDINGS`, as the basis for any vendor comparison — and it settles what "full
-well" means in that comparison.
+**Lands in.** `results/constants_ptc.json`, as the vendor prediction recorded beside our own
+measurement — and it settles what "full well" means in that comparison.
 
 ---
 
@@ -500,8 +507,8 @@ item** rather than keeping a ritual whose reason has been falsified.
 
 The separate 5.5% single-rung outlier looks like a different mechanism — an occasional bad frame
 rather than drift. A notification, or the Screen Wake Lock briefly lapsing.
-**Lands in.** `FINDINGS` if reproduced, or deleted from here if it turns out to be an artefact of
-their setup.
+**Lands in.** `results/` as a repeatability figure if reproduced, or deleted from here if it
+turns out to be an artefact of their setup.
 
 ### L32. Sky rate and PRNU, to be re-derived from our own frames
 **Claim.** Sky **1.594 e⁻/px/s** green (R 1.500, B 0.910) at f/4.8, 2.27″/px, unfiltered, near
@@ -514,4 +521,4 @@ about 5% across a two-hour session as the target rose.
 is a sanity check rather than a constant.
 **How to check.** Extract sky per frame from our indexed archive and compare. The NGC 7000 set
 gives eight nights at two gains to do it across.
-**Lands in.** `FINDINGS`, as the working suburban figure with its variability stated.
+**Lands in.** `results/` as the working suburban sky rate, with its variability stated.
