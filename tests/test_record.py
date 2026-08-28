@@ -7,6 +7,7 @@ See CLAUDE.md, 'How work is recorded'.
 import json
 import pathlib
 import re
+import subprocess
 
 
 
@@ -218,3 +219,53 @@ def test_legacy_lands_somewhere_real():
     bad = {h.split(".")[0]: "Lands in FINDINGS" for h, b in legacy_entries().items()
            if re.search(r"\*\*Lands in\.\*\*[^\n]*FINDINGS", b)}
     assert not bad, f"LEGACY entries still landing in FINDINGS: {bad}"
+
+
+# --------------------------------------------------------------------------
+# Notebooks are committed stripped
+# --------------------------------------------------------------------------
+#
+# CLAUDE.md, "How work is recorded".  There is no nbstripout filter in this
+# repo -- stripping has always been a thing someone remembered to do, and 01
+# reached the staging area with six cells of outputs before anyone looked.
+# That is the same failure the document rules exist to prevent, one layer down:
+# a rule that lives only in a person's memory.
+#
+# This checks what HEAD holds, not the working tree.  A working copy full of
+# outputs is the normal state right after a run and must not turn the suite
+# red; what must never happen is that state reaching a commit.
+
+
+def _git(*args):
+    """Run git in the repo.  None if git, or the repo, is unavailable -- the
+    suite has to keep working on a copy that was never a checkout."""
+    try:
+        done = subprocess.run(("git", "-C", str(_repo_root())) + args,
+                              capture_output=True, timeout=30)
+    except (OSError, subprocess.SubprocessError):
+        return None
+    return done.stdout if done.returncode == 0 else None
+
+
+def test_committed_notebooks_have_no_outputs():
+    """Source only, in what git stores.  An execution_count is enough to fail
+    on: it is the half that survives when someone clears outputs by hand."""
+    listing = _git("ls-files", "-z", "--", "notebooks/*.ipynb")
+    if listing is None:
+        return
+    dirty = {}
+    for name in listing.decode("utf-8").split("\0"):
+        if not name:
+            continue
+        blob = _git("show", "HEAD:" + name)
+        if blob is None:      # tracked but not yet in HEAD
+            continue
+        nb = json.loads(blob.decode("utf-8"))
+        cells = [i for i, c in enumerate(nb["cells"])
+                 if c["cell_type"] == "code"
+                 and (c.get("outputs") or c.get("execution_count") is not None)]
+        if cells:
+            dirty[name] = cells
+    assert not dirty, (
+        "notebooks are committed with outputs stripped; these cells carry "
+        f"outputs or an execution_count in HEAD: {dirty}")

@@ -113,6 +113,19 @@ work outran the record of it, and the record is the only thing that survives a r
   cell in a numbered notebook, so the route from frames to a published number is readable end to
   end. Asserted by `tests/test_record.py`, which reads the notebook JSON and needs neither Z: nor
   an execution.
+- **Notebooks are committed with their outputs stripped.** Run them freely — a working copy full
+  of outputs is what a notebook is *for* — but what git stores is source only: no `outputs`, no
+  `execution_count`. A pasted table is not a record; the numbers belong in `results/`, where they
+  carry provenance and a diff means something. There is no `nbstripout` filter configured, so
+  this is a manual step before staging, and `tests/test_record.py` checks what `HEAD` actually
+  holds rather than trusting anyone to remember.
+- **Nothing is committed without Denis's review and explicit confirmation.** Finish the change,
+  run the suite, say what changed and what it cost — then stop, and leave it in the working tree.
+  A commit is a claim that the work was checked, and the only person who can make that claim is
+  the one who checked it. Silence is not confirmation and neither is an approving remark about
+  the work; the instruction to commit is. This covers everything that moves the record —
+  `commit`, `push`, `amend`, `rebase`, `reset` — and it is not waived by a previous session
+  having said yes, because approval is given for a change, not for a habit.
 
 The bar is *a cell writes it*, not *it byte-reproduces*: re-running an acquisition correctly
 yields a **new** snapshot, and demanding byte equality would forbid the artifacts that cost hours
