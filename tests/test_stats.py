@@ -8,6 +8,7 @@ from astropy.io import fits as _afits
 from astropix import fits as F
 from astropix import stats
 
+from . import synthetic
 from .synthetic import (PEDESTAL, SENSOR_CEILING, STEP, tmp_frame, tmpdir,
                         write_frame)
 
@@ -205,3 +206,34 @@ def test_the_label_is_evidence_not_truth():
     assert rec["measured_type"] == "flat"
     assert rec["declared_type"] == "light"
     assert rec["type_agrees"] is False
+
+
+# --------------------------------------------------------------------------
+# value_step -- the white-balance fingerprint (L01)
+# --------------------------------------------------------------------------
+
+def test_value_step_is_16_on_this_rigs_raw_output():
+    plane = synthetic.make_frame("bias")[0][::2, ::2]
+    assert stats.value_step(plane) == 16
+
+
+def test_value_step_catches_white_balance_still_being_applied():
+    """The tell is greens at 16 while red reads 17-18 and blue reads 24: the
+    camera ships WB_R=55, WB_B=75 and applies them to RAW16 before the data
+    reaches us, which inflated read noise ~17% at every gain."""
+    green = synthetic.make_frame("bias")[0][::2, ::2].astype(np.float64)
+    assert stats.value_step(green.astype(np.int64)) == 16
+    # Red is quoted as 17 *or* 18 because 55/50 does not divide the grid
+    # evenly -- the gaps alternate and the mode is a tie-break, not a
+    # constant.  What the gate needs is only that it has left 16.
+    for factor, expected in ((55 / 50, {17, 18}), (75 / 50, {24})):
+        scaled = np.round(green * factor).astype(np.int64)
+        assert stats.value_step(scaled) in expected
+
+
+def test_value_step_refuses_a_plane_with_nothing_to_measure():
+    try:
+        stats.value_step(np.full((4, 4), 1232, np.uint16))
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError")

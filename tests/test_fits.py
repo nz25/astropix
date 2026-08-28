@@ -129,3 +129,41 @@ def test_needs_rescan_retries_what_did_not_end_ok():
         assert F.needs_rescan(p, dict(F.stat_row(p), status=status)) is True
     assert F.needs_rescan(p, None) is True
     assert F.needs_rescan(p, {}) is True
+
+
+# --------------------------------------------------------------------------
+# writing (the bench side: our own frames must be indistinguishable
+# from archive frames to this same reader)
+# --------------------------------------------------------------------------
+
+def test_write_round_trips_the_exact_numbers_and_the_trusted_settings():
+    data = (np.arange(64, dtype=np.uint16) * 16).reshape(8, 8)
+    path = os.path.join(tmpdir(), "written.fit")
+    F.write(path, data, {"GAIN": 252, "OFFSET": 15, "EXPTIME": 0.001,
+                         "CCD-TEMP": -10.1, "BAYERPAT": "RGGB",
+                         "INSTRUME": F.RIG_INSTRUME}, overwrite=True)
+    back, header = F.read(path)
+    assert back.dtype == np.uint16 and np.array_equal(back, data)
+    assert header["GAIN"] == 252 and header["OFFSET"] == 15
+    assert F.capture_settings(header)["ccd_temp"] == -10.1
+
+
+def test_write_drops_cards_with_no_value():
+    """A temperature the camera did not report must be absent, not zero: a
+    header that invents -0.0 C is worse than one that admits it does not know."""
+    path = os.path.join(tmpdir(), "no_temp.fit")
+    F.write(path, np.zeros((4, 4), np.uint16), {"GAIN": 100, "CCD-TEMP": None},
+            overwrite=True)
+    assert "CCD-TEMP" not in F.read(path)[1]
+
+
+def test_write_refuses_to_overwrite_by_default():
+    """A capture loop that silently rewrites a frame destroys the one thing a
+    sweep cannot reconstruct: how many frames it actually got."""
+    path = os.path.join(tmpdir(), "once.fit")
+    F.write(path, np.zeros((4, 4), np.uint16), overwrite=True)
+    try:
+        F.write(path, np.zeros((4, 4), np.uint16))
+    except OSError:
+        return
+    raise AssertionError("expected the second write to be refused")

@@ -81,6 +81,30 @@ def to_adc(a):
     return a >> ADC_SHIFT
 
 
+def value_step(a):
+    """The modal spacing between adjacent distinct values in one CFA plane.
+
+    On this rig it must be 16: the ADC produces 12 bits and the container
+    stores them shifted, so nothing between two stored codes exists.  The
+    number is a *fingerprint*, and the thing it fingerprints is white balance
+    (L01).  The camera ships `WB_R=55`, `WB_B=75` and applies them to RAW16
+    before the data reaches us, which multiplies each plane by a different
+    factor and smears the step: greens stay at 16 while red reads 17 or 18 and
+    blue reads 24.  That inflated read noise by ~17% at every gain, and it is
+    invisible in every other statistic.
+
+    Per plane, never on the mosaic -- pooling four differently-scaled planes
+    gives a step of 1 and tells you nothing.  Take it on a zero-light frame,
+    where the distribution is narrow enough that adjacent codes are all
+    populated.
+    """
+    u = np.unique(np.asarray(a))
+    if u.size < 2:
+        raise ValueError("need at least two distinct values to measure a step")
+    gaps, counts = np.unique(np.diff(u.astype(np.int64)), return_counts=True)
+    return int(gaps[np.argmax(counts)])
+
+
 def frame_features(blocks):
     """Reduce sampled blocks to the numbers the index stores about one frame.
 

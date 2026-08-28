@@ -58,6 +58,27 @@ def read(path):
         return np.asarray(hdul[0].data), hdul[0].header
 
 
+def write(path, mosaic, header=None, overwrite=False):
+    """Write one frame exactly as the camera produced it.
+
+    The counterpart to `read`, and held to the same rule: bytes move, nothing
+    is interpreted.  The mosaic is written as uint16 -- **stored** values, not
+    ADC counts -- because a bench frame has to be indistinguishable from an
+    archive frame to the reader, or `frame_features` loses the `% 16` check
+    that licenses the whole unit convention (CLAUDE.md).
+
+    `overwrite` defaults to False: a capture loop that silently rewrites a
+    frame it has already taken destroys the one thing a sweep cannot
+    reconstruct, which is how many frames it actually got.
+    """
+    hdu = _afits.PrimaryHDU(data=np.asarray(mosaic, np.uint16))
+    for key, value in (header or {}).items():
+        if value is not None:
+            hdu.header[key] = value
+    hdu.writeto(path, overwrite=overwrite)
+    return path
+
+
 def capture_settings(header):
     return {k: header.get(v) for k, v in _HEADER_KEYS.items()}
 
