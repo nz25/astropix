@@ -65,10 +65,12 @@ def capture_settings(header):
 def sample_blocks(path, n_blocks=N_BLOCKS, block_rows=BLOCK_ROWS):
     """Read `n_blocks` evenly spaced contiguous row-blocks, plus the header.
 
-    Blocks are contiguous because two of the features are spatial: a star is a
-    blob and a hot pixel is not, and neither statement survives row striding.
+    Blocks are contiguous because a contiguous slice is one seek over SMB where
+    a strided read is thousands, and because anything spatial added later --
+    vignetting, source detection -- needs neighbours to still be neighbours.
     They are spread down the frame so that vignetting and amp glow -- both
-    corner-weighted -- are sampled rather than missed.
+    corner-weighted -- are sampled rather than missed, which is what
+    `block_spread` is measured from.
     """
     with _afits.open(path) as hdul:
         hdu = hdul[0]
@@ -80,18 +82,25 @@ def sample_blocks(path, n_blocks=N_BLOCKS, block_rows=BLOCK_ROWS):
     return blocks, header
 
 
-def scan_frame(path):
+def scan_frame(path, pedestal=None):
     """Everything the index records about one frame.
 
     Returns capture settings, measured features, the measured type, the declared
     label and whether they agree -- plus `status`, which is "ok" unless the frame
     came from another camera.  Raises on an unreadable file; the caller decides
     whether one bad frame stops a pass.
+
+    `pedestal` is the zero-light level in ADC counts for this frame's gain, and
+    it is the caller's to supply because measuring it means looking at many
+    frames, which is a loop and therefore the notebook's job (D35, D50).  With
+    no pedestal the type comes back "unknown" -- which is what the first pass of
+    an index build wants, since it is that pass which produces the bias frames
+    the pedestal is measured from.
     """
     blocks, header = sample_blocks(path)
     rec = capture_settings(header)
     rec.update(stats.frame_features(blocks))
-    rec["measured_type"] = stats.classify(rec, rec.get("exptime"))
+    rec["measured_type"] = stats.classify(rec, rec.get("exptime"), pedestal)
     declared = (rec.get("imagetyp") or "").strip().lower()
     rec["declared_type"] = declared
     rec["type_agrees"] = (declared == rec["measured_type"]) if declared else None

@@ -77,10 +77,12 @@ is the thing that stops the model ever being finished.
        folders mix gain and temperature inside one exposure folder, *and* some flats and darks
        were captured under a Light subframe type. Capture settings (gain, offset, exposure,
        set-temp, achieved temp) are trusted; the type label is not.
-     - **The classifier is wrong in one direction: it calls sky-flooded lights `dark`.** Its
-       bright-pixel threshold scales with the frame's own spread, so a bright sky raises the bar
-       until no star clears it. **A selection on `measured_type` is a starting point, not a
-       warrant.**
+     - **`measured_type` is trustworthy on this corpus and is still not a warrant.** It agrees
+       with every one of the 15,090 readable frames whose type has been established by hand or
+       by label. But it is a statement about *how much light arrived*, not about whether a frame
+       is usable: 141 of its lights were shot through trees and cloud, and it is right about
+       them and useless as a quality filter. Check `sat_frac`, `block_spread` and the plane
+       medians before a selection becomes a dataset.
      - **Frozen while an analysis is producing numbers for `results/`** — refresh the index
        between runs, never during. New frames land in `raw\_inbox\`, not in the archive.
      - **If a frame or a verdict looks unreliable, reshoot.** Reasoning around suspect frames
@@ -150,13 +152,25 @@ narrative; the library is only the distilled residue; `results/` is the record o
 **Two invariants keep the first three apart.** *Only `spatial.py` and `stats.py` touch pixel
 arrays* — `fits.py` moves bytes and never interprets a value. And *nothing in the package
 loops over frames*: every function here takes one frame, or one array, and returns. `spatial.py`
-asks *where* things are: the Bayer lattice, bright-pixel connectivity, later vignetting and
-source detection. `stats.py` asks *how much* they vary, and carries the frame verdict those
+asks *where* things are: the Bayer lattice today, vignetting and source detection when something
+needs them. `stats.py` asks *how much* they vary, and carries the frame verdict those
 numbers support. The dependency chain is one-way: `fits.py` → `stats.py` → `spatial.py`.
 
 `tests/` does not count against either limit — it carries no physics, nothing imports it, and a
 budget that discourages tests is a budget working against itself. It mirrors the package: one
 `test_<module>.py` per library module.
+
+## How a frame's type is decided
+
+**A frame's type is decided by one number: how far it sits above the pedestal for its gain.**
+Bias is settled by exposure before any pixel is read; a frame far above the pedestal at seconds
+is a flat and at minutes is sky; what is left is dark if it sits on its pedestal and **light
+otherwise**. `light` is the fallback on purpose — a light wrongly called dark enters a
+calibration master and is subtracted from every science frame, while a dark wrongly called light
+is thrown out by registration. The pedestal is *passed in*, never hard-coded: it is measured from
+bias frames, which are selected by exposure alone, so the classifier never argues in a circle and
+works at gains this archive does not contain. A gain with no bias frames behind it returns
+`unknown`, and that is the correct answer.
 
 ## Layout
 

@@ -7,7 +7,7 @@ from astropy.io import fits as _afits
 
 from astropix import fits as F
 
-from .synthetic import tmp_frame, tmpdir, write_frame
+from .synthetic import PEDESTAL, tmp_frame, tmpdir, write_frame
 
 
 # --------------------------------------------------------------------------
@@ -43,7 +43,7 @@ def test_capture_settings_are_read_but_the_type_label_is_kept_separate():
 def test_scan_frame_describes_a_frame_completely():
     """One call must produce every column the index stores about a frame, so
     that the notebook's loop is a loop and nothing more."""
-    rec = F.scan_frame(tmp_frame("dark"))
+    rec = F.scan_frame(tmp_frame("dark"), pedestal=PEDESTAL)
     for key in ("gain", "exptime", "ccd_temp", "level", "sigma", "mult16_frac",
                 "measured_type", "declared_type", "type_agrees", "status"):
         assert key in rec, key
@@ -58,7 +58,7 @@ def test_scan_frame_marks_a_frame_from_another_rig():
     p = write_frame(os.path.join(tmpdir(), "alien.fit"), "light")
     with _afits.open(p, mode="update") as hdul:
         hdul[0].header["INSTRUME"] = "Canon EOS 6D"
-    rec = F.scan_frame(p)
+    rec = F.scan_frame(p, pedestal=PEDESTAL)
     assert rec["status"] == "other rig: Canon EOS 6D"
     assert rec["measured_type"] == "light"
 

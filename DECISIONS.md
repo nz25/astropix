@@ -945,3 +945,83 @@ that would have gone stale.
 (`gotchas` versus `measurements`). It is defensible — the date says how stale a claim is — but it
 keeps a field alive for a fraction of its purpose, and `LEGACY` is a queue that exists to be
 emptied, not a bibliography.
+
+### D50. The classifier reads one number, and `light` becomes the fallback
+*2026-08-28.*
+
+**The rule.** A frame's type is decided by how far it sits above the pedestal for its gain.
+Exposure settles bias before a pixel is read; a frame three orders of magnitude above the
+pedestal is a panel at seconds and sky at minutes; what remains is `dark` if it sits on its
+pedestal and `light` if it does not. `classify` reads exactly one feature, `level`, plus two
+trusted inputs — the exposure time and the pedestal.
+
+**Why the old rule failed, and it was not a tuning error.** D48 traced it: `bright_pixels` was
+called at `med + 5·sigma` with sigma being the frame's own MAD, so sky raised the MAD, which
+raised the star threshold, which emptied the tail. The brighter the sky, the more star-blind the
+test became — the failure landed hardest on the frames with the most signal. But the deeper
+problem was that no repair to a star test could have worked: **141 of the misclassified frames
+have no stars in them at all.** Denis opened them; they are lights shot through trees and cloud,
+on four nights, in five contiguous runs, each one a session where the sky went away and came
+back. A discriminator that requires stars cannot type a frame that has none.
+
+**The evidence.** Against a hand-established truth for all 15,090 readable frames, `level` minus
+the pedestal separates with **no overlap**: 2,177 darks reach at most pedestal + 1.00 counts,
+10,465 lights start at pedestal + 1.75, flats start at + 983. `DARK_MAX_ABOVE_PEDESTAL = 1.5`
+sits in the gap. Zero disagreements. 484 frames move from `dark` to `light`; the 200 `FOV` darks
+D48 identified stay `dark`.
+
+**`light` is the fallback, and that is the safety property.** The old classifier fell through to
+`return "dark"`, so every failure of the star test drained into the one bucket where
+contamination does real damage — a light in a dark master is subtracted from every science frame.
+A dark wrongly called light is thrown out by registration. Inverting the default makes the
+classifier fail toward the harmless direction.
+
+**The pedestal is a parameter, not a constant, and this is what unblocked the rule.** D48
+rejected classifying on level because the pedestal is unmeasured (the offset sweep is build
+step 3) and hard-coding 65 and 77 from the index would put an unprovenanced constant inside the
+code that produced it. Both objections dissolve when the pedestal is *passed in*: `01` measures
+it from bias frames, which are selected by **exposure time alone** — a trusted capture setting,
+so no pixel argument is made and there is no circularity — and hands it to `classify`. It is
+exact: 65.000 over 320 gain-50 bias frames, 77.000 over 200 at gain 252, standard deviation zero
+in both. A gain with no bias frames behind it returns `unknown` rather than a guess, and the same
+three thresholds hold at gains this archive does not contain. The header cannot supply it:
+`OFFSET` is 15 across the whole archive at both gains.
+
+**Domain of validity, stated in the docstring.** The dark branch holds only while dark current
+sits below the quantiser floor. On this rig it does — 480 s darks sit on the pedestal to the
+digit, identical to 3 s darks, at −20 and −10 °C, which is strong confirmation of **L14** (not
+consumed here; its exit is the `D(T)` measurement). Warm the sensor far enough and darks climb
+into the gap, and this function would need a per-exposure allowance.
+
+**What the index lost.** `tail_frac`, `clump_frac`, `clump_h`, `clump_v` — the bright-pixel
+family, which existed only to feed the retired test. `spatial.bright_pixels` and `TAIL_K` went
+with them rather than sit uncalled, and `CLAUDE.md` no longer lists bright-pixel connectivity as
+`spatial.py`'s remit; `spatial.py` is now `split` alone. Also dropped: `sig_r`, `sig_g1`,
+`sig_g2`, `sig_b`. Per-plane spreads are still *computed* — D4 governs how a statistic is
+computed, not how many columns it becomes — but only their mean is stored, as `sigma`, because
+across 2,497 zero-light frames the four planes are identical to the digit in every one.
+
+**What the index kept, and why each earned it.** `med_*`: the index's only colour, `level` is
+exactly their mean, and 60 zero-light frames show plane disagreement — a light leak, findable
+with a `sort_values`. `block_spread`: 111 zero-light frames carry structure they should not,
+and 51 of those are invisible to `med_*`, so the two are not redundant. `sigma`: of 2,497
+zero-light frames exactly one has left the MAD floor —
+`dark/tests/480/Dark_480.0s_Bin1_20250908-230957_0001.fit`, at gain 252, which is *also* the
+frame with the most structure and colour. One column, one catch, and the catch is real. `sigma`
+is also what makes the classifier's domain-of-validity assumption auditable from the index.
+
+**Rejected: chromaticity as the discriminator.** Darks are achromatic by construction — dark
+current does not know which filter sits above the pixel — so `max(med_*) − min(med_*)` detects
+transmitted light without mentioning stars *or* the pedestal. It works, and it is worse: 22 of
+the 141 collide with 20 darks at a plane-spread of exactly 1.0 count, and no second feature
+separates them. Level above the pedestal has no overlap at all. Kept as a *quality* query, which
+is what the `med_*` columns are now for.
+
+**Rejected: a fourth measured type for the 141.** D48 left it open. Denis opened the frames and
+settled it: they are lights with an obstruction in frame, and `light` is what the classifier
+should say. `measured_type` answers "how much light arrived", not "is this frame usable" — the
+quality columns answer that, and conflating the two is what a fourth type would have done.
+
+**Consequence for the record.** `results/frame_index.csv` must be deleted and `01` re-run; the
+incremental rule keys on file identity, not on code identity, so a refresh would skip every row
+over a stale schema.

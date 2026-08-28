@@ -1,4 +1,4 @@
-"""spatial.py -- the Bayer lattice and bright-pixel shape."""
+"""spatial.py -- the Bayer lattice."""
 
 import numpy as np
 
@@ -41,23 +41,3 @@ def test_split_rejects_what_it_cannot_handle():
         except ValueError:
             continue
         raise AssertionError("expected ValueError")
-
-
-def test_bright_pixel_stats_separates_stars_columns_and_hot_pixels():
-    """The whole dark/light decision rests on this function."""
-    z = np.zeros((20, 20), np.float32)
-
-    star = z.copy(); star[8:10, 8:10] = 100          # 2x2 blob
-    n, h, v = spatial.bright_pixels(star, 50)
-    assert (n, h, v) == (4, 4, 4)
-
-    hot = z.copy(); hot[3, 3] = 100; hot[11, 15] = 100
-    n, h, v = spatial.bright_pixels(hot, 50)
-    assert (n, h, v) == (2, 0, 0)
-
-    col = z.copy(); col[:, 7] = 100                  # hot column: v only
-    n, h, v = spatial.bright_pixels(col, 50)
-    assert n == 20 and h == 0 and v == 20
-    assert min(h, v) == 0, "the weaker axis must not mistake a column for stars"
-
-    assert spatial.bright_pixels(z, 50) == (0, 0, 0)

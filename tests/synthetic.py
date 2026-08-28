@@ -1,8 +1,14 @@
 """Synthetic frames, and the temp directory they live in.
 
 Each frame is built to have the *feature* its type is defined by rather than
-to look pretty -- a star is a connected blob, a hot pixel is not, and a bias
-is short.  That is what the classifier is being asked about.
+to look pretty: a bias is short, a dark sits on the pedestal, a light sits
+above it, a flat sits far above it at an exposure of seconds.  That is what
+the classifier is being asked about (D50).
+
+Stars and hot pixels are still drawn into the light and the dark even though
+nothing looks at their shape any more (D50).  They cost nothing and they keep
+the fixtures honest as *frames*: a light with no stars in it would be a poor
+thing to test a reader against.
 """
 
 from __future__ import annotations
@@ -25,6 +31,10 @@ RNG = np.random.default_rng(20260827)
 # counts, 16x smaller (CLAUDE.md, D41).
 STEP = 1 << stats.ADC_SHIFT
 SENSOR_CEILING = stats.ADC_FULL_SCALE * STEP     # 65520 -- what the sensor can produce
+
+# The zero-light level the bias and the dark are both written at, in ADC counts.
+# `classify` takes this as an argument, so every test that classifies passes it.
+PEDESTAL = 1232 // STEP                          # 77 counts
 
 _TMP = None
 _CACHE = {}
@@ -58,7 +68,11 @@ def make_frame(kind, shape=(128, 128)):
     rather than to look pretty."""
     ny, nx = shape
     if kind == "bias":
-        return _quantised(1040, 24, shape), 0.001
+        # The same pedestal as the dark, because that is what the pedestal *is*:
+        # what the camera reads with no light and no time.  A fixture where bias
+        # and dark sat at different levels would make the dark look like a light
+        # the moment the pedestal is measured off the bias (D50).
+        return _quantised(1232, 24, shape), 0.001
     if kind == "flat":
         return _quantised(30000, 300, shape), 3.0
     if kind == "saturated":

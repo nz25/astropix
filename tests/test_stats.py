@@ -8,7 +8,8 @@ from astropy.io import fits as _afits
 from astropix import fits as F
 from astropix import stats
 
-from .synthetic import SENSOR_CEILING, STEP, tmp_frame, tmpdir, write_frame
+from .synthetic import (PEDESTAL, SENSOR_CEILING, STEP, tmp_frame, tmpdir,
+                        write_frame)
 
 
 # --------------------------------------------------------------------------
@@ -73,10 +74,10 @@ def test_pooled_std_is_channel_balance_not_noise():
     """The reason D4 is a rule and not a preference.
 
     Two blocks of identical noise; the second has an ordinary OSC channel
-    imbalance laid over it.  Per-plane `sig_*` is unmoved, because each plane
-    still sees only its own pixels.  The pooled `std` triples, because it is
-    now measuring the distance between colours.  Anything that fed `std` to a
-    noise fit would read that imbalance as read noise.
+    imbalance laid over it.  `sigma` is unmoved, because it is measured inside
+    each plane and each plane still sees only its own pixels.  The pooled `std`
+    is not, because it is now measuring the distance between colours.  Anything
+    that fed `std` to a noise fit would read that imbalance as read noise.
     """
     flat = np.full((64, 64), 1600, np.uint16)
     flat[::2, 1::2] = flat[1::2, ::2] = 1600      # G1, G2
@@ -86,15 +87,22 @@ def test_pooled_std_is_channel_balance_not_noise():
 
     neutral = stats.frame_features([flat])
     skewed = stats.frame_features([colour])
-    assert neutral["std"] == skewed["sig_r"] == 0.0, "noiseless by construction"
+    assert neutral["std"] == skewed["sigma"] == 0.0, "noiseless by construction"
     assert skewed["std"] > 10.0, "the colour offset has to show up somewhere"
 
 
-def test_features_separate_stars_from_hot_pixels():
-    dark = stats.frame_features(F.sample_blocks(tmp_frame("dark"))[0])
-    light = stats.frame_features(F.sample_blocks(tmp_frame("light"))[0])
-    assert dark["clump_frac"] < stats.LIGHT_MIN_CLUMP <= light["clump_frac"]
-    assert dark["tail_frac"] > 0, "hot pixels should still register as a tail"
+def test_the_classifier_reads_level_and_nothing_else():
+    """D50 in one assertion.  `classify` used to argue from bright-pixel shape,
+    and the argument failed on exactly the frames with the most signal.  It now
+    reads one feature, so a features dict carrying only `level` must be enough
+    -- and a missing `level` must raise rather than fall through to a default.
+    """
+    assert stats.classify({"level": 300.0}, 60.0, PEDESTAL) == "light"
+    try:
+        stats.classify({"sigma": 1.4826, "sat_frac": 0.0}, 60.0, PEDESTAL)
+    except KeyError:
+        return
+    raise AssertionError("classify reached a verdict without a level")
 
 
 # --------------------------------------------------------------------------
@@ -103,21 +111,58 @@ def test_features_separate_stars_from_hot_pixels():
 
 def test_every_type_classifies_as_itself():
     for kind in ("bias", "dark", "flat", "light"):
-        rec = F.scan_frame(tmp_frame(kind))
-        assert rec["measured_type"] == kind, (kind, rec["measured_type"], rec["level"],
-                                              rec["clump_frac"], rec["tail_frac"])
+        rec = F.scan_frame(tmp_frame(kind), pedestal=PEDESTAL)
+        assert rec["measured_type"] == kind, (kind, rec["measured_type"],
+                                              rec["level"], PEDESTAL)
+
+
+def test_the_dark_light_boundary_is_where_the_archive_put_it():
+    """The gap the whole rule rests on: 2,177 archive darks reach at most
+    pedestal + 1.00 counts and 10,465 lights start at pedestal + 1.75, so the
+    threshold sits between them.  Half a count either side of it must decide."""
+    k = stats.DARK_MAX_ABOVE_PEDESTAL
+    assert stats.classify({"level": PEDESTAL + k}, 60.0, PEDESTAL) == "dark"
+    assert stats.classify({"level": PEDESTAL + k + 0.25}, 60.0, PEDESTAL) == "light"
+    assert 1.0 < k < 1.75, "the threshold must sit inside the measured gap"
+
+
+def test_the_pedestal_is_what_makes_the_rule_gain_free():
+    """Identical pixels, two gains, two pedestals, two different answers.  This
+    is why the pedestal is an argument and not a constant: 77 counts is a dark
+    at gain 252 and a light at gain 50, and only the pedestal knows which."""
+    frame = {"level": 77.0}
+    assert stats.classify(frame, 60.0, 77.0) == "dark"
+    assert stats.classify(frame, 60.0, 65.0) == "light"
+
+
+def test_an_unknown_pedestal_refuses_rather_than_guesses():
+    """A gain with no bias frame behind it cannot be classified.  Saying so is
+    the point; defaulting to `dark` is how 484 lights got into the last index."""
+    assert stats.classify({"level": 500.0}, 60.0, None) == "unknown"
+    # exposure still settles bias, because it needs no pedestal at all
+    assert stats.classify({"level": 500.0}, 0.001, None) == "bias"
+
+
+def test_a_missing_header_value_cannot_slide_into_the_fallback():
+    """The trap in a `light`-by-default classifier: every comparison against
+    NaN is False, so an unreadable exposure would fall past both branches and
+    be published as a light.  A CSV round-trip turns a missing header into NaN
+    rather than None, so both spellings have to be caught."""
+    for nothing in (None, float("nan")):
+        assert stats.classify({"level": 500.0}, nothing, PEDESTAL) == "unknown"
+        assert stats.classify({"level": 500.0}, 60.0, nothing) == "unknown"
 
 
 def test_a_clipped_frame_falls_back_on_exposure():
     """Identical pixels, different exposures, different answers.
 
-    A clipped frame has no pixel evidence left -- level pins to full scale,
-    sigma and clump to zero -- so this branch is an inference and the test
-    pins down exactly what it infers from.  Every flat in the archive is 1-3 s,
-    so a clipped long exposure is a light that ran into dawn.
+    A clipped frame has no pixel evidence left -- level pins to full scale --
+    so this branch is an inference and the test pins down exactly what it
+    infers from.  Every flat in the archive is 1-3 s, so a clipped long
+    exposure is a light that ran into dawn.
     """
-    dawn = F.scan_frame(tmp_frame("saturated"))
-    blown = F.scan_frame(tmp_frame("blown_flat"))
+    dawn = F.scan_frame(tmp_frame("saturated"), pedestal=PEDESTAL)
+    blown = F.scan_frame(tmp_frame("blown_flat"), pedestal=PEDESTAL)
     assert dawn["sat_frac"] == blown["sat_frac"] == 1.0
     assert dawn["level"] == blown["level"]
     assert dawn["measured_type"] == "light"
@@ -125,27 +170,28 @@ def test_a_clipped_frame_falls_back_on_exposure():
 
 
 def test_saturation_stays_recoverable_as_a_quality_flag():
-    """Folding saturation into the type must not lose it: sat_frac is what
-    downstream excludes on, and it is a stored column."""
-    rec = F.scan_frame(tmp_frame("saturated"))
+    """`sat_frac` is no longer read by `classify` at all (D50), which makes it
+    purely a quality column -- and the one downstream excludes on.  It must
+    still be measured and stored."""
+    rec = F.scan_frame(tmp_frame("saturated"), pedestal=PEDESTAL)
     assert rec["sat_frac"] >= stats.SATURATED_FRAC
-    assert F.scan_frame(tmp_frame("light"))["sat_frac"] < stats.SATURATED_FRAC
+    assert F.scan_frame(tmp_frame("light"), pedestal=PEDESTAL)["sat_frac"] \
+        < stats.SATURATED_FRAC
 
 
 def test_a_bright_long_exposure_is_twilight_not_a_flat():
     """Found in the ladder: 64 frames at gain 252 / 240-480 s sit above the flat
     level cut without clipping.  They are dawn sky, not a panel, and level alone
     cannot tell the difference -- exposure can."""
-    twilight = {"level": 1250.0, "sat_frac": 0.0, "clump_frac": 0.0, "tail_frac": 0.0}
-    assert stats.classify(twilight, 240.0) == "light"
-    assert stats.classify(twilight, 3.0) == "flat"
+    twilight = {"level": 1250.0}
+    assert stats.classify(twilight, 240.0, PEDESTAL) == "light"
+    assert stats.classify(twilight, 3.0, PEDESTAL) == "flat"
 
 
 def test_a_clipped_bias_is_still_a_bias():
-    """Exposure settles bias before the clipping branch is reached."""
-    feats = {"level": float(stats.ADC_FULL_SCALE), "sat_frac": 1.0,
-             "clump_frac": 0.0, "tail_frac": 0.0}
-    assert stats.classify(feats, 0.001) == "bias"
+    """Exposure settles bias before any pixel argument is reached."""
+    feats = {"level": float(stats.ADC_FULL_SCALE)}
+    assert stats.classify(feats, 0.001, PEDESTAL) == "bias"
 
 
 def test_the_label_is_evidence_not_truth():
@@ -155,13 +201,7 @@ def test_the_label_is_evidence_not_truth():
     write_frame(path, "flat")
     with _afits.open(path, mode="update") as hdul:
         hdul[0].header["IMAGETYP"] = "Light"
-    rec = F.scan_frame(path)
+    rec = F.scan_frame(path, pedestal=PEDESTAL)
     assert rec["measured_type"] == "flat"
     assert rec["declared_type"] == "light"
     assert rec["type_agrees"] is False
-
-
-def test_exposure_decides_bias_before_any_pixel_argument():
-    feats = {"level": 65.0, "sat_frac": 0.0, "clump_frac": 0.9, "tail_frac": 0.1}
-    assert stats.classify(feats, 0.001) == "bias"
-    assert stats.classify(feats, 60.0) == "light"

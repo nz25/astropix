@@ -1,8 +1,14 @@
-"""Where things sit in the frame: the Bayer lattice, and bright-pixel shape.
+"""Where things sit in the frame: the Bayer lattice.
 
 The counterpart to `stats.py`.  That module asks how much a set of pixels
-varies; this one asks where they are and what they are next to.  Both work on
-plain arrays and neither opens a file.
+varies; this one asks where they are.  Both work on plain arrays and neither
+opens a file.
+
+One function, for now.  It briefly also held `bright_pixels`, which counted
+pixels above a threshold and asked whether they touched -- the old dark/light
+discriminator.  That test was retired (D50) and the function went with it
+rather than sitting here uncalled; vignetting and source detection will arrive
+here when something needs them, and will not be this.
 
 The rule this module exists to enforce (`CLAUDE.md`): every noise statistic is
 computed on the raw mosaic, split into its four Bayer sub-planes.  Debayering
@@ -25,8 +31,6 @@ import numpy as np
 RGGB_OFFSETS = {"R": (0, 0), "G1": (0, 1), "G2": (1, 0), "B": (1, 1)}
 PLANES = ("R", "G1", "G2", "B")
 
-TAIL_K = 5.0          # sigma above the plane median for "bright pixel"
-
 
 def split(mosaic, pattern="RGGB"):
     """Split a raw CFA mosaic into its four Bayer sub-planes.
@@ -48,25 +52,3 @@ def split(mosaic, pattern="RGGB"):
     h, w = a.shape[0] & ~1, a.shape[1] & ~1
     a = a[:h, :w]
     return {name: a[dy::2, dx::2] for name, (dy, dx) in RGGB_OFFSETS.items()}
-
-
-
-def bright_pixels(plane, thr):
-    """Count bright pixels and how many have a bright neighbour, per axis.
-
-    Splitting horizontal from vertical matters: a hot *column* -- a common CMOS
-    defect -- is vertically connected and would otherwise read as a star.  A
-    real PSF is connected both ways, so the weaker axis is the honest one.
-    """
-    m = plane > thr
-    n = int(m.sum())
-    if n == 0:
-        return 0, 0, 0
-    h = np.zeros_like(m)
-    h[:, 1:] |= m[:, :-1]
-    h[:, :-1] |= m[:, 1:]
-    v = np.zeros_like(m)
-    v[1:, :] |= m[:-1, :]
-    v[:-1, :] |= m[1:, :]
-    return n, int((m & h).sum()), int((m & v).sum())
-
