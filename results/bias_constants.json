@@ -18,13 +18,40 @@
     "note": "pair-difference sigma / sqrt(2), mean over four CFA planes (L10)"
   },
   "project_offset": {
-    "value": 0,
+    "value": 15,
+    "unit": "offset units",
+    "uncertainty": 0,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "the offset this project fixes on and does not sweep again.  A decision, not a measurement, which is why the uncertainty is 0: 10 is the smallest the evidence supports (offset_min_safe) and 15 costs 0.49% more of full scale for it.  Bought: headroom, and commensurability with the 15,090 archive frames, all shot at 15 (L13)"
+  },
+  "offset_min_safe": {
+    "value": 10,
     "unit": "offset units",
     "uncertainty": 5,
     "source_frames": 2790,
     "measured_on": "2026-08-28",
     "notebook": "03_bias_sweep.ipynb",
-    "note": "smallest offset clipping under 0.1% at every gain measured; the arm steps by 5.  ZWO recommend 15 (L13)"
+    "note": "smallest offset passing both tests at every judged gain (0-300): clipped fraction under 0.1% (L13) and at least 15 R of headroom above the floor.  Its own worst headroom is 19.6 R.  The headroom floor is bracketed by measurement, not picked -- offset 5 clips at 13.5 R and offset 10 does not at 19.6 R -- and the arm steps by 5, which is the uncertainty on both. Gain 600 is excluded and published separately: its zero floor survives every offset, so it is telegraph noise, not clipping (L13)"
+  },
+  "offset_zero_clipping": {
+    "value": 0.00057735,
+    "unit": "fraction of pixels reading zero",
+    "uncertainty": 0.00033975,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "why offset 0 is rejected, measured rather than assumed: at gain 0 the pedestal is 2.74 counts, only 4.2 R above the floor, and this fraction of pixels is pinned there.  The uncertainty field carries what a Gaussian of that width would put below the zero code; measured is 1.7x that, and the excess is the non-Gaussian low tail.  It passes a 0.1% test and is still unusable"
+  },
+  "bias_fixed_pattern_ratio": {
+    "value": 1.011,
+    "unit": "spatial sigma / temporal R",
+    "uncertainty": 0.0071,
+    "source_frames": 2790,
+    "measured_on": "2026-08-28",
+    "notebook": "03_bias_sweep.ipynb",
+    "note": "one frame's pixel-to-pixel spread over the pair-difference R, at offset 15, across 77 gains.  At 1.0 the bias carries no fixed pattern worth a master beyond a scalar pedestal -- and it licenses R as the yardstick for the clipping headroom, which is otherwise an assumption"
   },
   "pedestal_per_offset_unit": {
     "value": 4.0032,
