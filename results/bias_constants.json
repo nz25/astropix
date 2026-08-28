@@ -6,7 +6,7 @@
     "source_frames": 2790,
     "measured_on": "2026-08-28",
     "notebook": "03_bias_sweep.ipynb",
-    "note": "lowest gain of the high-conversion-gain branch; the fine grid steps by 2, which is the uncertainty.  ZWO predict 252, the retired project measured 200 (L26)"
+    "note": "lowest gain of the high-conversion-gain branch; the fine grid steps by 2, which is the uncertainty.  ZWO's own published curve annotates 200 (vendor/asi585specs/) and the retired project measured 200 -- one prediction, not two, and this reproduces it.  The 'ZWO say 252' belief has no source; 252 is the ASI2600's threshold (L26)"
   },
   "read_noise_at_hcg": {
     "value": 1.0768,
@@ -81,6 +81,6 @@
     "source_frames": 2790,
     "measured_on": "2026-08-28",
     "notebook": "03_bias_sweep.ipynb",
-    "note": "held for a continuous 10 minutes before the first frame; uncertainty is the sensor's own 0.5 C quantisation"
+    "note": "held in band for a continuous 30 s before the first frame, and every frame outside +/-0.5 C retaken rather than written; uncertainty is the band, which is also the sensor's own quantisation"
   }
 }
