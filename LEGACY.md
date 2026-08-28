@@ -230,11 +230,11 @@ stalled hard — 3.5× at N = 50 against an ideal of 7.1×. The cause was **not*
 noise: the mount drifts and dithers, so the patch looks at different sky in every frame, stars
 wander in, and sigma-clipping hides them from the statistic but not from the mean. Use frames
 where pointing does not exist — bias, darks and flats are perfectly registered by construction.
-**Consumed by.** The stacking-efficiency constant `η`, which MISSION requires be measured rather
-than assumed √N.
+**Consumed by.** The combination-efficiency constant `η_comb`, which MISSION requires be measured
+rather than assumed √N.
 **How to check.** The tell: the stalled curve did not move when flat-field correction was
 applied. Had PRNU been the floor, flat-fielding would have lowered it.
-**Lands in.** `DECISIONS`, as a constraint on how `η` may be measured.
+**Lands in.** `DECISIONS`, as a constraint on how `η_comb` may be measured.
 
 ---
 
@@ -414,8 +414,8 @@ gains — which is a prediction that could have failed.
 **Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
 97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
 the two are 2.9% apart, or 0.041 stops. Adopting the measured limit raised full well by 0.47%.
-**Consumed by.** The linearity measurement; MISSION lists "ADC ceiling / full well" as a
-constant.
+**Consumed by.** The linearity measurement; MISSION lists `ceiling(gain)` / full well as a
+constant, gain-dependent and at or below 4 095.
 **How to check.** A 20-rung ladder from 50% to 115% of the saturating exposure, per CFA channel,
 on a small ROI (see L09 and L12).
 **Lands in.** `results/`, as the clip level every other analysis rejects against.

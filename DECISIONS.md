@@ -1025,3 +1025,65 @@ quality columns answer that, and conflating the two is what a fourth type would 
 **Consequence for the record.** `results/frame_index.csv` must be deleted and `01` re-run; the
 incremental rule keys on file identity, not on code identity, so a refresh would skip every row
 over a stale schema.
+
+---
+
+## 2026-08-28 — Mission review
+
+### D51. `MISSION.md`'s model section keeps the statement and sheds the derivation
+
+**The problem.** `## The model` had grown to ~80 lines and was doing three jobs at once: stating
+the SNR model, *deriving* consequences from it, and *arguing* for a decision already recorded in
+the definition of done. Only the first is mission-level. Worse, the section read as settled —
+same rhetorical register as `## The criterion`, which is a commitment that no measurement can
+overturn — while containing claims that the PTC and gain sweeps can falsify outright.
+
+**What stays in `MISSION.md`.** The equation, `η_comb`'s status as measured, the `R²/t` and
+`t_dead` sentence, the star-colour inequality, and the per-plane point that the exposure floor
+and the clipping ceiling bind on different CFA planes. Plus a new `### What the model assumes` —
+four bullets, each naming the assumption and the sweep that settles it. That list is deliberately
+*in* the canonical document and self-contained: an assumption a bench session must check is a
+live thing, and D13's rule that nothing required lives behind a citation applies to it. The
+argument for each assumption is here; the fact of it is there.
+
+**What moved here: the sky-limited derivation.** MISSION carried the standard form as a
+reassurance that this model reproduces the textbook rule:
+
+```
+SNR(T, t) / SNR(T, t→∞) = sqrt((F_obj + F_sky + D) / (F_obj + F_sky + D + R²/t))
+                        = sqrt(m / (m+1))    when sky dominates, m = F_sky·t / R²
+```
+
+with the familiar anchors 3·R² → 87%, 10·R² → 95%. It is a *special case* of the model, obtained
+by dropping `F_obj` and `D` from the denominator — never an input to it, and nothing consumes it.
+It belongs in the model notebook where it can be plotted against our own denominator, not in the
+spec. Its one load-bearing job — distinguishing this derived quantity from `η_comb`, which is
+measured — survives as the word "measured" on `η_comb` in MISSION and in the constants table.
+
+**What moved here: the three exceptions to gain cancellation.** MISSION listed where the
+`R²/t = F_sky/m` substitution is blocked and gain therefore becomes a live axis:
+
+1. `t` capped, by the mount or by cloud and gust loss — lower `R` is then not paid for by a
+   longer sub, and it is worth real SNR;
+2. the **HCG discontinuity**, where `R` drops without the full well shrinking in proportion, so
+   the usual read-noise-for-well trade does not apply across it;
+3. the star-colour constraint, which binds on full well and therefore on gain directly.
+
+This is rationale for a decision already made — D2's ranking test requires a pair straddling HCG,
+and (2) is why. Rationale is what this file is for. MISSION now states the requirement and the
+cancellation that motivates it; the enumeration lives here.
+
+**Rejected: moving the assumptions here too.** Denis asked for details *and* assumptions to move.
+The details did. The assumptions did not, because this file is cited from nowhere and is opened
+to find out *why* a rule is, never *what* it is. An assumption list that only exists in the
+archive is invisible on the morning of the PTC sweep, which is the one morning it matters. Split
+instead: fact in MISSION, argument here.
+
+**Rejected: a fifth Markdown file for the provisional.** The document set distinguishes canonical,
+archive and Denis's, with no slot for "true today, under test". A subsection with an honest
+heading is cheaper than a file, and `LEGACY.md` — the only existing queue-that-empties — is
+scoped to claims inherited from the retired attempts, which these are not.
+
+**Consequence.** `MISSION.md` goes 148 → 135 lines; the model section proper goes ~80 → ~45, and
+the 20 lines it gained back are the assumption list, which is new. No code, no constants and no
+`results/` artifact is affected — nothing in the package had consumed the derivation.
