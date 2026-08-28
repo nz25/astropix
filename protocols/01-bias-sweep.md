@@ -41,8 +41,15 @@ adjacent distinct values is **16 on all four CFA planes**. Greens at 16 with red
 
 ### Gate 2 — the cooler holds
 
-−10 °C, held in band for a continuous 10 minutes before the first sweep frame, judged by the
-temperature trend and not by duty cycle (L03, L04).
+−10 °C, held in band (±0.5 °C) for a continuous **30 seconds** before the first sweep frame,
+judged by the temperature trend and not by duty cycle (L03, L04).
+
+Thirty seconds, not the ten minutes this protocol first asked for. Measured 2026-08-28,
+`data/session01/cooldown.csv`: first in-band reading at 571 s and **zero excursions in the 600 s
+that followed** — this TEC approaches monotonically and does not ring, so a window sized for
+ringing was measuring nothing. What the long window incidentally provided was a settled duty
+cycle; 30 s releases at −9.5 °C with duty still climbing, and that is now the capture loop's
+problem to solve (below) rather than this gate's. **The two changes are load-bearing together.**
 
 **The whole session runs in one kernel.** Closing the camera drops the cooler — measured
 2026-08-28: `CoolerOn` set to 1, closed, reopened, reads 0, while `Gain` and `Offset` persist
@@ -58,6 +65,24 @@ The ROI is also a disk decision: full frame would cost 16 MB a frame and C: is t
 
 Discard the **first 2 frames after every gain or offset change** and do not write them.
 
+**Gap of 0.2 s between sweep exposures, and a temperature check after every frame.** The bias
+exposure is 32 µs, so the cadence — and the sensor's self-heating — is entirely readout, USB and
+the file write. The first run shot back to back at ~9 fps and held the sensor a full degree above
+setpoint from 15 s into block 1 to the end of it: 1,083 consecutive frames out of band, while
+blocks 3 and 4 at the same rate were clean. That is a control-loop transient, not a capacity
+limit — the TEC settled at 67% duty with headroom to spare.
+
+A frame whose header says it was shot outside the band is **not written — it is retaken.** At
+32 µs a retake costs the readout and nothing else, and what lands on disk is exactly the planned
+frame count per setting, all in band, needing no exclusion rule downstream to stay honest. A
+reading on the *warm* side of the band additionally **holds the run** before retaking: keep
+shooting discards — never idle, or the duty winds back down and the transient repeats on resume
+— until the sensor has been in band for a continuous `asi.RECOVER_S` (10 s). The cold side
+passes on its own; that is the TEC undershooting.
+
+**Both waits are bounded, and neither bound is a band to widen.** A hold past 300 s, or 10
+retakes of one frame slot, stops the session: check ambient and the fan.
+
 | block | offset | gains | frames each | notes |
 |---|---|---|---|---|
 | 1 — coarse | 15 | 0 to 600 step 10 (61) | 20 | the main sweep |
@@ -65,7 +90,9 @@ Discard the **first 2 frames after every gain or offset change** and do not writ
 | 3 — offset arm | 0, 5, 10, 20, 25, 30, 35, 40, 45, 50 | 0, 50, 100, 190, 200, 252, 300, 600 | 10 | offset 15 is covered by block 1 |
 | 4 — drift trace | 15 | 100 only | 450 | one frame every **2 s for 15 minutes** |
 
-≈ 2,900 frames, ≈ 6 GB. Under an hour of capture after the cooling settle.
+≈ 2,900 frames, ≈ 6 GB. ≈ 29 min of capture after the settle — 14 min of sweep at the 0.2 s gap
+plus the 15 min the drift trace paces itself over. The gap costs about what the shorter Gate 2
+window gives back, so the session is no longer than the first run.
 
 **Offset 15 is ZWO's recommended value and the anchor of the whole archive** — all 15,090
 readable frames were shot there. It is therefore a hypothesis with a strong prior, not a

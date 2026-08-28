@@ -54,7 +54,19 @@ RAW16 = 2                 # ASI_IMG_RAW16; resolved from the SDK when there is o
 # and a tighter one would be unsatisfiable except at the exact code.  The number
 # it guards against is the archive's 2,132 frames more than 1 C off setpoint.
 BAND_C = 0.5
-SETTLE_S = 600.0          # a TEC overshoots and rings; in-band once is not settled
+# 600 s here was buying protection against a ring this TEC does not have.
+# Measured 2026-08-28, `data/session01/cooldown.csv`: first in-band reading at
+# 571 s and *zero* excursions in the 600 s that followed -- the approach is
+# monotonic, -9.5 for 40 s and then -10.0 flat.  30 s does release at the warm
+# edge (-9.5, duty still climbing 64 -> 67%), which on its own is how a sweep
+# starts warm; what makes it safe is RECOVER_S below, which turns that release
+# into a few seconds of holding rather than a whole block shot off setpoint.
+SETTLE_S = 30.0
+# Continuous in-band time before a held capture run resumes.  Short on purpose:
+# this is not a cool-down, it is waiting out the sensor self-heating that
+# ~9 fps of readout causes, and the loop that waits keeps shooting so the
+# cooler is never allowed to wind back down to its idle duty.
+RECOVER_S = 10.0
 TREND_S = 60.0            # falling after a minute is the only cooler test that works
 TREND_MIN_FALL_C = 1.0    # ~3 C/min from ambient, so a minute is a wide margin
 
@@ -234,10 +246,14 @@ def cool_to(rig, setpoint=SETPOINT_C, *, band=BAND_C, settle_s=SETTLE_S,
             _sleep=time.sleep, _now=time.monotonic):
     """Cool, and return only once the temperature has *stayed* in band (L04).
 
-    Two failures this guards against.  A TEC overshoots and rings, so the first
-    touch of the setpoint is the middle of a swing, not the end of one -- the
-    settle window requires `settle_s` of *continuous* in-band readings and
-    restarts the clock on any excursion.  And a hard-killed process leaves the
+    Two failures this guards against.  A TEC can overshoot and ring, so the
+    first touch of the setpoint need not be the end of a swing -- the settle
+    window requires `settle_s` of *continuous* in-band readings and restarts
+    the clock on any excursion.  This one measurably does not ring (see
+    `SETTLE_S` above), which is why the window is 30 s and not the 600 s that
+    a ringing cooler would need; the mechanism stays because the next camera,
+    or this one in a warmer room, is not covered by one night's trace.  And a
+    hard-killed process leaves the
     TEC latched off until the 12 V is physically replugged (L03), which looks
     exactly like a slow cool; the trend test catches it in a minute, because
     diagnosing a cooler by its duty cycle is what does not work.
