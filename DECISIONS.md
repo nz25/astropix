@@ -772,3 +772,80 @@ earlier record described the strays as "300 frames, 60 s only" and missed it.
 Sky is otherwise consistent within a gain: median level at the 15 s rung varies under 4% across
 the gain-50 nights and under 5% across the gain-252 nights. All frames commanded −10 °C, all
 achieved between −10.5 and −9.0 °C — the one temperature-consistent subset in the archive.
+
+### D46. Two rules that were only ever habits: stripped notebooks, and no unreviewed commits
+Both were already true in practice and neither was written anywhere a session would find it.
+
+**Notebooks are committed with outputs stripped.** D13 has said so since the repo was laid out,
+but D13 is the archive now, there is no `nbstripout` filter configured, and notebook 01 reached
+the staging area with six cells of execution outputs during this session — caught by looking,
+not by anything checking. The rule moves to `CLAUDE.md` where a live rule belongs, states plainly
+that stripping is a manual step before staging, and `tests/test_record.py` now asserts it.
+
+The test reads **`HEAD`, not the working tree**. A working copy full of outputs is the normal
+state right after a run, and a suite that goes red every time `01` finishes is a suite that gets
+ignored; what must never happen is that state reaching a commit. An `execution_count` fails on
+its own, without outputs beside it — that is the half left behind when someone clears outputs by
+hand, and a notebook carrying it looks clean in a diff while it is not.
+
+**Nothing is committed without Denis's review and explicit confirmation.** The realistic failure
+is not a commit from nowhere, it is reading "that looks right" as a green light, so the clause
+says in as many words that silence is not confirmation and neither is an approving remark. It
+covers `push`, `amend`, `rebase` and `reset`, because a rule naming only `commit` is satisfied by
+an amend — which is worse, since an amend rewrites something already reviewed. And it is not
+waived by a previous session having said yes: approval attaches to a change, not to a habit.
+
+This is the first rule in `CLAUDE.md` that no test can assert, because it constrains behaviour
+rather than an artifact. Recorded here so that limitation is deliberate rather than an oversight
+someone later tries to "fix" with a hook.
+
+**Rejected:** configuring a `filter.nbstripout` clean filter instead of the test. It would
+prevent rather than catch, which is better — but it rewrites content silently on the way into
+git, and this repo's habit is to assert rules visibly rather than hide them in machinery. Worth
+revisiting if stripping is ever missed twice.
+
+### D47. Notebook 02 re-executed against the ADC-count index, and what a unit change broke in it
+D41 renamed `stats.FULL_SCALE` to `ADC_FULL_SCALE`. **`notebooks/02` referenced the old name and
+had been broken since a7d81ab** — nothing noticed, because the test suite reads notebook JSON
+for `results/` writers and never executes a cell. Re-running it was the first time anyone found
+out.
+
+Four more things were wrong in it, all the same species: a unit convention changed and the
+notebook's *prose* was updated last session while its *arithmetic* was not.
+
+- **The raw-pixel branch was still in stored units.** `F.sample_blocks` returns stored values
+  deliberately (converting in the reader would destroy the evidence for the check that licenses
+  converting), so 02 must convert, and did not. It now calls `ST.to_adc` once where the blocks
+  arrive. The quantisation demonstration printed `MAD = 16 -> sigma = 23.72` directly under
+  markdown asserting 1.4826, and the bright-pixel figure applied `max(sig, 1.0)` to stored values
+  — a sixteenth of a quantiser step, which is the exact wrong-semantics D41 was written to fix.
+- **A threshold silently loosened 16x.** `sigma < 100` meant 6.25 counts when it was written and
+  100 counts once the index converted, turning a claim about 70% of frames into one about 98%.
+  Replaced with a threshold expressed in rungs, which cannot rot the same way.
+- **`0.9% of the frame` was wrong by 10x.** Six 32-row blocks of a 2160-row frame is 8.9%, and
+  `sampled_px` now says so in the notebook rather than being left to arithmetic.
+- **The `35x` figure does not exist in the data.** `stats.py`'s docstring and `01` both claimed
+  the pooled `std` runs about 35x the per-plane `sig_*` on an archive flat. **No flat in the
+  archive reaches 19x** — the distribution is a median of 14.5x, a maximum of 18.9x, and 02's own
+  exemplar flat is 5.6x. Corrected in both places to the measured distribution. The claim was
+  never checked against the index; it is retracted rather than adjusted.
+
+**02 also gains the section it was missing.** `01` forward-referenced "see `02`, where `std` sits
+next to `sig_*`" and 02 had no such content: the six summary columns D44 added were unexplained,
+which contradicts 02's agreed purpose of explaining the measured columns. It now covers them, and
+the ratio turns out to be worth having on its own — **bias and dark sit at 0.6-1.2x, where the
+pooled and per-plane spreads agree because there is no colour, and everything with colour sits
+above 5x.** That makes the ratio a light-leak detector: a "dark" reading 5 saw light.
+
+**The lesson, and it is not about units.** Nothing in this repo executes a notebook. A notebook
+can reference a symbol that no longer exists, print a number that contradicts the paragraph above
+it, and pass every test — because the tests read notebooks as JSON, never as code. That is a real
+gap in "the record is the only thing that survives a restart", and it is why 02 is now re-run
+whenever the library's public names or units change, not merely re-read.
+
+**Rejected for now:** executing notebooks in the test suite. It needs `Z:`, takes minutes, and
+the suite is deliberately runnable on a copy that has neither the archive nor a checkout.
+**Left open:** a cheap middle path — a test that parses `ST.`/`F.`/`S.` attribute references out
+of the notebook JSON and asserts each one still exists in the package. That would have caught
+`FULL_SCALE` in milliseconds with no frames and no kernel. Not written yet, and not written
+without agreeing it first.

@@ -19,8 +19,9 @@ of that line is in counts; nothing below needs to remember a factor of 16.
 `max`, `std` over the pooled sample -- which exists for orientation and for
 notebook `02`, not for the classifier, which reads none of it.  **`std` there is
 across the CFA planes and is therefore dominated by channel balance**, not by
-noise: on an archive flat the R-to-G offset is ~35x the per-plane spread, on a
-light ~4x.  `sig_*` is the uncontaminated per-plane counterpart.  That gap is
+noise: across the archive it runs a median 14.5x the per-plane `sig_*` on flats
+and 10.3x on lights, while on bias and dark -- which have no colour -- the two
+agree at 0.6-1.2x.  `sig_*` is the uncontaminated per-plane counterpart.  That gap is
 the whole reason D4 exists, and the two columns sit side by side so it can be
 seen rather than asserted.
 
