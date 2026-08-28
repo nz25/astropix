@@ -86,6 +86,7 @@ Notebook purposes, as agreed:
 | notebook | exists to |
 |---|---|
 | `01_frame_index` | index the historic frames on `Z:` — material of varied reliability, useful as **test data** for exercising code against real pixels, and as the route into the NGC 7000 exposure-ladder set |
+| `02_index_columns` | explain the *measured* columns of `results/frame_index.csv` — one frame of each type, the pixels behind each number, and what each column is and is not evidence for. A reading aid for `01` and `stats.py`; it measures nothing and writes nothing |
 
 ## Library budget
 
