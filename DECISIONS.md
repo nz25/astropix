@@ -849,3 +849,99 @@ the suite is deliberately runnable on a copy that has neither the archive nor a 
 of the notebook JSON and asserts each one still exists in the package. That would have caught
 `FULL_SCALE` in milliseconds with no frames and no kernel. Not written yet, and not written
 without agreeing it first.
+
+### D48. The off-diagonal cell resolved, and the frame-type rule scoped to the archive
+*2026-08-28.*
+
+**Two changes to the same rule.** D18 said frame type is determined from pixels, not from
+`IMAGETYP`, and said it about every frame. It was only ever an argument about `Z:` — a year of
+ordinary imaging shot before this project had conventions, where dark folders mix gain and
+temperature and some darks carry a Light subframe type. Frames captured *for* this project land
+in `data/` under a protocol that sets the subframe type deliberately. **Their declared type is
+trusted.** Running a classifier on them is a diagnostic worth reaching for when a bench run looks
+wrong, not a gate every frame must pass; a project that does not trust its own capture protocol
+has a protocol problem, not a classification problem.
+
+**The blind spot is resolved, and it was four populations wearing one number.** 684 frames
+labelled `light` measured as `dark`. A dozen of each group opened whole:
+
+- **200 genuine darks.** Gain 252, object `FOV`, sitting in `dark/002` and `dark/003` under a
+  Light subframe type. Level exactly 77.000 on all 200 — the gain-252 pedestal — spread at the
+  MAD floor, `block_spread` 0. The classifier was right.
+- **117 genuine lights.** Gain 252, `Barnard142`, level 304-613 against that same pedestal of 77.
+- **150 genuine lights.** Gain 50, level ≥ 85 against a pedestal of 65; whole-frame star
+  clumping 0.86-0.96.
+- **141 blanks.** Gain 50, level ≤ 75, spread at the MAD floor, no clumped bright pixels at full
+  frame. Lights by intent that caught neither sky nor stars. `dark` is honest about the pixels,
+  but at 4-10 counts above the gain-50 pedestal they are not usable as darks either — a third
+  category the index has no word for.
+- 76 more at level 75-85, mixed, whole-frame clumping averaging 0.30.
+
+**The prior text was wrong about its own numbers**, and the correction matters more than the
+count. It claimed all 317 gain-252 frames "sit exactly on the pedestal"; only 200 do, and the
+other 117 are five times above it. It warned that darks "may be contaminated by up to 317" when
+the 200 are the soundest darks in the group and the contamination is 141 frames at the *other*
+gain. Reading the level column would have shown this at any point. The lesson is that a
+disagreement between two labels is not a finding — the pixels are the finding, and nobody had
+looked at them.
+
+**The cause is a self-referential threshold.** `bright_pixels` is called at `med + 5·sigma` with
+sigma being that frame's own MAD. Sky raises the MAD, which raises the star threshold, which
+empties the tail; `tail_frac` goes to zero, `clump_frac` divides by nothing, and `classify` falls
+through to its terminal `return "dark"`. **The brighter the sky, the more star-blind the test
+becomes** — the failure lands hardest on the frames with the most signal, which is why the worst
+cases name real targets. Re-measured with the threshold pinned to the dark MAD floor, whole-frame
+clumping across the gain-50 level bins runs 0.00 → 0.02 → 0.30 → 0.86 → 0.84 → 0.96, and the
+transition sits where the sky lifts off the pedestal.
+
+**Not fixed here, deliberately.** The repair is a threshold that does not scale with the frame's
+own sky, and that is physics in `stats.py` plus a rebuild of `results/frame_index.csv`. Both are
+a build step, agreed before written. Until then the selection warning stands, corrected:
+`measured_type == "light"` is short by 267 real lights and up to 76 more, and
+`measured_type == "dark"` is contaminated by 141 blanks and not by the 200 `FOV` darks.
+
+**Rejected:** classifying on `level` above a per-gain pedestal. It reads as the obvious fix and it
+is unavailable — the pedestal is a measured constant this project has not measured yet (it is the
+offset sweep, build step 3), and hard-coding 65 and 77 from the index would put an unprovenanced
+constant inside the classifier that produced the index. **Left open:** whether the 141 blanks earn
+a fourth measured type. They are neither light nor dark in any usable sense, and calling them
+`dark` is what would put them in a master.
+
+### D49. `LEGACY` loses its `Source` field, and CLAUDE.md stops arguing from the dead projects
+*2026-08-28.*
+
+`astro/` and `learn_astro/` have been deleted from disk. Three consequences, taken deliberately.
+
+**`Source` is dropped from the `LEGACY` schema — five fields become four.** Its stated meaning
+was "which repo and file, so it can be re-read", and there is nothing left to read. A field that
+names an unreachable file is not provenance, it is decoration, and 32 entries carried one.
+`tests/test_record.py` enforces the four-field schema and records why the fifth went. Four
+fragments were folded into their claims first, because they were content wearing a provenance
+label: the patch page's screen wake lock; the conflicting short `-r=` CLI form; the warning that
+the PixInsight noise-estimator numbers cannot be reproduced because their frames are gone; and
+one dead `How to check` that told a reader to run a script that no longer exists.
+
+The header now says plainly that no claim can be re-read at its origin. **That is the real
+change.** `LEGACY` was written assuming an entry that looked wrong could be checked against its
+source; with that closed, the cost of a bad transcription goes from "go look" to "reshoot", and
+a file whose whole job is to be believed provisionally has to say so at the top.
+
+**`CLAUDE.md` stops justifying its rules by the retired projects.** Scope discipline and the
+recording rules were each argued from "the previous two attempts died of it". A rule that leans
+on a story about dead code is a rule a reader can discount once the code is gone; both now assert
+the principle directly. The retired attempts survive in this file, which is where history
+belongs.
+
+**The archive is described once, and the description shrank.** `Z:` had been spread across a
+frame-type rule, a "two data sources" rule, a reshoot rule, a freeze rule and an `Environment`
+entry. All of it is now nested under the two-sources rule, in the order source-then-properties,
+with the archive second — because *no published constant comes from it*, a sentence that was
+nowhere and is the thing that makes the rest safe to condense. Nesting the frame-type rule under
+the corpus it governs also removed the scope caveat added earlier the same day: the nesting says
+it. `Environment` lost the duplicate archive entry, the ASI SDK path, and a free-space figure
+that would have gone stale.
+
+**Rejected:** keeping `Source` in a compressed form that preserved the date and the kind of note
+(`gotchas` versus `measurements`). It is defensible — the date says how stale a claim is — but it
+keeps a field alive for a fraction of its purpose, and `LEGACY` is a queue that exists to be
+emptied, not a bibliography.

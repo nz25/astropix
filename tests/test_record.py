@@ -85,7 +85,10 @@ def test_only_numbered_notebooks_write_to_results():
 # D13's four-file rule exists to prevent.  These tests make "queue, not library"
 # a property the suite checks rather than a habit anyone has to remember.
 
-LEGACY_FIELDS = ("**Claim.**", "**Source.**", "**Consumed by.**",
+# `Source` was dropped when `astro/` and `learn_astro/` were deleted: a field
+# whose stated purpose was "so it can be re-read" is dead once there is nothing
+# left to read.  What remains is a claim and the work it implies.
+LEGACY_FIELDS = ("**Claim.**", "**Consumed by.**",
                  "**How to check.**", "**Lands in.**")
 
 

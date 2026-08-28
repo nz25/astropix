@@ -34,9 +34,9 @@ once, so a new session knows not to reach for them, and are cited from nowhere:
 ## The user
 
 Denis. Fluent in Python — do not explain the language. He wants the *signal-processing
-reasoning* made explicit, and intuition over formalism. Two prior attempts at this project
-(`astro/`, `learn_astro/`, both retired) died of scope growth. Scope discipline is a feature
-request, not pedantry.
+reasoning* made explicit, and intuition over formalism. **Scope discipline is a feature request,
+not pedantry** — a measurement that pins down no term in the model is not a harmless extra, it
+is the thing that stops the model ever being finished.
 
 ## Rules that are not negotiable
 
@@ -62,27 +62,29 @@ request, not pedantry.
     white-balance step-of-16 diagnostic in `protocols/bench-setup.md`, which goes vacuous in ADC
     counts; and the PixInsight boundary, where PI normalises by 65535, so a PI value converts as
     `v * 65535 >> 4` and **never** as `v * 4095` (L20 — 65535/16 is 4095.9375).
-- **Trust neither folder nor `IMAGETYP` for frame type — determine it from the pixels.** Dark
-  folders mix gain and temperature inside one exposure folder, *and* some flats and darks were
-  captured under a Light subframe type. Capture settings in the header (gain, offset, exposure,
-  set-temp, achieved temp) are trusted; the type label is not.
-  - **The classifier has one known blind spot, and it is not resolved.** 684 archive frames
-    labelled `light` measure as `dark` — the only off-diagonal cell in the index. 317 at gain 252
-    sit exactly on the pedestal and look like genuine darks shot under a `Light` subframe type;
-    367 at gain 50 carry real signal above pedestal and name bright targets, but show no
-    connected bright structure, so they may be lights the clump test missed. Until a dozen of
-    each are opened whole, **anything selecting `measured_type == "light"` may be short by up to
-    367 frames at gain 50**, and anything selecting darks may be contaminated by up to 317.
-- **Two data sources, and only one of them owes us anything.** `Z:` holds ~15,000 historic
-  frames shot across a year of ordinary imaging, before this project or any of its conventions
-  existed: mixed setpoints, mixed gains, labels that do not always match the pixels. That is a
-  **test corpus**, not a controlled dataset, and it is not expected to comply with anything here.
-  Frames captured *for* this project — bench runs and deliberate on-sky tests — are shot to a
-  protocol and land in `data/`.
-- **If archive data or a classifier verdict looks unreliable, reshoot.** Reasoning around
-  suspect frames costs more than re-taking them and leaves a number nobody can defend.
-- **The archive is frozen while an analysis is producing numbers for `results/`.** Refresh the
-  index between runs, never during. New frames land in `raw\_inbox\`, not in the archive.
+- **Two data sources, and only one of them owes us anything.**
+  1. **`data/` — frames captured for this project.** Bench runs and deliberate on-sky tests, shot
+     to a protocol in `protocols/` at -10 C. Gitignored. **Headers are trusted in full, type
+     label included**, because the protocol is what set them. Every published constant comes from
+     here.
+  2. **`Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — the historic archive.** 15,102 frames
+     from a year of ordinary imaging, shot before this project or any of its conventions existed.
+     It is a **test corpus** — real pixels to exercise code against, and the route into the
+     NGC 7000 exposure ladder — and **no published constant comes from it**. Mixed gains,
+     exposures and setpoints (it holds -20 C material; the -10 C convention came later). Indexed
+     in `results/frame_index.csv`.
+     - **Trust neither folder nor `IMAGETYP` for frame type — determine it from the pixels.** Dark
+       folders mix gain and temperature inside one exposure folder, *and* some flats and darks
+       were captured under a Light subframe type. Capture settings (gain, offset, exposure,
+       set-temp, achieved temp) are trusted; the type label is not.
+     - **The classifier is wrong in one direction: it calls sky-flooded lights `dark`.** Its
+       bright-pixel threshold scales with the frame's own spread, so a bright sky raises the bar
+       until no star clears it. **A selection on `measured_type` is a starting point, not a
+       warrant.**
+     - **Frozen while an analysis is producing numbers for `results/`** — refresh the index
+       between runs, never during. New frames land in `raw\_inbox\`, not in the archive.
+     - **If a frame or a verdict looks unreliable, reshoot.** Reasoning around suspect frames
+       costs more than re-taking them and leaves a number nobody can defend.
 - **If something cannot be done properly, say so and state the fallback.** Never substitute a
   mismatched dark, flat or constant silently.
 - **A measurement must name the model coefficient it pins down.** If a sweep does not feed a term
@@ -90,8 +92,8 @@ request, not pedantry.
 
 ## How work is recorded
 
-These are rules, not conventions. The previous two attempts at this project died because
-work outran the record of it, and the record is the only thing that survives a restart.
+These are rules, not conventions. **The record is the only thing that survives a restart**, and
+work that outruns its record is work that has to be done again.
 
 - **Reusable code lives in the `astropix/` package.** If a function will be called twice, it
   belongs in a module with a test. One-off analysis belongs in a notebook and stays there.
@@ -175,12 +177,11 @@ vendor/       third-party binaries, licence beside each
   photutils 3.0.0, sep, jupyterlab 4.6.3, zwoasi 0.2.0.
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
 - ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, MIT), loaded with
-  `zwoasi.init(...)` from `asi.py`. Full SDK at `C:\Users\denis\Documents\ASI SDK`.
-- Historic archive (test corpus): `Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` —
-  15,102 frames, indexed in `results/frame_index.csv`.
-  **C: has ~12 GB free.** Nothing bulky lands on C:.
-- Retired attempts `astro/` and `learn_astro/` still exist on disk. **Their data is not
-  used**; their *claims* are in `LEGACY.md` as hypotheses to check.
+  `zwoasi.init(...)` from `asi.py`.
+- **C: is the working drive and it is tight.** Everything this project writes lives there —
+  `data/`, caches, intermediates — inside a budget of a few tens of GB, so intermediates are
+  disposable and a run cleans up after itself. **The archive stays on `Z:` and is never copied
+  to C:.**
 
 ## The rig
 
@@ -189,6 +190,5 @@ on a SharpStar SQA55 (263-264 mm, f/4.8), ZWO AM5N mount, ASIAIR Plus, ZWO EAF.
 32 mm f/4 guide scope. No filters.
 
 **Cooling: -10 C** for every bench run and for the model's first pass, which treats temperature
-as fixed rather than as an axis. That is a project convention adopted *after* most of the
-archive was shot, and a simplification to be revisited when the thermal term is explored, not a
-property of the historic data (which also contains -20 C material).
+as fixed rather than as an axis — a simplification to be revisited when the thermal term is
+explored.

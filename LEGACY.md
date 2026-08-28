@@ -1,6 +1,6 @@
 # Legacy
 
-Claims inherited from the two retired attempts at this project, `astro/` and `learn_astro/`.
+Claims inherited from the two retired attempts at this project, both now deleted.
 
 **This file is a queue, not a library. It exists to be emptied.** Nothing here is knowledge this
 project holds; it is knowledge someone else's project claimed, kept because rediscovering it
@@ -12,13 +12,12 @@ Entries are cited by number from wherever they land — `results/`, `CLAUDE.md`,
 `protocols/`, `pjsr/` — so the trail survives after this file is gone. A measured number lands in
 `results/` with its provenance, never in prose alone.
 
-**Schema.** No entry is admitted without all five fields. `Consumed by` and `Lands in` are what
+**Schema.** No entry is admitted without all four fields. `Consumed by` and `Lands in` are what
 make the queue drain; an entry without them is a note, not a work item.
 
 | field | meaning |
 |---|---|
 | **Claim** | what the retired project believed |
-| **Source** | which repo and file, so it can be re-read |
 | **Consumed by** | the build step that needs it |
 | **How to check** | the specific test, not "verify this" |
 | **Lands in** | where it goes when confirmed |
@@ -27,9 +26,11 @@ make the queue drain; an entry without them is a note, not a work item.
 anything already independently confirmed here (the 12-bit shift, MAD on quantised data); and
 method aphorisms, which are writing advice rather than hypotheses.
 
-**Nothing here has been verified by this project.** The retired numbers came from a different
-codebase without this project's provenance discipline, and `learn_astro/kb/measurements.md`
-retracts at least one of its own published fits. Treat every number as a prediction to falsify.
+**Nothing here has been verified by this project, and there is nothing left to check it
+against.** The retired trees are gone; these entries are all that remains of them, so no claim
+can be re-read at its origin. The numbers came from a codebase without this project's
+provenance discipline, and that codebase retracted at least one of its own published fits.
+Treat every number as a prediction to falsify — there is no longer anywhere to appeal.
 
 ---
 
@@ -42,7 +43,6 @@ raw. Two consequences: red and blue gains come out scaled, so one sensor looks l
 three; and the multiply is integer arithmetic, so output lands on a stretched lattice and the
 rounding perturbs the very noise statistics being measured. Read noise came out ~17% high at
 every gain until it was neutralised.
-**Source.** `learn_astro/kb/gotchas.md`, confirmed 2026-08-25.
 **Consumed by.** Build step 6, before the first bench frame — this invalidates everything
 captured before it is fixed.
 **How to check.** Read `WB_R`/`WB_B` from the SDK on open. Independently, the fingerprint on a
@@ -59,7 +59,6 @@ driver underneath. Installing only the SDK gives the confusing state where `zwoa
 succeeds and `get_num_cameras()` returns 0. Separately: **the ASIAIR claims the camera
 exclusively over USB** — powered on with the camera attached, the PC will not see it regardless
 of drivers.
-**Source.** `learn_astro/kb/gotchas.md`, hit 2026-08-25.
 **Consumed by.** Build step 6, first attempt to open the camera.
 **How to check.** `Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_03C3' }`
 — ZWO's vendor ID; the ASI585MC Pro is `PID_585F`. A healthy camera shows `Status: OK` with a
@@ -73,7 +72,6 @@ lookup on the wrong name returned a hard 0 forever. (b) **`ASI_TEMPERATURE` read
 the cooler is switched on** — it is not a live thermometer on an idle camera, and an exposure
 does not wake it. (c) **A hard-killed process leaves the TEC latched off** until 12 V is
 physically unplugged and replugged.
-**Source.** `learn_astro/kb/gotchas.md`, 2026-08-25.
 **Consumed by.** Build step 6, the cooling routine.
 **How to check.** Enumerate the controls and read the names back. Then diagnose cooling **by the
 temperature trend, not the duty cycle**: command the cooler on, watch the sensor temperature for
@@ -86,7 +84,6 @@ temperature trend, not the duty cycle**: command the cooler on, watch the sensor
 several minutes to reach −10 °C. A TEC **overshoots and rings**, so sampling at first touch of
 the setpoint starts a sweep on a drifting temperature; require the temperature to stay in band
 for a continuous settle period before returning.
-**Source.** `learn_astro/kb/gotchas.md`, measured 2026-08-25.
 **Consumed by.** Build step 6, and every bench protocol.
 **How to check.** Log temperature every second from cooler-on to settled; the curve is the
 answer. Our own archive already shows the failure mode this guards against — 2,132 frames more
@@ -98,7 +95,6 @@ than 1 °C off setpoint (`results/frame_index.csv`).
 any ROI must have **even x and y origin and even width and height**, or the Bayer phase shifts
 and "the red pixels" are no longer where the header says. The retired PTC used 1024×1024 at
 origin (1408, 568), both even.
-**Source.** `learn_astro/kb/measurements.md` and `gotchas.md`, read from the SDK 2026-08-25.
 **Consumed by.** Build step 6, sweep planning.
 **How to check.** Read the gain control's range from the SDK. For the ROI, assert evenness in
 code — it is a one-line guard, and `spatial.split` already assumes RGGB phase.
@@ -117,9 +113,8 @@ sleeping screen dims on the way down), **Night Shift** (warms colour balance on 
 hitting each Bayer channel differently). LCD is the favourable case — backlight and attenuation
 are separate layers, unlike OLED. **Run at 100% brightness and attenuate with paper and grey
 level**: LED backlights are PWM-dimmed at reduced brightness and closer to constant-current at
-full, so maximum brightness is the *least*-flickering setting.
-**Source.** `learn_astro/kb/gotchas.md`; `lessons/0001-sensor-three-numbers/grey-patch.html`
-holds the patch page and requests a Screen Wake Lock.
+full, so maximum brightness is the *least*-flickering setting. The patch page must also hold a
+screen wake lock, or the panel sleeps mid-run.
 **Consumed by.** Build step 6, first bench session.
 **How to check.** Capture an exposure ladder and fit `variance = signal/g + R²`; a flickering
 point sits *above* the line. The retired run found no measurable flicker from 1 ms to 200 ms,
@@ -131,7 +126,6 @@ r² = 0.999971.
 blocks it. Fitting `L = leak + k·value^2.2` gave a backlight leakage of 6218 ADU/s against 3359
 from grey 48 and 731 from grey 24. Predicted flux at grey 1 is 6219 ADU/s, i.e. **1.12× less
 than grey 24, and that is the entire remaining range**. Below ~25%, attenuate optically instead.
-**Source.** `learn_astro/kb/gotchas.md`, confirmed by a failed prediction 2026-08-25.
 **Consumed by.** Build step 6, when setting flux for a sweep.
 **How to check.** Two grey levels and a flux measurement each; the tell is the implied exponent.
 Fitting `L = k·value^g` to two points gave g = 0.46, and an exponent below 1 is not a display
@@ -144,7 +138,6 @@ gamma at all — that mismatch is the signature of an additive floor.
 sheet scatters light forward as well as backward, so part of what sheet *n* rejects is passed on
 by sheet *n+1*. Any per-sheet figure is valid only at the depth it was measured; extrapolating
 1.5× per sheet came up 1.1× short and needed a seventh sheet.
-**Source.** `learn_astro/kb/gotchas.md`, confirmed by a failed prediction 2026-08-25.
 **Consumed by.** Build step 6, sweep pre-flight.
 **How to check.** Do not predict — measure the flux directly in the pre-flight, which takes under
 a minute, and solve for the saturating exposure at every gain from the measured value.
@@ -156,7 +149,6 @@ saturates ~4% of exposure before the dim one. For a measurement defined as a 1% 
 straight line, that smears the bend over more range than the effect. Central 512 gives 1.25%;
 central **256 gives 0.53%**. Use a small ROI for linearity — and note this does *not* affect the
 PTC, which differences frame pairs and is blind to fixed pattern.
-**Source.** `learn_astro/kb/measurements.md`, linearity run 2026-08-26.
 **Consumed by.** The linearity measurement, whenever scheduled.
 **How to check.** Measure peak-to-peak variation across a real flat at each candidate ROI size.
 **Lands in.** `protocols/` for the linearity session.
@@ -173,7 +165,6 @@ points swamps it. A linearly-spaced sweep from 500 to 35 000 e⁻ returned **7.1
 3.0 e⁻** while the gain from the same fit was accurate to 3%. Two fixes: measure read noise
 directly from a bias pair and pass it in; and **log-space the exposure ladder** so several points
 sit near zero signal where the intercept is actually constrained.
-**Source.** `learn_astro/kb/gotchas.md`, confirmed in simulation 2026-08-25.
 **Consumed by.** Build step 3, PTC design — this determines the ladder before any frame is shot.
 **How to check.** Fit a synthetic PTC with a known intercept, linear vs log spacing, and compare
 the recovered read noise. A test, not a bench night.
@@ -185,7 +176,6 @@ retained as a cross-check rather than as the answer.
 level, recovered the bench constants from Denis's own ASIAIR archive: read noise within **0.62%**
 and system gain within **1.23%** of a full 61-point bench sweep. Per-channel gains agreed to
 0.6% across channels carrying half the signal of one another.
-**Source.** `learn_astro/kb/measurements.md`, Lesson 00, 2026-08-26.
 **Consumed by.** Build step 3 — a cross-check on the bench PTC that costs no bench time, since
 the archive already holds the frames.
 **How to check.** Run it on our own indexed archive at gain 50 and 252 and compare against
@@ -201,7 +191,6 @@ then 75% — one channel topping out, then three. Reading the bend off the frame
 wrong by −11.5% at gain 200 and +18.7% at gain 100, in opposite directions. Measured per channel,
 all four bend at the same *level* to within 1.6%, which is what shows **the converter bends, not
 the pixel**.
-**Source.** `learn_astro/kb/measurements.md`, linearity run 2026-08-26.
 **Consumed by.** The linearity measurement.
 **How to check.** Per-channel bend levels; if they agree while the saturating exposures differ,
 the ADC is the limit.
@@ -215,7 +204,6 @@ bulk of the distribution sat 11.3 read noises clear of zero. Those are defective
 identifiable as 23σ outliers at gain 300 where nothing else is near the floor. Measure the
 **fraction** of clipped pixels, threshold 0.1%; genuine clipping eats the noise distribution and
 shows up in percent, a defect count shows up in parts per hundred thousand.
-**Source.** `learn_astro/kb/gotchas.md`, 2026-08-25.
 **Consumed by.** Build step 3, and any offset choice.
 **How to check.** Compare the clipped *fraction* against the distribution's distance from zero in
 read noises, at several gains.
@@ -229,7 +217,6 @@ never as a signed value. The 12-bit quantisation makes it worse: the *median* da
 bias land on the same code and the difference reads as a clean zero; only the mean over millions
 of pixels reveals the sub-code offset. **Do not fit a temperature-scaling model on it** — with no
 measurable signal at either end there is nothing to fit a doubling temperature to.
-**Source.** `learn_astro/kb/gotchas.md`.
 **Consumed by.** The `D(T)` measurement, which MISSION lists as a model constant.
 **How to check.** Take darks at the extremes of the achievable temperature range and see whether
 the difference exceeds its own uncertainty before attempting a fit.
@@ -243,7 +230,6 @@ stalled hard — 3.5× at N = 50 against an ideal of 7.1×. The cause was **not*
 noise: the mount drifts and dithers, so the patch looks at different sky in every frame, stars
 wander in, and sigma-clipping hides them from the statistic but not from the mean. Use frames
 where pointing does not exist — bias, darks and flats are perfectly registered by construction.
-**Source.** `learn_astro/kb/gotchas.md`.
 **Consumed by.** The stacking-efficiency constant `η`, which MISSION requires be measured rather
 than assumed √N.
 **How to check.** The tell: the stalled curve did not move when flat-field correction was
@@ -263,13 +249,12 @@ own internal `run` command, which is a different argument layer. `-a=` and `-p=`
 internal layer only; passing them on the OS command line produces a **modal GUI "Fatal Error"
 dialog even under `--automation-mode`**, and the process then waits forever for a click.
 `--automation-mode` suppresses informative and warning messages, not fatal argument-parse errors,
-which happen before the automation machinery is up.
-**Source.** `astro/docs/pixinsight-notes/cli.md`, verified twice. Note `learn_astro` records the
-short `-r=` form with comma-separated arguments; where they conflict, `astro` explains the
-mechanism and should be preferred.
+which happen before the automation machinery is up. A short `-r=` form with comma-separated
+arguments was also recorded; where the two conflict, prefer the mechanism above.
 **Consumed by.** Build step 5, the first line of the harness.
-**How to check.** `astro/scripts/pjsr/cli_probe.js` reports core version, instance slot, working
-directory and whether a real frame opens. Run it after any PixInsight upgrade.
+**How to check.** A probe script reporting core version, instance slot, working
+directory and whether a real frame opens — the first thing to write in `pjsr/`, and to
+re-run after any PixInsight upgrade.
 **Lands in.** `pjsr/NOTES.md` and `pixinsight.py`.
 
 ### L17. Never wait on PixInsight unbounded, and never trust its exit code
@@ -278,7 +263,6 @@ indefinitely with no diagnostic. **Absence of the expected output file is the re
 signal**; the exit code is not — a killed process reports −1 and the modal-dialog case never
 exits at all. `--terminate=<slot>` shuts down a wedged instance but the invoking process itself
 may not exit, so give even that a timeout.
-**Source.** `astro/docs/pixinsight-notes/cli.md`.
 **Consumed by.** Build step 5.
 **How to check.** Deliberately pass a bad flag and confirm the harness fails in bounded time.
 **Lands in.** `pixinsight.py`, as the process-launch contract.
@@ -290,8 +274,6 @@ full GUI instead of printing, `console.writeln()` is invisible to the calling sh
 write its results to a file. **And it must write that file even when it fails** — the retired
 project's `DataType_ByteArray` error arrived as `{"ok":false,...}` in a file instead of as a
 silent process that had to be debugged by bisection.
-**Source.** `astro/docs/pixinsight-notes/cli.md`; `learn_astro/kb/gotchas.md` for the
-write-on-failure defence.
 **Consumed by.** Build step 5, every script in `pjsr/`.
 **How to check.** Structural — assert every `pjsr/*.js` writes a result file on both paths.
 **Lands in.** `pjsr/NOTES.md`, and plausibly a test.
@@ -303,7 +285,6 @@ way "are always String objects", whereas JSON preserves numbers. `File.readTextF
 `DataType_ByteArray` is **not defined** in this PJSR build, so the obvious file-reading idiom
 throws. The working directory is inherited from the launching process, so scripts can resolve
 paths relative to the repo.
-**Source.** `astro/docs/pixinsight-notes/cli.md`; `learn_astro/kb/gotchas.md`.
 **Consumed by.** Build step 5.
 **How to check.** Round-trip a float and an integer through the job file and assert types.
 **Lands in.** `pjsr/NOTES.md` and the harness in `pixinsight.py`.
@@ -315,7 +296,6 @@ paths relative to the repo.
 what the sensor can produce, 65535 is what PI divides by. PixInsight also opens a CFA frame as a
 **single-channel mono image** and does **not** debayer on load, which matches our raw array and
 makes the comparison like-for-like (D4).
-**Source.** `astro/docs/pixinsight-notes/cli.md`; independently in `learn_astro/kb/gotchas.md`.
 **Consumed by.** Build step 5, PixInsight contract 1.
 **How to check.** One frame, one median, both tools.
 **Lands in.** `pixinsight.py` as the unit conversion, with the check as a test.
@@ -328,7 +308,6 @@ a naive mapping; R and B are unaffected because transposing the diagonal leaves 
 the ordinary `(x,y)` vs `(row,col)` transposition and should be expected of any PI process that
 enumerates CFA positions by index. Also: `outputViewId0..3` are **outputs, not inputs** — setting
 them before `executeOn()` has no effect.
-**Source.** `astro/docs/pixinsight-notes/splitcfa-ordering.md`.
 **Consumed by.** Build step 5, comparing `spatial.split` against PI.
 **How to check.** **Do not compare medians.** Under the wrong mapping exactly 2 of 24 numbers
 disagreed, and the medians matched anyway because both greens share a median on a real frame. Use
@@ -343,7 +322,6 @@ variance. The two differ by exactly `sqrt(n/(n-1))`: negligible on a Bayer sub-p
 (1 + 2.4e−7) but not on the hand-checkable dozen-value array a test would use. The `eps` term is
 compensated summation (*Numerical Recipes* 2nd ed., p. 613), an accuracy refinement that does not
 change which estimator it is.
-**Source.** `astro/docs/pcl-notes/variance-denominator.md`.
 **Consumed by.** Build step 5, contract 1.
 **How to check.** A dozen known values through both.
 **Lands in.** `pixinsight.py`, as `ddof=1` on our side of any exact comparison.
@@ -353,7 +331,6 @@ change which estimator it is.
 number is plausible, just wrong. Do the subtraction in **32-bit float with a +0.5 pedestal**
 (`A - B + 0.5`, `rescale = false`, `truncate = false`): the pedestal moves the mean without
 touching the standard deviation and keeps the distribution inside [0,1].
-**Source.** `learn_astro/kb/gotchas.md`, confirmed 2026-08-25.
 **Consumed by.** Build step 5, any pair-difference done inside PixInsight.
 **How to check.** Inject a known sigma into a synthetic pair and assert recovery.
 **Lands in.** `pjsr/NOTES.md`, with the test alongside.
@@ -365,10 +342,8 @@ noisy-pixel set stays below 1% of the frame; on the retired project's frames MRS
 layers and the fallback was never taken. Measured on one bias frame: PI MRS **13.909 ADU**, pair
 difference 14.234, clipped std 14.349, MAD **23.722**. Also worth knowing: PixInsight prints
 harmless GLES errors to stderr on every headless launch, and an open GUI instance can block
-automation mode — which shows up as a timeout rather than an error.
-**Source.** `astro/docs/pixinsight-notes/lesson01-stf-and-noise.md` and `dataset-quantization.md`
-— **both carry retirement banners**: the frames are gone and the values cannot be reproduced. The
-API facts stand; the numbers are predictions.
+automation mode — which shows up as a timeout rather than an error. **These numbers cannot be reproduced — the
+frames behind them are gone. The API facts stand; the numbers are predictions.**
 **Consumed by.** Build step 5, PixInsight contract 1 (D6).
 **How to check.** Run both estimators against `stats.sigma` and a pair difference on the same
 bias frame. Expect an *ordering* rather than equality: PI's multiresolution rejects harder than
@@ -397,7 +372,6 @@ as gain amplifies the outlier tail.
 These are already in this project's unit — **e⁻ per ADC count** (`CLAUDE.md`, D41) — so the table
 is directly comparable to our own PTC with no conversion. "Full well" is the **ADC-limited** well,
 not the physical one.
-**Source.** `learn_astro/kb/measurements.md`, 2026-08-25.
 **Consumed by.** Build step 3 — as the prediction our own PTC either reproduces or refutes.
 **How to check.** Our own sweep, measured independently, compared afterwards. Not used as input.
 **Lands in.** `results/constants_ptc.json` either way — reproduced as the measured value, or
@@ -411,8 +385,6 @@ their own published figure from 252 to 200 in late 2025. Dynamic range peaks *wi
 branch at exactly gain 200 and falls monotonically above it, so **everything above gain 200 is a
 bad trade**: read noise only creeps from 1.13 to 0.83 e⁻ by gain 530 while full well collapses
 from 3 558 e⁻ to under 100.
-**Source.** `learn_astro/kb/measurements.md`; MISSION already lists this as needing a dedicated
-fine gain sweep.
 **Consumed by.** Build step 3, and directly the gain recommendation.
 **How to check.** Fine steps either side of 200. Three independent fingerprints are claimed:
 the read-noise cliff, the same cliff in ADU (ruling out a scaling artefact), and a
@@ -430,7 +402,6 @@ offset is applied after everything else and is a constant, not a distortion. `B`
 15.3 across the transition, consistent with a change ahead of the amplifier. **This claim
 supersedes an earlier one in the same file** (`pedestal = 1984 + 15.66 × amplification` "to
 within 0.2%") which is explicitly retracted as least-squares dominated by high-gain points.
-**Source.** `learn_astro/kb/measurements.md`, offset sweep 2026-08-26.
 **Consumed by.** Build step 3, the offset choice; `pedestal` is a MISSION constant.
 **How to check.** Our own bias frames already show the pedestal is *exactly* constant per gain
 (65.0 at gain 50, 77.0 at gain 252, std 0.0 across 520 bias frames —
@@ -443,7 +414,6 @@ gains — which is a prediction that could have failed.
 **Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
 97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
 the two are 2.9% apart, or 0.041 stops. Adopting the measured limit raised full well by 0.47%.
-**Source.** `learn_astro/kb/measurements.md`, linearity runs 2026-08-26.
 **Consumed by.** The linearity measurement; MISSION lists "ADC ceiling / full well" as a
 constant.
 **How to check.** A 20-rung ladder from 50% to 115% of the saturating exposure, per CFA channel,
@@ -455,7 +425,6 @@ on a small ROI (see L09 and L12).
 **−0.00502 per unit** against the −0.00500 the 0.1 dB law predicts — agreement 1.005 over 16
 points with 1.0% scatter. System gain crosses **1.000 e⁻ per real ADU at gain 194**, and ZWO
 annotate `GAIN=195` on their own published panel. Unity gain is a landmark, not a target.
-**Source.** `learn_astro/kb/measurements.md`.
 **Consumed by.** Build step 3 — it makes `g(gain)` interpolable between measured steps, which the
 archive needs since it uses gain 252 and a sweep would step by 10.
 **How to check.** Our own sweep, fitted in log space.
@@ -468,7 +437,6 @@ discontinuity: it appears in the read-noise and DR panels and **not** in the FW 
 which is only possible if FW is arithmetic on a smooth input. The size confirms it: published DR
 moves 10.00 → 11.85 stops, and `log2(3.95/1.10) = 1.844`. A "full well" curve that *falls* with
 gain is nonsense read literally — a bucket does not shrink because you amplified its readout.
-**Source.** `astro/docs/sensor-notes/asi585mc-gain-curves.md`.
 **Consumed by.** Build step 3, when comparing our measurement against the vendor's.
 **How to check.** Arithmetic on their published table; no data needed.
 **Lands in.** `results/constants_ptc.json`, as the vendor prediction recorded beside our own
@@ -489,7 +457,6 @@ gain 200's whole ladder was ~11 s of exposure inside one quiet stretch, gain 100
 **Marked UNRESOLVED, and worth resolving before any measurement relies on second-long exposures
 at a fixed light level.** It does not affect a PTC, which plots variance against measured signal
 and never against exposure time.
-**Source.** `learn_astro/kb/measurements.md`, 2026-08-26.
 **Consumed by.** Any bench measurement using exposures of order seconds.
 **How to check.** Their comparison could not settle it: gain 100 and gain 200 differ in
 *exposure length* (1.08–2.48 s vs 0.33–0.77 s) **and** in *elapsed time* (~70 s vs ~11 s), so the
@@ -516,7 +483,6 @@ zenith, suburban Bortle 5–6 — implying ≈19.1 mag/arcsec². And **PRNU of 0
 (1.00% over the full channel), measured as the fixed pattern that stops a stack of flats
 following √N. The sky figure is explicitly "a rate for that night, at that altitude" and fell
 about 5% across a two-hour session as the target rose.
-**Source.** `learn_astro/kb/measurements.md`, Lesson 00, from Denis's own IC 5070 frames.
 **Consumed by.** MISSION lists `F_sky` as extracted per frame from the lights themselves, so this
 is a sanity check rather than a constant.
 **How to check.** Extract sky per frame from our indexed archive and compare. The NGC 7000 set
