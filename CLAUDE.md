@@ -182,6 +182,7 @@ data/         gitignored; frames captured *for* this project (bench and tests)
 protocols/    bench pre-flight and capture protocols; `bench-setup.md` is *run*, not just read
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
+reference/    gitignored; third-party texts. A source of hypotheses to check, never of constants
 vendor/       third-party binaries, licence beside each
 ```
 

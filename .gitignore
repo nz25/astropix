@@ -1,5 +1,6 @@
 venv/
 data/
+reference/
 *.fit
 *.fits
 *.fit.gz
