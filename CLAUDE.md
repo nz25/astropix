@@ -24,8 +24,9 @@ written rule and the working practice disagreeing.
 The repo holds two other Markdown files, and neither is read for rules. They are named here
 once, so a new session knows not to reach for them, and are cited from nowhere:
 
-- **`DECISIONS.md` is the archive.** Append-only history of what was chosen, what was rejected,
-  and why. Open it when you want the reasoning *behind* a rule — never to find out what the
+- **`DECISIONS.md` is the archive.** Append-only history of what changed and why: choices made,
+  choices rejected, and the work that followed from them. It is a log, and the name is older
+  than the habit. Open it when you want the reasoning *behind* a rule — never to find out what the
   rule is. Never edit it; a reversal is a new dated entry.
 - **`FINDINGS.md` is Denis's.** His own notes on what he has learned. Do not cite it, do not
   treat it as authority, and do not write to it unless he asks. It is overwritten freely as his
@@ -46,6 +47,13 @@ is the thing that stops the model ever being finished.
   measured_on, notebook`. The model refuses to run on constants that lack it.
 - **Spec sheets are hypotheses, not facts.** A vendor number is something to reproduce, never
   something to import. Where one is used as a prediction it is named as such.
+  **ZWO's published curves for this camera are in `vendor/asi585specs/`** — three charts, the
+  tables read off them by eye, and a README saying what each one does and does not let us check.
+  That folder is the only place a vendor number may be quoted from, and quoting one means
+  carrying its uncertainty: read off a plot, ±5% at best. **Read it before designing a sweep.**
+  Its charts are not independent of each other — full well and dynamic range are *derived* from
+  the gain and read-noise curves, so reproducing them tests nothing new — and its gain axis stops
+  at 450 while this camera's gain control runs to 600.
 - **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
   and stores the value bit-shifted x16 into a 16-bit FITS container, so a stored value is 16x the
   number the ADC actually produced. Measured, not assumed — `mult16_frac` is 1.000000 at min,
@@ -185,7 +193,8 @@ protocols/    bench pre-flight and capture protocols; `bench-setup.md` is *run*,
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
 reference/    gitignored; third-party texts. A source of hypotheses to check, never of constants
-vendor/       third-party binaries, licence beside each
+vendor/       third-party binaries and vendor documents; licence or source beside each.
+              asi585specs/ holds ZWO's published curves and the tables read off them
 ```
 
 ## Environment

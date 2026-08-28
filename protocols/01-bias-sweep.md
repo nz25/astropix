@@ -44,6 +44,12 @@ adjacent distinct values is **16 on all four CFA planes**. Greens at 16 with red
 −10 °C, held in band for a continuous 10 minutes before the first sweep frame, judged by the
 temperature trend and not by duty cycle (L03, L04).
 
+**The whole session runs in one kernel.** Closing the camera drops the cooler — measured
+2026-08-28: `CoolerOn` set to 1, closed, reopened, reads 0, while `Gain` and `Offset` persist
+across the same close. Cooling in one process and capturing in another is not possible, and if
+the kernel dies the cool-down starts from ambient. Never assume the camera is still cold: with
+the cooler off the sensor reports a flat 0, so nothing contradicts the assumption.
+
 ## Capture
 
 Exposure throughout: **the camera minimum**. Record the value; it is not assumed.
@@ -96,7 +102,7 @@ Statistics on the CFA mosaic, split RGGB, never debayered. Values in ADC counts.
 | `A` scales linearly with offset and `R` is offset-independent to <0.5% | **offset is retired as an axis.** Fix it once and never sweep it again |
 | clipped fraction stays under 0.1% at every gain down to some offset `k` | the project offset is the smallest safe value with margin — 15 if the evidence supports it, and a measured number either way |
 | clipping appears at 15 at any gain we intend to use | ZWO's recommendation does not hold on this rig at this setpoint, and that is a result worth `results/` |
-| a read-noise cliff between two adjacent fine-grid gains | that is the HCG threshold; ZWO's 252 and the retired project's 200 both become predictions recorded beside it |
+| a read-noise cliff between two adjacent fine-grid gains | that is the HCG threshold; ZWO's own chart annotates **200** (`vendor/asi585specs/`), which is also what the retired project measured — the "ZWO say 252" belief has no source and 252 is the ASI2600's threshold |
 | no cliff anywhere in 180–220 | widen the fine grid before concluding; a threshold that isn't where two independent sources say it is needs more evidence than one night |
 | pedestal drift over 15 min below the frame-to-frame scatter | session 02's interleaving is a precaution, and its cost can be reduced |
 | pedestal drift measurable | interleaving is mandatory in session 02 **and** in the session 03 bias pairs |

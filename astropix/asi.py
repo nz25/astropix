@@ -31,6 +31,7 @@ something this module already normalised (CLAUDE.md, the units rule).
 from __future__ import annotations
 
 import datetime as _dt
+import pathlib
 import time
 
 import numpy as np
@@ -38,7 +39,11 @@ import numpy as np
 from . import fits
 
 # --- the rig (CLAUDE.md) -----------------------------------------------------
-SDK_DLL = "vendor/zwo-asi-sdk/ASICamera2.dll"
+# Anchored at the repo, not at the working directory.  A notebook runs from
+# `notebooks/` and a probe from wherever it was written, and a relative path
+# here fails in both -- as a swallowed load error and an AttributeError three
+# frames deep, which is the least informative way this can possibly break.
+SDK_DLL = pathlib.Path(__file__).resolve().parents[1] / "vendor" / "zwo-asi-sdk" / "ASICamera2.dll"
 SETPOINT_C = -10.0        # every bench run and the model's first pass
 RAW16 = 2                 # ASI_IMG_RAW16; resolved from the SDK when there is one
 
@@ -115,6 +120,16 @@ class Rig:
         return self.range("Exposure")[0] / 1e6
 
     def close(self):
+        """Release the camera.  **This drops the cooler.**
+
+        Measured on 2026-08-28: set `CoolerOn = 1`, close, reopen, and it reads
+        0 -- while `Gain` and `Offset` come back exactly as they were left.
+        Control values live in the camera; the TEC is tied to the open session.
+        So a run cools and captures in one process or not at all, and "it should
+        still be cold from last time" is never true.  Nothing contradicts that
+        belief on its own, either: with the cooler off the sensor reports a flat
+        0, which `temperature` reports as None rather than as a measurement.
+        """
         self.cam.close()
 
 
@@ -129,12 +144,22 @@ def open_camera(index=0, dll=SDK_DLL, raw16=None):
     """
     import zwoasi
 
+    if not pathlib.Path(dll).exists():
+        raise RuntimeError(f"no ASI SDK at {dll} -- the DLL is vendored in this "
+                           "repo, so this means the path is wrong, not that the "
+                           "SDK is missing")
     try:
         zwoasi.init(str(dll))
     except Exception:
-        # Already initialised is the common case and is not an error; a genuine
-        # load failure surfaces on the next call with a clearer message.
+        # `init` returns early and harmlessly when the library is already
+        # loaded, which is the common case in a notebook.  Everything else is
+        # swallowed here and caught on the next line instead: `zwolib` is the
+        # thing that has to be true, and checking it directly cannot be fooled
+        # by which exception type this version of the binding happens to raise.
         pass
+    if getattr(zwoasi, "zwolib", None) is None:
+        raise RuntimeError(f"the ASI SDK at {dll} did not load; on Windows this "
+                           "is usually a 32/64-bit mismatch with the interpreter")
     if zwoasi.get_num_cameras() == 0:
         raise RuntimeError(
             "no ASI camera found.  Either the Windows *driver* is missing (the "
