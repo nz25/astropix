@@ -1087,3 +1087,98 @@ scoped to claims inherited from the retired attempts, which these are not.
 **Consequence.** `MISSION.md` goes 148 → 135 lines; the model section proper goes ~80 → ~45, and
 the 20 lines it gained back are the assumption list, which is new. No code, no constants and no
 `results/` artifact is affected — nothing in the package had consumed the derivation.
+
+---
+
+## 2026-08-29 — Harvest of session 01's LEGACY entries
+
+**Eleven entries leave the queue: L01–L08, L13, L26, L27.** Each had its consuming build step run
+and its claim land somewhere durable, which is the whole condition for deletion. `LEGACY.md` goes
+32 entries → 21. Numbers are never reused, so every citation already written keeps pointing at a
+claim that can still be traced through this entry.
+
+| entry | where it landed |
+|---|---|
+| L01 white balance on RAW16 | `CLAUDE.md` non-negotiable rule (new, below), `asi.neutralise_white_balance`, `stats.value_step`, `bench-setup.md` §2, gate 1 of `01-bias-sweep.md` |
+| L02 SDK vs driver, ASIAIR holds the camera | `bench-setup.md` §1, and the two-cause message in `asi.open_camera` |
+| L03 the three cooler lies | `asi.py` (`CoolPowerPerc`, `temperature` returning −1, the power-cycle rule), `bench-setup.md` |
+| L04 cooling settles, and rings | `asi.cool_to` with its settle window, `bench-setup.md` |
+| L05 gain 0–600, ROI must be even | `asi.py` validated range and the `set_roi` guard, with tests |
+| L06 iPad as light source, three iOS settings | `bench-setup.md` §3 |
+| L07 grey level exhausted below ~25% | `bench-setup.md` |
+| L08 diffusers are not independent filters | `bench-setup.md`, as "measure, never extrapolate" |
+| L13 clipping is a fraction | `results/bias_constants.json` — `offset_min_safe`, `offset_zero_clipping`, `project_offset` |
+| L26 HCG threshold is 200 | `results/bias_constants.json` — `hcg_threshold_gain`, reproduced |
+| L27 the pedestal has two branches | `results/bias_constants.json` — `pedestal_fit`, `pedestal_per_offset_unit` |
+
+**L13's destination moved, deliberately.** The entry said `stats.py`, "as the saturation/clipping
+test, with the threshold recorded". It landed in `results/` instead. The reason is that the thing
+worth keeping turned out not to be a function: `zero_frac` is one line of arithmetic, and the
+*judgement* — 0.1% clipped **and** at least 15 R of headroom above the floor — is a pair of
+measured numbers with a bracketing argument behind them, which is a constant with provenance and
+not a library predicate. Putting it in `stats.py` would have hard-coded a threshold the sweep had
+just finished measuring.
+
+**L31 is trimmed rather than deleted.** Its dark arm ran as session 01's drift block and came back
+flat (−0.00133 ± 0.254 counts/min), so the camera is cleared; the backlight hypothesis needs arms
+that need the light source. The entry now says so, and `bench-setup.md` item 0 survives on the
+grounds it was written on.
+
+**Rejected: deleting L10 as well.** Session 01 *used* its method — `R` from bias pairs, and
+`read_noise_at_hcg` is the result — but the entry's `Consumed by` is the PTC ladder design, and
+the second half of the claim (log-space the ladder, keep the fitted intercept as a cross-check)
+has nothing to check it against until the PTC runs. Half a claim is not a harvest.
+
+**One new rule in `CLAUDE.md`, which is L01's stated destination.** The white balance is stated as
+a non-negotiable, with the pixel-level test rather than the control read-back, because "the
+control took" is exactly the evidence that failed before. `CLAUDE.md`'s own instruction on reading
+`LEGACY` used L01 as its worked example; it now uses L14, which is live and is the next session's.
+
+---
+
+## 2026-08-29 — The explainer pair, and notebooks `00` and `04`
+
+**Denis's rule, adopted:** a measuring notebook is followed by an explaining one. The measuring
+notebook talks to the camera and writes `results/`, and is written for someone checking it. The
+explainer reads those published files back and is written for someone deciding what to do next.
+It measures nothing, writes nothing, and if it disagrees with `results/` then `results/` is right
+and the explainer is the bug. `CLAUDE.md` now states this under *How work is recorded*.
+
+**Both were built rather than one.** Denis offered them as alternatives — an explainer per
+session, *or* a single `00` bringing him up to speed on the statistics. They are not
+alternatives: with an explainer per session, a shared `00` is what stops each one re-teaching
+sigma, quadrature and standard error from scratch. `00` was written first so `04` could cite it.
+
+- **`00_statistics`** — twelve ideas, in the order the work needs them, every one demonstrated on
+  session 01's own frames. It requires `data/session01/frames/` and has **no simulated fallback**:
+  fabricated pixels in a repository this careful about provenance is a habit bought cheaply.
+- **`04_sweep_read`** — session 01 explained, in nine sections. `04_dark_bound` becomes
+  **`05_dark_bound`**; nothing else referenced the old number.
+
+**Three claims died on contact with the executed output**, which is the argument for executing an
+explainer rather than reasoning about it:
+
+1. **`R_mad` is not a robustness diagnostic at low gain — it is pinned to the quantisation grid.**
+   `bias_sweep.csv` carries *exactly* 1.048356 at gains 0 through 100 and at 200, because
+   `median(|d|)` on quantised data lands on the integer 1 every time, and
+   1.4826 / sqrt(2) = 1.0484. The ratio `R_sd / R_mad` therefore runs 0.63 at gain 0 (MAD
+   over-states) to 1.36 at gain 100 (MAD under-states) for reasons that have nothing to do with
+   outliers. Above ~190 it means what the textbook says it means. `00` section 6 now says so.
+2. **The branch-split residuals must be read as percentages.** In absolute counts the per-branch
+   fit looks *worse* at its extreme — 16 counts against the single fit's 13 — because the
+   pedestal itself spans 63 to 1035 and the largest residual lands where the pedestal is largest.
+   As a fraction of the value being predicted, which is how a subtraction error actually
+   propagates, it is 14.5% against 0.8% and 2.4%. The wrong denominator reverses the conclusion.
+3. **Excluding gain 600 from the offset criterion does not prevent a contradiction, it prevents a
+   wrong answer.** With gain 600 left in, offsets 45 and 50 still pass, so the criterion would
+   have returned **45** — a number set by where telegraph pixels clear an arbitrary headroom line,
+   wearing the label of an answer about clipping. That is worse than an obvious failure.
+
+**Found, not fixed: `pedestal_drift_rate`'s `uncertainty` field is the wrong uncertainty.** It
+carries 0.254, the scatter of the points about the fitted line. The uncertainty on the published
+*slope* is 0.00277 counts/min — about ninety times smaller, because 450 points over 15 minutes
+pin a line far better than any single point is known. The conclusion is unchanged and stronger:
+slope over its own error is −0.48, under half an error bar, so the honest statement is a bound of
+|rate| < 0.0055 counts/min. The published field is conservative rather than wrong, but it answers
+a different question from the one an `uncertainty` field is asked. Left for Denis to decide, since
+changing it means re-running `03` and reissuing a constant.

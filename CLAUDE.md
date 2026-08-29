@@ -10,8 +10,8 @@ How a session boots. Read these first, in this order:
    when the build step that needs it arrives, moved to its destination, and deleted. When it is
    empty the file goes and this repo is back to four Markdown files.
    **Scan it whenever a build step or a notebook begins** — entries are grouped by the step that
-   consumes them, and each carries a `Consumed by` line saying when it is due. Reading L01 before
-   the first bench frame is the difference between a measurement and a silently corrupted one.
+   consumes them, and each carries a `Consumed by` line saying when it is due. Reading L14 before
+   the dark session is the difference between an honest upper bound and a negative dark current.
 
 ## Document status
 
@@ -43,6 +43,17 @@ is the thing that stops the model ever being finished.
 
 - **Noise statistics happen on the CFA mosaic, split into RGGB sub-planes. Never debayer first.**
   Interpolated pixels have correlated noise and silently invalidate every variance estimate.
+- **"RAW" is not raw until the white balance is neutralised, and the proof is in the pixels.**
+  The camera ships `WB_R = 55`, `WB_B = 75` — ratios against 50, applied to RAW16 *before the data
+  reaches us*, multiplying red by 1.10 and blue by 1.50 in integer arithmetic. One sensor then
+  looks like it has three gains, and the rounding perturbs the very noise being measured: read
+  noise came out ~17% high at every gain in a retired attempt until this was found.
+  `asi.neutralise_white_balance` runs unconditionally on open, and reading the control back only
+  proves the *control* took. The evidence is `stats.value_step`: the modal step between adjacent
+  distinct values must be **16 on all four planes**. Greens 16 with red at 17/18 and blue at 24 is
+  the fingerprint of white balance still being applied — greens are untouched because WB is
+  defined relative to green, which is what makes the pattern readable at all. **Nothing captured
+  before that check passes is usable**, so it is gate 1 of every bench protocol (L01).
 - **Every measured constant carries provenance** — `value, unit, uncertainty, source_frames,
   measured_on, notebook`. The model refuses to run on constants that lack it.
 - **Spec sheets are hypotheses, not facts.** A vendor number is something to reproduce, never
@@ -143,14 +154,25 @@ The bar is *a cell writes it*, not *it byte-reproduces*: re-running an acquisiti
 yields a **new** snapshot, and demanding byte equality would forbid the artifacts that cost hours
 to make.
 
+- **A measuring notebook is followed by an explaining one.** The pair is the unit of work: the
+  numbered notebook that talks to the camera and writes `results/` is written for someone
+  *checking* it, and a second numbered notebook reads those published files back and explains
+  what was done, why, and what it changed, for someone *deciding what to do next*. The explainer
+  measures nothing and writes nothing; if it ever disagrees with `results/`, `results/` is right
+  and the explainer is the bug. Splitting them is what lets the first stay dense and the second
+  stay slow, instead of one notebook doing both badly. The statistics they lean on are explained
+  once, in `00`, and cited from there rather than re-derived per session.
+
 Notebook purposes, as agreed:
 
 | notebook | exists to |
 |---|---|
+| `00_statistics` | explain the statistics this project actually uses - twelve ideas, in the order the work needs them, each demonstrated on session 01's own frames. The vocabulary every later explainer cites instead of re-deriving. Measures nothing, writes nothing, and deliberately omits what this project does not do |
 | `01_frame_index` | index the historic frames on `Z:` — material of varied reliability, useful as **test data** for exercising code against real pixels, and as the route into the NGC 7000 exposure-ladder set |
 | `02_index_columns` | explain the *measured* columns of `results/frame_index.csv` — one frame of each type, the pixels behind each number, and what each column is and is not evidence for. A reading aid for `01` and `stats.py`; it measures nothing and writes nothing |
 | `03_bias_sweep` | turn session 01's frames into published constants: `pedestal(gain, offset)`, `R(gain)` in ADC counts, the HCG threshold, and the offset the project fixes on. It also reads the pedestal drift trace, which is what licenses — or forces — the bias interleaving in session 02. **It does not convert to electrons**: that needs `g`, which the PTC has not measured yet |
-| `04_dark_bound` | bound `D` at −10 °C from session 02's interleaved darks — an upper limit if that is what the data supports, quoted as one — and measure the `η_comb` stack curve against √N, with the stack size and rejection settings recorded as part of the constant. The bench captured the frames; this notebook only reads them |
+| `04_sweep_read` | explain session 01's results: what was captured, what each published constant means, how it was arrived at, and what it now lets the project do. The explaining half of the `03` pair — it reads `results/` and the session's frames, and writes nothing |
+| `05_dark_bound` | bound `D` at −10 °C from session 02's interleaved darks — an upper limit if that is what the data supports, quoted as one — and measure the `η_comb` stack curve against √N, with the stack size and rejection settings recorded as part of the constant. The bench captured the frames; this notebook only reads them |
 
 ## Library budget
 

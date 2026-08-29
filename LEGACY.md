@@ -34,114 +34,7 @@ Treat every number as a prediction to falsify — there is no longer anywhere to
 
 ---
 
-## Before any bench frame is captured — build step 6 (`asi.py`)
-
-### L01. ZWO applies white balance to RAW16 data
-**Claim.** The camera ships `WB_R = 55`, `WB_B = 75`. These are ratios against 50, so red is
-multiplied by 1.10 and blue by 1.50 **before the data reaches us, in RAW16 mode**. "Raw" is not
-raw. Two consequences: red and blue gains come out scaled, so one sensor looks like it has
-three; and the multiply is integer arithmetic, so output lands on a stretched lattice and the
-rounding perturbs the very noise statistics being measured. Read noise came out ~17% high at
-every gain until it was neutralised.
-**Consumed by.** Build step 6, before the first bench frame — this invalidates everything
-captured before it is fixed.
-**How to check.** Read `WB_R`/`WB_B` from the SDK on open. Independently, the fingerprint on a
-dark is the modal step between adjacent distinct values *per CFA channel*: greens 16, red 17/18
-alternating, blue 24. Greens are untouched because WB is defined relative to green, which is
-what makes the pattern readable at all.
-**Lands in.** `CLAUDE.md` as a non-negotiable rule, plus a `neutralise_white_balance()` call in
-`asi.py` that runs unconditionally on open.
-
-### L02. The ASI SDK is not the ASI driver, and the ASIAIR takes the camera
-**Claim.** ZWO ship two separate things: the **Camera Driver** (Windows USB driver) and the
-**ASI Camera SDK** (`ASICamera2.dll`, no `.inf`). `zwoasi` needs the SDK, but the SDK needs the
-driver underneath. Installing only the SDK gives the confusing state where `zwoasi.init()`
-succeeds and `get_num_cameras()` returns 0. Separately: **the ASIAIR claims the camera
-exclusively over USB** — powered on with the camera attached, the PC will not see it regardless
-of drivers.
-**Consumed by.** Build step 6, first attempt to open the camera.
-**How to check.** `Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_03C3' }`
-— ZWO's vendor ID; the ASI585MC Pro is `PID_585F`. A healthy camera shows `Status: OK` with a
-real device class. Code 28 means the driver is missing and says so unambiguously.
-**Lands in.** `protocols/bench-setup.md` as the first pre-flight item.
-
-### L03. The cooler lies in three different ways
-**Claim.** Three separate traps, which together made a working cooler look dead and a genuine
-fault look like a bug. (a) The control is called **`CoolPowerPerc`**, not `CoolerPowerPerc`; a
-lookup on the wrong name returned a hard 0 forever. (b) **`ASI_TEMPERATURE` reads a flat 0 until
-the cooler is switched on** — it is not a live thermometer on an idle camera, and an exposure
-does not wake it. (c) **A hard-killed process leaves the TEC latched off** until 12 V is
-physically unplugged and replugged.
-**Consumed by.** Build step 6, the cooling routine.
-**How to check.** Enumerate the controls and read the names back. Then diagnose cooling **by the
-temperature trend, not the duty cycle**: command the cooler on, watch the sensor temperature for
-60 s. Falling means it works. That test needs no control the camera might not implement. Return
-−1 for "not reported" rather than 0, since 0 is a legitimate reading for an idle TEC.
-**Lands in.** `asi.py`, plus `protocols/bench-setup.md` for the power-cycle rule.
-
-### L04. Cooling takes minutes, and must be allowed to settle
-**Claim.** About 3 °C/min at the start from ~17 °C ambient, accelerating as power ramps. Budget
-several minutes to reach −10 °C. A TEC **overshoots and rings**, so sampling at first touch of
-the setpoint starts a sweep on a drifting temperature; require the temperature to stay in band
-for a continuous settle period before returning.
-**Consumed by.** Build step 6, and every bench protocol.
-**How to check.** Log temperature every second from cooler-on to settled; the curve is the
-answer. Our own archive already shows the failure mode this guards against — 2,132 frames more
-than 1 °C off setpoint (`results/frame_index.csv`).
-**Lands in.** `asi.py` (`cool_to` with a settle window) and `protocols/bench-setup.md`.
-
-### L05. The gain range is 0–600, and the ROI must be even
-**Claim.** Gain runs **0–600**, not 0–400 as assumed — 61 points at step 10, not 41. Separately,
-any ROI must have **even x and y origin and even width and height**, or the Bayer phase shifts
-and "the red pixels" are no longer where the header says. The retired PTC used 1024×1024 at
-origin (1408, 568), both even.
-**Consumed by.** Build step 6, sweep planning.
-**How to check.** Read the gain control's range from the SDK. For the ROI, assert evenness in
-code — it is a one-line guard, and `spatial.split` already assumes RGGB phase.
-**Lands in.** `asi.py` as a validated parameter, and a note in `protocols/`.
-
----
-
 ## The light source — build step 6
-
-### L06. The light source is an iPad LCD, and three iOS settings will ruin a run
-**Claim.** Camera stands face-down on 2–3 sheets of paper on the screen; contact with an
-extended emitter is the most uniform geometry available. **iPad 7th generation (2019)**, 10.2″
-LCD, 60 Hz, no True Tone. Three settings change the light mid-run with nothing in the data to
-show it: **Auto-Brightness** (re-levels from the ambient sensor), **Auto-Lock** (must be Never; a
-sleeping screen dims on the way down), **Night Shift** (warms colour balance on a schedule,
-hitting each Bayer channel differently). LCD is the favourable case — backlight and attenuation
-are separate layers, unlike OLED. **Run at 100% brightness and attenuate with paper and grey
-level**: LED backlights are PWM-dimmed at reduced brightness and closer to constant-current at
-full, so maximum brightness is the *least*-flickering setting. The patch page must also hold a
-screen wake lock, or the panel sleeps mid-run.
-**Consumed by.** Build step 6, first bench session.
-**How to check.** Capture an exposure ladder and fit `variance = signal/g + R²`; a flickering
-point sits *above* the line. The retired run found no measurable flicker from 1 ms to 200 ms,
-r² = 0.999971.
-**Lands in.** `protocols/bench-setup.md`.
-
-### L07. Grey level is exhausted below ~25% of full scale
-**Claim.** An LCD does not go black — the liquid crystal attenuates the backlight but never
-blocks it. Fitting `L = leak + k·value^2.2` gave a backlight leakage of 6218 ADU/s against 3359
-from grey 48 and 731 from grey 24. Predicted flux at grey 1 is 6219 ADU/s, i.e. **1.12× less
-than grey 24, and that is the entire remaining range**. Below ~25%, attenuate optically instead.
-**Consumed by.** Build step 6, when setting flux for a sweep.
-**How to check.** Two grey levels and a flux measurement each; the tell is the implied exponent.
-Fitting `L = k·value^g` to two points gave g = 0.46, and an exponent below 1 is not a display
-gamma at all — that mismatch is the signature of an additive floor.
-**Lands in.** `protocols/bench-setup.md`.
-
-### L08. Stacked diffusers give diminishing returns
-**Claim.** Sheets of 80 gsm printer paper attenuate by 1.68× each at 3–4 sheets, 1.47× at 5,
-1.29× at 6, 1.24× at 7. **A stack of diffusers is not a stack of independent filters** — each
-sheet scatters light forward as well as backward, so part of what sheet *n* rejects is passed on
-by sheet *n+1*. Any per-sheet figure is valid only at the depth it was measured; extrapolating
-1.5× per sheet came up 1.1× short and needed a seventh sheet.
-**Consumed by.** Build step 6, sweep pre-flight.
-**How to check.** Do not predict — measure the flux directly in the pre-flight, which takes under
-a minute, and solve for the saturating exposure at every gain from the measured value.
-**Lands in.** `protocols/bench-setup.md`, as "measure, never extrapolate".
 
 ### L09. Illumination is uneven enough to smear a linearity bend
 **Claim.** The light source varies **3.8% peak-to-peak across 1024×1024**, so the bright corner
@@ -196,18 +89,6 @@ the pixel**.
 the ADC is the limit.
 **Lands in.** `results/` as per-channel bend levels, and `DECISIONS` if it changes how full
 well is defined.
-
-### L13. Clipping is a fraction, not a minimum — and cold pixels are not clipping
-**Claim.** An offset check flagged "the offset is too low and data is being clipped" because the
-darkest pixel in a gain-600 bias read 0. It was **58 pixels of 1 048 576** — 0.0055% — while the
-bulk of the distribution sat 11.3 read noises clear of zero. Those are defective cold pixels,
-identifiable as 23σ outliers at gain 300 where nothing else is near the floor. Measure the
-**fraction** of clipped pixels, threshold 0.1%; genuine clipping eats the noise distribution and
-shows up in percent, a defect count shows up in parts per hundred thousand.
-**Consumed by.** Build step 3, and any offset choice.
-**How to check.** Compare the clipped *fraction* against the distribution's distance from zero in
-read noises, at several gains.
-**Lands in.** `stats.py` as the saturation/clipping test, with the threshold recorded.
 
 ### L14. Dark current here may be below the detection floor, and must be reported as such
 **Claim.** At −10.5 °C over 120 s the mean dark signal came out at **−0.23 e⁻** — negative,
@@ -378,38 +259,6 @@ not the physical one.
 recorded beside it as the vendor prediction it failed to match. A disagreement is as informative
 as a match, and both need the same provenance.
 
-### L26. The HCG threshold is gain 200, not 252
-**Claim.** Read noise falls **3.39 → 1.13 e⁻** between gain 190 and 200 — a 67% drop in one step
-of 10, about 49× the typical step-to-step change, with nothing comparable near 252. ZWO revised
-their own published figure from 252 to 200 in late 2025. Dynamic range peaks *within* the HCG
-branch at exactly gain 200 and falls monotonically above it, so **everything above gain 200 is a
-bad trade**: read noise only creeps from 1.13 to 0.83 e⁻ by gain 530 while full well collapses
-from 3 558 e⁻ to under 100.
-**Consumed by.** Build step 3, and directly the gain recommendation.
-**How to check.** Fine steps either side of 200. Three independent fingerprints are claimed:
-the read-noise cliff, the same cliff in ADU (ruling out a scaling artefact), and a
-**discontinuity in the pedestal** at the same gain — 1360→1104 at offset 15, 2288→2064 at
-offset 30.
-**Lands in.** `results/constants_ptc.json`, as the measured HCG threshold with the vendor's
-252 recorded beside it as the prediction.
-
-### L27. The pedestal has two branches, and the offset is purely digital
-**Claim.** Pedestal fits `A + B × amplification` **per conversion-gain branch**, not across the
-transition: a single smooth fit lands between the branches and mispredicts both by 8–17%, while
-per-branch it is 0.8–1.4%. The digital constant `A` scales with the offset setting (ratio 2.007
-for offsets 15→30, i.e. **≈4.0 real ADU per offset unit**) while `B` is untouched by it — so the
-offset is applied after everything else and is a constant, not a distortion. `B` falls 43.5 →
-15.3 across the transition, consistent with a change ahead of the amplifier. **This claim
-supersedes an earlier one in the same file** (`pedestal = 1984 + 15.66 × amplification` "to
-within 0.2%") which is explicitly retracted as least-squares dominated by high-gain points.
-**Consumed by.** Build step 3, the offset choice; `pedestal` is a MISSION constant.
-**How to check.** Our own bias frames already show the pedestal is *exactly* constant per gain
-(65.0 at gain 50, 77.0 at gain 252, std 0.0 across 520 bias frames —
-`results/frame_index.csv`, ADC counts), which is a start.
-Also claimed: read noise must **not** depend on offset — worst disagreement 0.38% across 61
-gains — which is a prediction that could have failed.
-**Lands in.** `results/` as the pedestal constant, per conversion-gain branch.
-
 ### L28. The linear limit is 63 744 reported ADU, below the hard clip
 **Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
 97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
@@ -471,6 +320,13 @@ It also survives their settling check — re-running minutes later does not help
 still heating rather than having settled once. `protocols/bench-setup.md` item 0 carries a
 ten-minute warm-up as a precaution against this; **if the trace is flat from cold, delete that
 item** rather than keeping a ritual whose reason has been falsified.
+
+**The dark arm has run, and it was flat.** Session 01's drift block — 450 bias frames at gain 100
+over 15 minutes at −10 °C, `results/pedestal_drift.csv` — is the first half of that clean test
+with the light source taken out of it: **−0.00133 ± 0.254 ADC counts/min**, a slope two orders of
+magnitude inside its own uncertainty. So nothing in the *camera* drifts on this timescale, and
+whatever is left is upstream of the sensor. That is the arm this project could run without the
+light source; arms 1 and 2 still need it, and `bench-setup.md` item 0 stands until they do.
 
 The separate 5.5% single-rung outlier looks like a different mechanism — an occasional bad frame
 rather than drift. A notification, or the Screen Wake Lock briefly lapsing.
