@@ -67,11 +67,12 @@ is the thing that stops the model ever being finished.
   at 450 while this camera's gain control runs to 600.
 - **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
   and stores the value bit-shifted x16 into a 16-bit FITS container, so a stored value is 16x the
-  number the ADC actually produced. Measured, not assumed — `mult16_frac` is 1.000000 at min,
-  mean and max across all 15,090 readable frames in `results/frame_index.csv`.
+  number the ADC actually produced. Measured, not assumed: `mult16_frac` in
+  `results/frame_index.csv` is that check, and it is run on the index rather than believed.
   **Everything this project measures, publishes or models is in ADC counts = stored / 16.** Full
-  scale is **4095**, the gain-252 pedestal is **77**, and header `EGAIN` — quoted per ADC count —
-  applies directly, with no factor to remember. That is the whole point of the convention.
+  scale is **4095**, and header `EGAIN` — quoted per ADC count — applies directly, with no
+  factor to remember. That is the whole point of the convention. Pedestals are not quoted
+  here: they are published with provenance in `results/bias_constants.json`.
   Cite this rule; do not restate it.
   - `stats.to_adc` is the only conversion, and it raises rather than truncate.
   - `fits.read` returns stored values untouched: the check that licenses the conversion cannot be
@@ -86,7 +87,7 @@ is the thing that stops the model ever being finished.
      to a protocol in `protocols/` at -10 C. Gitignored. **Headers are trusted in full, type
      label included**, because the protocol is what set them. Every published constant comes from
      here.
-  2. **`Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — the historic archive.** 15,102 frames
+  2. **`Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — the historic archive.** Frames
      from a year of ordinary imaging, shot before this project or any of its conventions existed.
      It is a **test corpus** — real pixels to exercise code against, and the route into the
      NGC 7000 exposure ladder — and **no published constant comes from it**. Mixed gains,
@@ -95,13 +96,16 @@ is the thing that stops the model ever being finished.
      - **Trust neither folder nor `IMAGETYP` for frame type — determine it from the pixels.** Dark
        folders mix gain and temperature inside one exposure folder, *and* some flats and darks
        were captured under a Light subframe type. Capture settings (gain, offset, exposure,
-       set-temp, achieved temp) are trusted; the type label is not.
+       set-temp, achieved temp) are trusted; the type label is not. **How a type is decided is
+       physics, so it lives with the code**: `stats.classify`'s docstring states the rule, why
+       `light` is the deliberate fallback, and why the pedestal is passed in rather than
+       hard-coded. Change it there, not here.
      - **`measured_type` is trustworthy on this corpus and is still not a warrant.** It agrees
-       with every one of the 15,090 readable frames whose type has been established by hand or
-       by label. But it is a statement about *how much light arrived*, not about whether a frame
-       is usable: 141 of its lights were shot through trees and cloud, and it is right about
-       them and useless as a quality filter. Check `sat_frac`, `block_spread` and the plane
-       medians before a selection becomes a dataset.
+       with every readable frame in the index whose type has been established by hand or by
+       label. But it is a statement about *how much light arrived*, not about whether a frame
+       is usable: a good number of its lights were shot through trees and cloud, and it is
+       right about them and useless as a quality filter. Check `sat_frac`, `block_spread` and
+       the plane medians before a selection becomes a dataset.
      - **Frozen while an analysis is producing numbers for `results/`** — refresh the index
        between runs, never during. New frames land in `raw\_inbox\`, not in the archive.
      - **If a frame or a verdict looks unreliable, reshoot.** Reasoning around suspect frames
@@ -131,7 +135,9 @@ work that outruns its record is work that has to be done again.
 - **Every notebook has a purpose, agreed before it is created.** A numbered notebook opens by
   saying what it is for and what it is not for, and that purpose is agreed in conversation
   first. A notebook nobody asked for is scope growth with a table of contents. The purpose is
-  also the context that stops later readers misreading the data — see `01` below.
+  also the context that stops later readers misreading the data, so it lives in that
+  notebook's own opening cell and is copied nowhere else — two copies of a purpose become
+  two purposes the moment one of them is edited.
 - **Nothing appears in `results/` except through a notebook.** Every file there is written by a
   cell in a numbered notebook, so the route from frames to a published number is readable end to
   end. Asserted by `tests/test_record.py`, which reads the notebook JSON and needs neither Z: nor
@@ -163,17 +169,6 @@ to make.
   stay slow, instead of one notebook doing both badly. The statistics they lean on are explained
   once, in `00`, and cited from there rather than re-derived per session.
 
-Notebook purposes, as agreed:
-
-| notebook | exists to |
-|---|---|
-| `00_statistics` | explain the statistics this project actually uses - thirteen ideas in four parts, in the order the work needs them, each demonstrated on session 01's own frames. It opens with the sensor's readout chain, because *where* in that chain an effect enters is what makes the statistics that follow reasons rather than rules — it is the section that says what the gain multiplies and what it does not. The vocabulary every later explainer cites instead of re-deriving. Measures nothing, writes nothing, and deliberately omits what this project does not do |
-| `01_frame_index` | index the historic frames on `Z:` — material of varied reliability, useful as **test data** for exercising code against real pixels, and as the route into the NGC 7000 exposure-ladder set |
-| `02_index_columns` | explain the *measured* columns of `results/frame_index.csv` — one frame of each type, the pixels behind each number, and what each column is and is not evidence for. A reading aid for `01` and `stats.py`; it measures nothing and writes nothing |
-| `03_bias_sweep` | turn session 01's frames into published constants: `pedestal(gain, offset)`, `R(gain)` in ADC counts, the HCG threshold, and the offset the project fixes on. It also reads the pedestal drift trace, which is what licenses — or forces — the bias interleaving in session 02. **It does not convert to electrons**: that needs `g`, which the PTC has not measured yet |
-| `04_sweep_read` | explain session 01's results: what was captured, what each published constant means, how it was arrived at, and what it now lets the project do. The explaining half of the `03` pair — it reads `results/` and the session's frames, and writes nothing |
-| `05_dark_bound` | bound `D` at −10 °C from session 02's interleaved darks — an upper limit if that is what the data supports, quoted as one — and measure the `η_comb` stack curve against √N, with the stack size and rejection settings recorded as part of the constant. The bench captured the frames; this notebook only reads them |
-
 ## Library budget
 
 Six modules — `fits.py`, `spatial.py`, `stats.py`, `model.py`, `asi.py`, `pixinsight.py` — and
@@ -192,18 +187,6 @@ numbers support. The dependency chain is one-way: `fits.py` → `stats.py` → `
 budget that discourages tests is a budget working against itself. It mirrors the package: one
 `test_<module>.py` per library module.
 
-## How a frame's type is decided
-
-**A frame's type is decided by one number: how far it sits above the pedestal for its gain.**
-Bias is settled by exposure before any pixel is read; a frame far above the pedestal at seconds
-is a flat and at minutes is sky; what is left is dark if it sits on its pedestal and **light
-otherwise**. `light` is the fallback on purpose — a light wrongly called dark enters a
-calibration master and is subtracted from every science frame, while a dark wrongly called light
-is thrown out by registration. The pedestal is *passed in*, never hard-coded: it is measured from
-bias frames, which are selected by exposure alone, so the classifier never argues in a circle and
-works at gains this archive does not contain. A gain with no bias frames behind it returns
-`unknown`, and that is the correct answer.
-
 ## Layout
 
 ```
@@ -221,10 +204,11 @@ vendor/       third-party binaries and vendor documents; licence or source besid
 
 ## Environment
 
-- Python 3.14 venv. Verified to resolve: numpy 2.5.2, astropy 8.0.1, scipy 1.18.1,
-  photutils 3.0.0, sep, jupyterlab 4.6.3, zwoasi 0.2.0.
+- Python 3.14 venv. The packages and their versions are `requirements.txt`; it is the only
+  place they are written down, because a version repeated here is a version that goes stale
+  silently.
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
-- ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (v1.41.0.0, MIT), loaded with
+- ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (MIT), loaded with
   `zwoasi.init(...)` from `asi.py`.
 - **C: is the working drive and it is tight.** Everything this project writes lives there —
   `data/`, caches, intermediates — inside a budget of a few tens of GB, so intermediates are

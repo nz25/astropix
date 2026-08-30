@@ -1182,3 +1182,135 @@ slope over its own error is −0.48, under half an error bar, so the honest stat
 |rate| < 0.0055 counts/min. The published field is conservative rather than wrong, but it answers
 a different question from the one an `uncertainty` field is asked. Left for Denis to decide, since
 changing it means re-running `03` and reissuing a constant.
+
+## 2026-08-30 — `00` is rebuilt to a slow build-up, and section 0 becomes physics
+
+Denis asked why read noise "cannot be averaged away", and the answer that satisfied him was
+longer and slower than the notebook that was supposed to have already explained it. `00` was
+written dense, for a reader who mostly knows this material and wants it pinned down. That is the
+wrong reader: the notebook exists so a later session does not have to re-derive the vocabulary,
+and a dense reference does not teach the thing it is being cited for.
+
+**The rebuild rule is one sentence: every term is defined before it is used, and no section
+leans on one that has not happened yet.** Nothing else about the notebook's purpose changed — it
+still measures nothing, writes nothing, and introduces no threshold.
+
+**Three choices, all Denis's, all deliberate:**
+
+- **Section 0 is physics, and that widens the notebook's stated purpose.** The old header claimed
+  "nothing here is specific to astronomy", which was already a slight fiction — every example is
+  a bias frame from this camera. The chain from photodiode to FITS value now opens the notebook,
+  because *where* an effect enters it is what makes the statistics that follow reasons rather
+  than rules. `CLAUDE.md`'s purpose row is amended to say so, and to scope it: section 0 is the
+  section that says what the gain multiplies and what it does not. It is not a sensor
+  engineering text and must not grow into one.
+- **Renumber freely, and fix the citations.** Variances-add moves from 4 to 3, because section 2
+  was forward-referencing it — the exact defect the rebuild exists to remove. Two directions of
+  spread moves from 3 to 4. Sections 5 to 12 keep their numbers, so `04`'s five citations of `00`
+  needed two repointed, not five.
+- **Delivered in passes, reviewable between them.** Pass 1 is the header, section 0 and sections
+  1 to 4.
+
+**The state this leaves, and it is not an accident.** Sections 5 to 12 are still in the old dense
+voice, kept verbatim apart from one cross-reference the swap invalidated. **A future session
+should not "fix" that inconsistency by compressing sections 0 to 4 to match** — the arrow points
+the other way. Pass 2 rebuilds 5 to 12 in the pass 1 voice, and it is gated on Denis reading
+sections 0 to 4 and giving a verdict on the pace, because that verdict governs eight sections and
+is cheaper to get wrong at four. Sections 6 and 10 are the ones judged to need the most
+expansion: both currently state a conclusion before the reader has the machinery to see it
+coming.
+
+**One finding came out of writing section 0, and it is a reading of published data, not a new
+constant.** The pedestal is two things added at two different points in the chain. Fitting
+`pedestal` against `offset` separately at each gain in `bias_sweep.csv` gives a slope of
+**4.000 ADC counts per offset unit, unmoved in the fourth decimal across amplifications spanning
+1x to 1000x**, while the fitted intercept climbs from 2.7 counts to 978. Since the gain stage
+multiplies everything upstream of it and nothing downstream, the `Offset` control is applied
+after the amplifier and the intercept is the analogue baseline that the gain does amplify.
+`R_at_offset` is flat across offsets at every gain, so the addition carries no noise of its own —
+which is what integer arithmetic looks like and what an analogue injection would not.
+
+This does **not** license 4.000 as a constant. Nothing was written to `results/`, it carries no
+provenance block, and it is a straight-line fit through eleven points that `03` already
+published. What it licenses is section 11's model, `pedestal = A + B * amplification`, which now
+has a measured reason for its shape instead of an assumed one. It also cannot separate "an
+integer added after the ADC" from "a noiseless analogue offset at the ADC's own reference" —
+both are downstream of the gain, which is all any later section needs.
+
+## 2026-08-30 — `CLAUDE.md` sheds operational state, and the numbers that proved its rules land here
+
+Adding a mid-rebuild note about notebook `00` to `CLAUDE.md`'s notebook table made a problem
+visible that predated it: the canonical file had been accumulating things that change. Denis
+asked for it stripped back to what is stable and canonical, and asked first whether `DECISIONS.md`
+should join the boot sequence instead.
+
+**It should not, and the reason is what the file is for.** `DECISIONS.md` is append-only and a
+reversal is a new entry, so it deliberately holds *both sides* of every reversed decision with
+nothing inside an entry marking it superseded. Booting it means loading retracted claims with no
+marker saying which are live. It is also 1,238 lines against `CLAUDE.md`'s 242 and grows every
+session, so the boot cost would scale with project age rather than staying flat. And it would
+corrode the promise that makes `CLAUDE.md` worth trusting — *nothing you are required to follow
+lives behind a citation* — because once the archive is read on boot, rules start migrating into
+it. The archive stays out of the boot sequence.
+
+**The test that decided each line, and the one to apply next time:**
+
+> A line belongs in `CLAUDE.md` if a session must **follow** it. If a session only needs to
+> **know** it, it belongs with the thing it describes. If it only **proves** a rule, it belongs
+> here or in `results/`.
+
+**What left `CLAUDE.md`, and where it went:**
+
+- **The notebook purposes table.** All five notebooks already state their purpose in their own
+  opening cell — the rule requires it. The table was a second copy of five things, and it had
+  already drifted: it said "twelve ideas" while `00` said thirteen. The rule stays and now says
+  the purpose lives in the notebook's opening cell and is copied nowhere else.
+- **"How a frame's type is decided".** `stats.classify`'s docstring already carries the same
+  argument in more detail, with the evidence. Deciding a frame's type is physics, and physics
+  lives with the code. One line under the archive rule points at it.
+- **The mid-rebuild note about `00`.** Moved into `00`'s own header cell, where it is visible to
+  exactly the session that needs it and cannot drift from the thing it describes. A separate
+  `STATE.md` in the `LEGACY.md` mould was considered and rejected as a mechanism built for n=1;
+  if a second and third case appear, that is the signal to build it.
+- **Package versions** (numpy 2.5.2, astropy 8.0.1, scipy 1.18.1, photutils 3.0.0, jupyterlab
+  4.6.3, zwoasi 0.2.0, ZWO SDK v1.41.0.0). `requirements.txt` is now the only place they are
+  written down. The disk-budget rule in the same section is canonical and stays.
+- **Proof-numbers inside rules.** `mult16_frac` is 1.000000 at min, mean and max across all
+  15,090 readable frames; the archive holds 15,102 frames; 141 of its lights were shot through
+  trees and cloud. Each proved a rule rather than letting anyone follow one, and each tracks
+  `results/frame_index.csv`, which is rebuilt. They are recorded here and the rules now point at
+  the index instead of quoting it.
+
+**One number was deliberately kept**, against the same test: *"read noise came out ~17% high at
+every gain in a retired attempt until this was found"*, in the white-balance rule. It fails the
+letter of the test and passes its purpose. Every number removed above tracks an artifact that
+gets rebuilt and can therefore go stale; this one is the frozen outcome of a project that no
+longer exists, so it cannot drift — and it is the consequence that makes gate 1 read as
+non-negotiable rather than fussy. **Stale-risk, not word count, is what the strip was for.**
+
+**Raised separately, then checked and resolved: *"the gain-252 pedestal is 77"* leaves the units
+rule.** It was raised on the suspicion that it was stale, and that suspicion was wrong on both
+counts. **The number is right**: session 01's own sweep gives gain 252 at offset 15 as 77.169 ADC
+counts — the per-offset fit at that gain has slope exactly 4.0000 and intercept 17.169, and the
+value is bracketed by measured rows at offsets 10 and 20. **And the gain is the right gain.** Two
+different 252s were conflated: 252 is wrong as an *HCG threshold*, which is the L26 belief that
+died and was replaced by 200, but 252 is the archive's dominant working gain — the 1,701 NGC 7000
+frames were shot at it — and so it is the gain a classifier most often needs a pedestal for.
+
+It goes anyway, for the reason the rest of this entry is about rather than for being wrong.
+`results/bias_constants.json` publishes `pedestal_fit` and `pedestal_per_offset_unit`, so the
+value is derivable from `results/` *with* provenance. A bare 77 in `CLAUDE.md` was a second,
+uncredentialed copy of a published constant — the same pattern as the notebook table, which had
+already drifted. The rule keeps full scale 4095, which is the anchor the convention actually
+needs, and now says pedestals are published in `results/` and not quoted here.
+
+**A real data gap surfaced while checking, and it is left open.** `bias_sweep.csv` has gain 252
+at offsets 0, 5, 10, 20, 25, ... 50 and **no offset-15 row**, with `R_sd` and `n_pairs` empty at
+that gain throughout. The seven other offset-sweep gains all have an offset-15 row because they
+are also in the 77-gain grid, which runs at offset 15; 252 is not in that grid — it steps by 10
+through 250 and 260 — so its offset-15 cell had nothing to merge with. Nothing published depends
+on it, and `00` section 0's table quietly shows seven gains rather than eight for this reason.
+Worth a row when `03` is next re-run, not worth a re-run of its own.
+
+Net: 242 lines to 226. The length saving is modest and was never the point — every item removed
+was one of the few things in the file that changes.
