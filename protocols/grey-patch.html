@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Grey patch &mdash; astropix flat source</title>
+<style>
+  html, body {
+    margin: 0; padding: 0; height: 100%; width: 100%;
+    overflow: hidden; overscroll-behavior: none;
+    -webkit-user-select: none; user-select: none;
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    background: #000;
+  }
+  /* The patch. Nothing may sit on top of it while a frame is being taken. */
+  #patch {
+    position: fixed; inset: 0;
+    background: rgb(128,128,128);
+    /* no gradient, no filter, no opacity: those are the three ways a browser
+       turns a flat fill into a dithered one */
+  }
+  #panel {
+    position: fixed; left: 0; top: 0; right: 0;
+    padding: max(12px, env(safe-area-inset-top)) 16px 14px 16px;
+    background: rgba(0,0,0,0.86); color: #d8d8d8;
+    font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+    box-shadow: 0 2px 24px rgba(0,0,0,0.6);
+  }
+  #panel.hidden { display: none; }
+  .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
+  .big { font-size: 30px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+  .dim { color: #8b8b8b; font-size: 13px; }
+  button {
+    font: inherit; color: #eee; background: #2a2a2a; border: 1px solid #444;
+    border-radius: 8px; padding: 9px 13px; min-width: 46px;
+  }
+  button:active { background: #3d3d3d; }
+  button.on { background: #14532d; border-color: #2a7a4a; color: #eaffef; }
+  input[type=range] { flex: 1 1 200px; min-width: 160px; accent-color: #999; }
+  code { font: 13px/1.4 ui-monospace, Menlo, monospace; color: #fff; }
+  .ok  { color: #7fdd9a; }
+  .bad { color: #ff9b8a; }
+  #hint {
+    position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    font: 12px -apple-system, sans-serif; color: rgba(0,0,0,0.35);
+    padding: 6px 12px; border-radius: 12px;
+  }
+  #hint.gone { display: none; }
+</style>
+</head>
+<body>
+
+<div id="patch"></div>
+
+<div id="panel">
+  <div class="row">
+    <span class="big" id="level">128</span>
+    <span class="dim" id="levelPct">50.2% &middot; #808080</span>
+    <span style="flex:1"></span>
+    <button id="hide">Hide &amp; capture</button>
+  </div>
+
+  <div class="row">
+    <button data-step="-16">&minus;16</button>
+    <button data-step="-1">&minus;1</button>
+    <input id="slider" type="range" min="0" max="255" step="1" value="128">
+    <button data-step="1">+1</button>
+    <button data-step="16">+16</button>
+  </div>
+
+  <div class="row">
+    <span class="dim">presets</span>
+    <button data-set="255">255</button>
+    <button data-set="192">192</button>
+    <button data-set="128">128</button>
+    <button data-set="64">64</button>
+    <button data-set="32">32</button>
+    <button data-set="0">0</button>
+  </div>
+
+  <div class="row">
+    <button id="warm">Start 10 min warm-up</button>
+    <span class="big" id="clock">10:00</span>
+    <span class="dim" id="warmNote">item 0 &mdash; backlight thermal settle</span>
+  </div>
+
+  <div class="row">
+    <span class="dim">wake lock</span> <span id="wake" class="bad">checking&hellip;</span>
+  </div>
+
+  <div class="row dim">
+    item 3 &mdash; confirm by hand, this page cannot read them:
+    Auto-Brightness <b>off</b> &middot; Auto-Lock <b>Never</b> &middot; Night Shift <b>off</b>
+    &middot; True Tone <b>off</b> &middot; brightness <b>100%</b>
+  </div>
+
+  <div class="row"><code id="record">grey level 128/255 (#808080), brightness 100%</code></div>
+  <div class="row dim">Tap the patch to bring this back. Arrow keys nudge; shift-arrow by 16.</div>
+</div>
+
+<div id="hint">tap to show controls</div>
+
+<script>
+(function () {
+  var patch = document.getElementById('patch');
+  var panel = document.getElementById('panel');
+  var hint  = document.getElementById('hint');
+  var level = 128;
+
+  function hex2(n) { var s = n.toString(16); return s.length < 2 ? '0' + s : s; }
+
+  function render() {
+    var h = '#' + hex2(level) + hex2(level) + hex2(level);
+    patch.style.background = 'rgb(' + level + ',' + level + ',' + level + ')';
+    document.getElementById('level').textContent = level;
+    document.getElementById('levelPct').textContent =
+      (level / 255 * 100).toFixed(1) + ' % of white  ' + h;
+    document.getElementById('slider').value = level;
+    document.getElementById('record').textContent =
+      'grey level ' + level + '/255 (' + h + '), brightness 100%';
+    hint.style.color = level > 110 ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
+    try { localStorage.setItem('astropix.grey', level); } catch (e) {}
+  }
+
+  function setLevel(v) {
+    level = Math.max(0, Math.min(255, Math.round(v)));
+    render();
+  }
+
+  try {
+    var saved = parseInt(localStorage.getItem('astropix.grey'), 10);
+    if (saved >= 0 && saved <= 255) level = saved;
+  } catch (e) {}
+  render();
+
+  document.getElementById('slider').addEventListener('input', function (e) {
+    setLevel(+e.target.value);
+  });
+
+  Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (b) {
+    b.addEventListener('click', function () { setLevel(level + (+b.dataset.step)); });
+  });
+  Array.prototype.forEach.call(document.querySelectorAll('[data-set]'), function (b) {
+    b.addEventListener('click', function () { setLevel(+b.dataset.set); });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    var d = (e.key === 'ArrowUp' || e.key === 'ArrowRight') ? 1
+          : (e.key === 'ArrowDown' || e.key === 'ArrowLeft') ? -1 : 0;
+    if (d !== 0) { setLevel(level + d * (e.shiftKey ? 16 : 1)); e.preventDefault(); }
+    if (e.key === 'h' || e.key === 'Escape') hidePanel();
+  });
+
+  // --- show / hide -------------------------------------------------------
+  function hidePanel() { panel.classList.add('hidden'); hint.classList.remove('gone'); }
+  function showPanel() { panel.classList.remove('hidden'); hint.classList.add('gone'); }
+  document.getElementById('hide').addEventListener('click', function (e) {
+    e.stopPropagation(); hidePanel();
+  });
+  patch.addEventListener('click', showPanel);
+  hint.addEventListener('click', showPanel);
+  hint.classList.add('gone');
+
+  // --- warm-up timer (bench-setup item 0) --------------------------------
+  var deadline = null;
+  var clock = document.getElementById('clock');
+  var warmBtn = document.getElementById('warm');
+  var warmNote = document.getElementById('warmNote');
+
+  warmBtn.addEventListener('click', function () {
+    deadline = Date.now() + 10 * 60 * 1000;
+    warmBtn.classList.add('on');
+    warmBtn.textContent = 'Restart warm-up';
+    warmNote.textContent = 'started ' + new Date().toTimeString().slice(0, 8) +
+      ' -- record this time';
+  });
+
+  setInterval(function () {
+    if (deadline === null) return;
+    var left = Math.max(0, deadline - Date.now());
+    var s = Math.round(left / 1000);
+    clock.textContent = Math.floor(s / 60) + ':' + (s % 60 < 10 ? '0' : '') + (s % 60);
+    clock.className = left === 0 ? 'big ok' : 'big';
+    if (left === 0) { warmNote.textContent = 'settled -- item 0 satisfied'; }
+  }, 250);
+
+  // --- screen wake lock --------------------------------------------------
+  // navigator.wakeLock exists only in a secure context.  Served over plain
+  // http:// on the LAN it is undefined, and the honest thing is to say so
+  // rather than to imply this page is holding the screen awake.
+  var wake = document.getElementById('wake');
+  var sentinel = null;
+
+  function reportNoLock(why) {
+    wake.className = 'bad';
+    wake.textContent = 'NOT held -- ' + why + '. Auto-Lock must be Never (item 3).';
+  }
+
+  function acquire() {
+    if (!('wakeLock' in navigator)) {
+      reportNoLock(window.isSecureContext ? 'unsupported browser'
+                                          : 'insecure context (http://)');
+      return;
+    }
+    navigator.wakeLock.request('screen').then(function (s) {
+      sentinel = s;
+      wake.className = 'ok';
+      wake.textContent = 'held';
+      s.addEventListener('release', function () {
+        sentinel = null;
+        wake.className = 'bad';
+        wake.textContent = 'released';
+      });
+    }).catch(function (err) {
+      reportNoLock(err.name || 'request refused');
+    });
+  }
+
+  document.addEventListener('visibilitychange', function () {
+    if (document.visibilityState === 'visible' && sentinel === null) acquire();
+  });
+  acquire();
+})();
+</script>
+</body>
+</html>

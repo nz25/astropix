@@ -45,7 +45,7 @@ electrons. The bridge is `R_adu = R_e / g`, and that is the `read_noise_adu_pred
 | R (ADC counts) | 0.67 | 0.98 | 1.47 | 2.27 | 3.81 | 1.05 | 1.64 | 3.00 | 5.59 | 8.50 | 10.83 |
 
 This is a **joint** test of both spec curves, and that is its weakness: a disagreement cannot be
-attributed to `g` or to `R_e` from session 01 alone. Session 03's PTC measures `g` independently
+attributed to `g` or to `R_e` from session 01 alone. Session 02's PTC measures `g` independently
 and turns the joint test into two separate ones.
 
 Note the shape. In ADC counts read noise *rises* with gain on each branch, because the
@@ -72,7 +72,7 @@ Log₂ y-axis, doubling gridlines from 0.00098 to 0.5 e⁻/s/px, annotated `Y = 
 roughly 5.5–6 °C at the warm end and stretches to ~11 °C below −10, which is the usual signature
 of a curve meeting a measurement floor rather than of physics changing.
 
-For session 02, that predicts a 300 s dark accumulating 0.55 e⁻/px — about **1.0 ADC count** at
+For session 03, that predicts a 300 s dark accumulating 0.55 e⁻/px — about **1.0 ADC count** at
 gain 252, where `g` ≈ 0.55 e⁻/ADU. Per pixel that is well under the read noise, which is why the
 session bounds `D` rather than quoting it; across a 1 Mpx plane the *mean* is precise to far
 better than that, which is why the bound can still be tight, and why pedestal drift over the
@@ -97,11 +97,11 @@ model is worth.
 | spec curve | pinned by | in what unit | verdict available |
 |---|---|---|---|
 | `HCG` threshold | session 01, fine grid 180–220 step 2 | gain units | **direct** — a cliff is a cliff in any unit |
-| `R_e(gain)` | session 01 (+ session 03 for `g`) | ADC counts; electrons only after the PTC | **joint** with `g` until the PTC runs |
-| `g(gain)` | session 03, photon transfer curve | e⁻/ADU | **direct**, once it runs |
-| `FW(gain)` | session 03, via `FW = 4096 g` | e⁻ | **derived** — not an independent test |
+| `R_e(gain)` | session 01 (+ session 02 for `g`) | ADC counts; electrons only after the PTC | **joint** with `g` until the PTC runs |
+| `g(gain)` | session 02, photon transfer curve | e⁻/ADU | **direct**, once it runs |
+| `FW(gain)` | session 02, via `FW = 4096 g` | e⁻ | **derived** — not an independent test |
 | `DR(gain)` | sessions 01 + 03, via `log2(FW/R)` | stops | **derived** — not an independent test |
-| dark current at −10 °C | session 02 | ADC counts/s; electrons after the PTC | **bound**, one temperature only |
+| dark current at −10 °C | session 03 | ADC counts/s; electrons after the PTC | **bound**, one temperature only |
 | dark current vs temperature | nothing planned | — | the model treats temperature as fixed at −10 °C |
 | QE(λ) | nothing planned | — | needs a calibrated spectral source |
 

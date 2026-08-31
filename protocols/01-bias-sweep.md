@@ -12,10 +12,10 @@ planning session A. `bench-setup.md` is the pre-flight for all of them and is un
 | `pedestal(gain, offset)` | mean of a bias frame per CFA plane, per gain |
 | `R(gain)` in ADC counts | pair-difference σ per gain — **not** a PTC intercept (L10) |
 | HCG threshold | the read-noise cliff, dense sampling either side of 200 (L26) |
-| pedestal drift rate | 15-minute continuous trace; the interleaving requirement for session 02 |
+| pedestal drift rate | 15-minute continuous trace; the interleaving requirement for session 03 |
 | **the offset setting itself** | the lowest offset whose clipped fraction stays under 0.1% at every gain (L13) |
 
-**What it is not for.** `g(gain)` — that needs light and is session 03. Nothing here converts
+**What it is not for.** `g(gain)` — that needs light and is session 02. Nothing here converts
 ADC counts to electrons, and nothing here should try.
 
 ## Prerequisite: a capture path
@@ -107,7 +107,7 @@ under measurement, rather than guessed at.
 
 Block 4 is the dark control arm of the stability question, folded in here because it needs the
 same cap and the same cooling cycle. It answers *how fast does the pedestal move*, which is what
-licenses — or forces — the bias interleaving in session 02.
+licenses — or forces — the bias interleaving in session 03.
 
 ## Analysis rules, fixed before the data exists
 
@@ -131,8 +131,8 @@ Statistics on the CFA mosaic, split RGGB, never debayered. Values in ADC counts.
 | clipping appears at 15 at any gain we intend to use | ZWO's recommendation does not hold on this rig at this setpoint, and that is a result worth `results/` |
 | a read-noise cliff between two adjacent fine-grid gains | that is the HCG threshold; ZWO's own chart annotates **200** (`vendor/asi585specs/`), which is also what the retired project measured — the "ZWO say 252" belief has no source and 252 is the ASI2600's threshold |
 | no cliff anywhere in 180–220 | widen the fine grid before concluding; a threshold that isn't where two independent sources say it is needs more evidence than one night |
-| pedestal drift over 15 min below the frame-to-frame scatter | session 02's interleaving is a precaution, and its cost can be reduced |
-| pedestal drift measurable | interleaving is mandatory in session 02 **and** in the session 03 bias pairs |
+| pedestal drift over 15 min below the frame-to-frame scatter | session 03's interleaving is a precaution, and its cost can be reduced |
+| pedestal drift measurable | interleaving is mandatory in session 03 **and** in the session 02 bias pairs |
 
 ## Record for the session
 

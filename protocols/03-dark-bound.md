@@ -1,9 +1,9 @@
-# Session 02 — the dark bound, and the stack for `η_comb`
+# Session 03 — the dark bound, and the stack for `η_comb`
 
 **No light source. Cap on. Overnight — about 5 hours of capture.**
 
-Numbered protocols are ordered by execution. This is planning session D. Run it the same night
-as session 01, after it, on the same cooling cycle.
+Numbered protocols are ordered by execution. This is planning session D. It runs after the
+photon transfer curve, and everything it needs in electrons comes from there.
 
 ## What this session is for
 
@@ -64,7 +64,7 @@ Per CFA plane, on the mosaic, in ADC counts.
 
 1. **`D`**: fit plane mean of the darks against exposure, with the bias level taken from the
    nearest interleaved block, not from a session master. Slope in counts/s → e⁻/px/s using
-   `g(252)` when session 03 provides it.
+   `g(252)` when session 02 provides it.
 2. **Report the slope against its own uncertainty before fitting anything to it.** If it does not
    exceed it, the result is `D < x e⁻/px/s`, quoted as a bound. **Never quote a signed value**
    (L14) — a negative dark current is a pedestal artefact announcing itself.
