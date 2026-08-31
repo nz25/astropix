@@ -51,6 +51,7 @@ class FakeCamera:
         self.clamp = clamp or {}
         self.roi = None
         self.closed = False
+        self.closes = 0
 
     def get_controls(self):
         return self.controls
@@ -73,6 +74,7 @@ class FakeCamera:
         return np.full((8, 8), 1232, np.uint16)
 
     def close(self):
+        self.closes += 1
         self.closed = True
 
 
@@ -255,3 +257,50 @@ def test_cool_to_reports_each_reading_as_it_is_taken():
                         _sleep=clock.sleep, _now=clock.now)
     assert seen == trace, "every reading must be reported, in order, as taken"
     assert seen[0][0] == 0.0, "the first reading comes before the first sleep"
+
+
+# --------------------------------------------------------------------------
+# closing: the SDK addresses cameras by index, so a stale close is not free
+# --------------------------------------------------------------------------
+
+def test_closing_twice_only_closes_once():
+    r = rig()
+    r.close()
+    r.close()
+    assert r.cam.closes == 1
+
+
+def test_a_dead_handle_does_not_close_the_camera_that_replaced_it():
+    """The session 02 failure: reopening in a notebook killed the new camera.
+
+    `_camera_class` is handed a stand-in binding whose cameras share one bus
+    keyed by index, which is the part of the real SDK that makes this bite.
+    """
+    bus = {}
+
+    class Binding:
+        class Camera:
+            def __init__(self, id_):
+                self.id = id_
+                bus[id_] = True
+                self.closed = False
+
+            def __del__(self):
+                self.close()
+
+            def close(self):
+                bus[self.id] = False
+                self.closed = True
+
+            def get_controls(self):
+                return {}
+
+    cam = asi._camera_class(Binding)
+    scout = cam(0)
+    scout.close()                     # the scout half of the notebook ends here
+    assert bus[0] is False
+
+    session = cam(0)                  # the session half opens a fresh one ...
+    del scout                         # ... and the old handle is dropped
+    assert bus[0] is True, "a dead handle closed the live camera"
+    assert session.closed is False

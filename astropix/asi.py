@@ -132,7 +132,9 @@ class Rig:
         return self.range("Exposure")[0] / 1e6
 
     def close(self):
-        """Release the camera.  **This drops the cooler.**
+        """Release the camera, once.  **This drops the cooler.**
+
+        Idempotent, and that is a bug fix rather than a nicety: see `_Camera`.
 
         Measured on 2026-08-28: set `CoolerOn = 1`, close, reopen, and it reads
         0 -- while `Gain` and `Offset` come back exactly as they were left.
@@ -142,7 +144,37 @@ class Rig:
         belief on its own, either: with the cooler off the sensor reports a flat
         0, which `temperature` reports as None rather than as a measurement.
         """
-        self.cam.close()
+        if not getattr(self.cam, "closed", False):
+            self.cam.close()
+
+
+def _camera_class(zwoasi):
+    """`zwoasi.Camera`, with the one thing about it that closes a live camera fixed.
+
+    The binding's `Camera.close` calls `ASICloseCamera(self.id)` unconditionally
+    and its `__del__` calls `close`.  The SDK addresses cameras by *index*, not
+    by handle, so a dead Python object closes whatever is currently open on
+    index 0 -- including a camera opened seconds ago by someone else.
+
+    That is not hypothetical; it is how session 02's ladder died.  The notebook
+    closed the scout's rig, worked on warm, then rebound `rig = open_camera()`.
+    Python evaluates the right-hand side first, so the new camera was opened,
+    the name rebound, the old `Rig` dropped to zero references, and its
+    destructor closed index 0 -- the new camera.  `get_controls` had already
+    run, so the failure surfaced one line later as `ZWO_IOError: Camera closed`
+    on the *first* control read, with a rig that had never been usable.
+
+    Guarding `close` on the flag the binding already maintains makes the
+    destructor of a closed camera a no-op, which is what it was always meant
+    to be.
+    """
+
+    class _Camera(zwoasi.Camera):
+        def close(self):
+            if not getattr(self, "closed", True):
+                super().close()
+
+    return _Camera
 
 
 def open_camera(index=0, dll=SDK_DLL, raw16=None):
@@ -178,7 +210,7 @@ def open_camera(index=0, dll=SDK_DLL, raw16=None):
             "SDK alone is not enough -- check Get-PnpDevice for VID_03C3), or "
             "the ASIAIR is powered on and holding the camera over USB (L02)"
         )
-    return Rig(zwoasi.Camera(index),
+    return Rig(_camera_class(zwoasi)(index),
                raw16=raw16 if raw16 is not None else getattr(zwoasi, "ASI_IMG_RAW16", RAW16))
 
 
