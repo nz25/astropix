@@ -3,7 +3,7 @@
 **No light source. Cap on.** This session can run before the bench rig exists.
 
 Numbered protocols are ordered by **execution**, not by the letters used while planning. This is
-planning session A. `bench-setup.md` is the pre-flight for all of them and is unnumbered.
+planning session A. It needs no light, so `light-source.md` does not apply to it.
 
 ## What this session is for
 
@@ -28,8 +28,10 @@ asked for. **Record which tool was used in the session record** — it is part o
 
 ## Pre-flight
 
-Run `bench-setup.md` items **1, 2, 4, 5**. Items 0, 3, 6 and 7 are light-source items and are
-**not applicable** with the cap on — skip them deliberately, do not adapt them.
+**No light-source pre-flight**: the cap is on, so `light-source.md` does not apply. What the
+old eight-item bench pre-flight also listed is now either a gate below or a guard that refuses
+rather than reminds — `asi.open_camera` names the ASIAIR and the missing driver as the two
+causes of a camera that is not there (L02), and `asi.set_roi` rejects an odd ROI (L05).
 
 ### Gate 1 — white balance, verified from pixels (L01)
 
@@ -142,7 +144,7 @@ and anything touched mid-session.
 
 ## LEGACY entries consumed
 
-L01, L03, L04, L05 (pre-flight, via `bench-setup.md`) · L10 (read noise from bias pairs) ·
+L01, L03, L04, L05 (pre-flight — now the gates here, and guards in `asi.py`) · L10 (read noise from bias pairs) ·
 L13 (clipping is a fraction) · L25, L26, L27, L29 (predictions to reproduce or refute) ·
 L31 (the dark control arm only; arms 1 and 2 need the light source and are a later session).
 

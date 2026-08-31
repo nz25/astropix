@@ -317,7 +317,7 @@ from noise, the second separates elapsed time from exposure duration.
 **One candidate they did not test: backlight thermal drift.** LED backlights dim as they warm, a
 panel at 100% brightness reaches equilibrium over minutes, and that fits the leftover timescale.
 It also survives their settling check — re-running minutes later does not help if the panel is
-still heating rather than having settled once. `protocols/bench-setup.md` item 0 carries a
+still heating rather than having settled once. `protocols/light-source.md` item 1 carries a
 ten-minute warm-up as a precaution against this; **if the trace is flat from cold, delete that
 item** rather than keeping a ritual whose reason has been falsified.
 
@@ -326,7 +326,7 @@ over 15 minutes at −10 °C, `results/pedestal_drift.csv` — is the first half
 with the light source taken out of it: **−0.00133 ± 0.254 ADC counts/min**, a slope two orders of
 magnitude inside its own uncertainty. So nothing in the *camera* drifts on this timescale, and
 whatever is left is upstream of the sensor. That is the arm this project could run without the
-light source; arms 1 and 2 still need it, and `bench-setup.md` item 0 stands until they do.
+light source; arms 1 and 2 still need it, and `light-source.md` item 1 stands until they do.
 
 The separate 5.5% single-rung outlier looks like a different mechanism — an occasional bad frame
 rather than drift. A notification, or the Screen Wake Lock briefly lapsing.

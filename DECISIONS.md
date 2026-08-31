@@ -1314,3 +1314,103 @@ Worth a row when `03` is next re-run, not worth a re-run of its own.
 
 Net: 242 lines to 226. The length saving is modest and was never the point — every item removed
 was one of the few things in the file that changes.
+
+### D52. Gain above 450 leaves the project
+Four things happened, in order. The decision is the fourth, and it is only defensible because of
+the three before it.
+
+**1. The camera turned out to run to 600, past where anyone publishes.** The retired project
+assumed the gain control stopped at 400. It does not: the SDK's own range says **0–600**, and that
+is where L05 came from. ZWO's published charts stop at **450**. So the moment the range was read
+off the hardware rather than assumed, the top third of it had no vendor curve to be checked
+against — which was a reason to *measure* it, not a reason to avoid it. Session 01 measured it:
+the coarse block walks 0 to 600 in steps of 10.
+
+**2. It measured it, and 450–600 does not behave like the rest of the range.** Four findings, all
+in `04_sweep_read`, none fatal alone:
+
+- **Gain 600 has pixels reading zero at *every* offset in the arm** — including offsets where the
+  pedestal sits over a thousand counts clear of the floor and clipping is arithmetically
+  impossible. Left in the offset criterion it produces no contradiction, which would at least be
+  obvious. It quietly drags `offset_min_safe` from **10 to 45**: a threshold answering a question
+  about telegraph pixels while wearing the label of an answer about clipping. It had to be
+  excluded by hand, and the exclusion needed the pixels themselves to justify it.
+- **The fixed-pattern ratio breaks its own flat line there.** 1.011 ± 0.007 across 77 gains, and
+  **1.02 at gain 600** — the same telegraph pixels turning up in the spatial spread.
+- **The pedestal fit is an order of magnitude worse on the branch that contains them.** Worst
+  residual **0.62 counts on LCG, 16.17 on HCG**, and HCG is the branch where the exponential term
+  reaches 965 counts.
+- **The vendor comparison degrades exactly where the vendor curve ends.** The ratio to ZWO's
+  read-noise prediction holds 0.94–1.05 from gain 0 to 300, then drifts to 0.85 at 350 and 1.27 at
+  450.
+
+Together they are a pattern rather than four separate curiosities: **every analysis in session 01
+needed an exception carved for the top of the gain range.** An exception is a term in the model
+that exists to describe a setting nobody uses, and it is paid for at every future use site.
+
+**3. And the bench is dramatically easier below 450.** The attenuation scout measured 839,000
+counts/s at gain 100 on a bare screen — `t_sat(gain 0)` of 15.2 ms. Gain 600 is 1000× gain 0, so
+the faintest ladder rung (0.3% of `t_sat`) lands at **0.035 µs**, three orders of magnitude under
+the camera's 32 µs floor; clearing it needs **~4000×** of attenuation, which paper and grey level
+cannot deliver. Gain 450 is 178×, and the same rung needs **125×** to clear the floor or ~790× for
+comfortable margin. Capping the range turns an infeasible light source into a reachable one and
+the session into about five minutes of shutter-open time.
+
+**4. So gain above 450 is out of scope, because there is no practical use to pay for the
+trouble.** Session 01's own `pedestal_fit` puts the pedestal at **1025 of 4095 counts** at gain
+600: a quarter of the scale gone before a photon arrives, leaving 3070 of headroom and, at ZWO's
+predicted `g₀ = 9.4`, about **29 e⁻ of full well**. L25's retired-project table — measured
+independently, years earlier, on the same sensor model — says **26 e⁻ and 4.92 stops** of dynamic
+range there, against 12.51 stops at gain 0. Two sources with nothing in common agree that gain 600
+cannot hold a sky background. Nobody was ever going to shoot with it.
+
+**450 is kept as a comparison point and not as a usable one.** Its own well is only ~204 e⁻ and it
+would fail the practical test on its merits. It stays because it is the vendor chart's last point,
+and dropping it would leave the top third of the gain law with no external check at all.
+
+**What this is not.** It is a scope decision, not a finding about the sensor. The claim that gain
+600 is useless rests on a *prediction* — ZWO's `g₀` carried up by the gain law — together with
+session 01's measured telegraph noise. Nothing in this project will measure it now, and the record
+must not later read as though something did.
+
+**Measurements already taken above 450 stay.** Session 01's rows above the ceiling remain in
+`results/bias_sweep.csv` exactly as measured, and `04_sweep_read`'s account of the gain-600
+exclusion stays with them: it is the evidence for this entry. Descoping decides what we
+characterise from here; it is never a licence to delete data that cost a night.
+
+**Rejected:** teaching `asi.py` to refuse gains above 450. The camera's control runs to 600 and the
+library reads its range from the SDK (L05). A library that lies about what the hardware does in
+order to enforce a project policy is a library that cannot be trusted about anything else.
+
+### D53. `bench-setup.md` becomes `light-source.md`, and loses five of its eight items
+D40 opened `protocols/` with an eight-item bench pre-flight because nothing else existed to hold
+those actions. Since then the library grew guards and the numbered protocols grew gates, and the
+file was quietly hollowed out — which is how a reader came to open it and ask what it was for.
+
+**Five items left because code now refuses rather than reminds.** `asi.open_camera` raises naming
+both the ASIAIR and the missing Windows driver (item 1); `neutralise_white_balance` runs on every
+open and gate 1 of each protocol checks the pixels (item 2); `asi.cool_to` holds its settle window
+and carries the power-cycle rule (item 4); `asi.set_roi` rejects an odd ROI before the Bayer phase
+can shift (item 5). **A checklist item whose failure mode is already an exception is a checklist
+item nobody needs to read.** Item 7's shrink-the-ROI-for-linearity rule left too, but for a
+different reason: L09 and L12 are still queued in `LEGACY`, so the claim already has a home and a
+consuming session.
+
+**Worse than redundant, it was contradictory in shape.** `01-bias-sweep.md` said "run items 1, 2,
+4, 5" and then stated gates that restate items 2 and 4 in full. Two documents describing the same
+action is the duplication D13 exists to prevent, and it had grown inside the folder D13 created.
+
+**What survives is what no code can check**: the ten-minute panel warm-up, the three iOS settings,
+and the attenuation measurement. All three are light-source items, so the file is named for that
+and cap-on sessions do not run it at all. It is deliberately *not* folded into `02-ptc.md`: the
+linearity sweep that MISSION needs for `ceiling(gain)` uses the same panel, the same warm-up and
+the same settings, and would otherwise copy them back out.
+
+**Two dangling citations were cleaned up on the way.** L06, L07 and L08 were harvested in D51 with
+`bench-setup.md` named as their destination, but the file kept citing them — pointers to entries
+that no longer exist. Their content is stated in full in the new file and the citations are gone,
+which is what harvesting was supposed to leave behind.
+
+**Rejected:** deleting the pre-flight entirely and folding its two human-only items into
+`02-ptc.md`. It reads well today, with one document open at the bench, and costs a silent
+duplication the moment the linearity protocol is written.

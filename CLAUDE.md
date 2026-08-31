@@ -64,8 +64,23 @@ is the thing that stops the model ever being finished.
   carrying its uncertainty: read off a plot, ±5% at best. **Read it before designing a sweep.**
   Its charts are not independent of each other — full well and dynamic range are *derived* from
   the gain and read-noise curves, so reproducing them tests nothing new — and its gain axis stops
-  at 450 while this camera's gain control runs to 600.
-- **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
+  at 450, which is where this project's gain domain stops too.
+- **The gain domain is 0–450. Nothing above it is characterised, modelled or recommended.**
+  The camera's control runs to 600 and `asi.py` will still set it — that is a hardware fact
+  and the library does not lie about it — but no sweep places a point there and no published
+  constant is a function of it. The reason is the pedestal: at gain 600 it is **1025 of 4095
+  counts**, so a quarter of the scale is gone before a photon arrives, leaving ~29 e⁻ of well
+  and L25's **4.92 stops** of dynamic range against 12.5 at gain 0. A setting whose well
+  cannot hold the sky background is not a setting anyone chooses. The other half of the
+  reason is that it does not behave: session 01 needed an exception for the top of the
+  range in every analysis it appeared in, and one of them — telegraph pixels reading zero
+  where clipping is arithmetically impossible — would have dragged `offset_min_safe` from
+  10 to 45 had it been left in. 450 is kept because it is
+  the vendor chart's last point and therefore the last gain where a row-for-row comparison is
+  possible — a **comparison point, not a usable one**: its own well is only ~200 e⁻.
+  **Measurements already taken above 450 stay where they are.** Session 01's rows above the
+  ceiling remain in `results/bias_sweep.csv`, because descoping decides what we characterise
+  and is never a licence to delete a measurement. Cite this rule; do not restate it.- **One unit, and this is where it is defined: the ADC count.** The camera digitises to 12 bits
   and stores the value bit-shifted x16 into a 16-bit FITS container, so a stored value is 16x the
   number the ADC actually produced. Measured, not assumed: `mult16_frac` in
   `results/frame_index.csv` is that check, and it is run on the index rather than believed.
@@ -79,7 +94,7 @@ is the thing that stops the model ever being finished.
     run on data that has already been converted.
   - **Stored units survive in exactly four places, all deliberate.** The raw reader and its
     `% 16` test; `mult16_frac` itself, which is the check and not a curiosity; L01's
-    white-balance step-of-16 diagnostic in `protocols/bench-setup.md`, which goes vacuous in ADC
+    white-balance step-of-16 diagnostic in gate 1 of every bench protocol, which goes vacuous in ADC
     counts; and the PixInsight boundary, where PI normalises by 65535, so a PI value converts as
     `v * 65535 >> 4` and **never** as `v * 4095` (L20 — 65535/16 is 4095.9375).
 - **Two data sources, and only one of them owes us anything.**
@@ -194,7 +209,8 @@ astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how
 tests/        one test_<module>.py per library module; outside the budget
 notebooks/    numbered, narrative, markdown + code
 data/         gitignored; frames captured *for* this project (bench and tests)
-protocols/    bench pre-flight and capture protocols; `bench-setup.md` is *run*, not just read
+protocols/    numbered capture protocols, `light-source.md`, and the panel itself
+              (grey-patch.html + patch-server.py); these are *run*, not just read
 pjsr/         headless PixInsight scripts
 results/      committed CSV (sweeps) and JSON (constants with provenance)
 reference/    gitignored; third-party texts. A source of hypotheses to check, never of constants

@@ -1,7 +1,7 @@
 # Session 02 — photon transfer curve
 
 **Light source required.** This is the first session that cannot run with the cap on, and the
-first that depends on `bench-setup.md`'s light-source items.
+first that runs `light-source.md`.
 
 Numbered protocols are ordered by **execution**, not by the letters used while planning. This
 session runs before the dark bound (`03-dark-bound.md`), which is written but unrun: `g(gain)`
@@ -24,8 +24,9 @@ Nothing here measures a bend, and no rung is placed to find one. Nor is it for d
 **Why it can run before the light source is characterised.** L31's unexplained 1.79%
 frame-to-frame instability and L09's 3.8% illumination unevenness both fail to reach a PTC:
 the curve plots variance against *measured signal*, never against commanded exposure, and it
-differences frame pairs, so it is blind to fixed pattern. `bench-setup.md` item 7 already
-states the exemption. A drifting panel moves a point along the curve, not off it.
+differences frame pairs, so it is blind to fixed pattern. The exemption is L09's own — its
+shrink-the-ROI rule is a linearity rule — and it stays queued there for the session that needs
+it. A drifting panel moves a point along the curve, not off it.
 
 ## Prerequisite: a capture path
 
@@ -37,10 +38,10 @@ from what was asked for.
 
 ## Pre-flight
 
-Run `bench-setup.md` items **0 through 6**. Item 7 is a linearity item and is **not applicable**
-to a PTC — skip it deliberately, do not adapt it.
+Run all three items of `light-source.md`. Everything the old eight-item bench pre-flight also
+listed is now either a gate below or a guard in `asi.py` that refuses rather than reminds.
 
-Item 0's ten-minute warm-up **stands unqualified this session.** It is a precaution against an
+Item 1's ten-minute warm-up **stands unqualified this session.** It is a precaution against an
 untested hypothesis, and the trace that would retire it (L31 arms 1 and 2) is deliberately not
 folded in here: it pins down no term this session needs, and a session with two purposes is two
 sessions run badly.
@@ -63,14 +64,14 @@ monotonically and does not ring.
 `Offset` persist across the same close, so a session split across two processes is not possible
 and a dead kernel restarts the cool-down from ambient.
 
-### Gate 3 — the saturating exposure, measured per gain (bench item 6)
+### Gate 3 — the saturating exposure, measured per gain (`light-source.md` item 3)
 
 Solve `t_sat(gain)` from the *measured* flux at each of the nine gains. **Never extrapolate it**
 from a per-sheet attenuation figure: stacked diffusers give diminishing returns and grey level is
 exhausted below about 25% of full scale because the backlight leaks (L07, L08).
 
 `t_sat` is what sets this session's wall clock, and it is not knowable before the gate runs. The
-protocol fixes the ladder's **shape**; item 6 fixes its **scale**.
+protocol fixes the ladder's **shape**; `light-source.md` item 3 fixes its **scale**.
 
 ## Capture
 
@@ -90,13 +91,18 @@ real exposure, so the retake budget binds sooner: **10 retakes of one frame slot
 
 ### The gain set
 
-**0, 50, 100, 190, 200, 250, 300, 450, 600** — nine.
+**0, 50, 100, 190, 200, 250, 300, 450** — eight.
 
-Eight of them are L25's published rows, so the comparison is row-for-row with no interpolation on
+Seven of them are L25's published rows, so the comparison is row-for-row with no interpolation on
 either side. 190 and 200 straddle the HCG threshold measured in session 01. 450 is the vendor
-chart's last point, and 600 is past where any vendor curve reaches.
+chart's last point and the top of this project's gain domain (`CLAUDE.md`).
 
-**Nine and not sixty-one, because session 01 already measured `R` in ADC counts at 61 gains.**
+**Gain 600 is not in the set and is not an omission.** It is out of scope: the pedestal takes
+a quarter of the scale there, the well is ~29 e⁻, and it is what would have forced this session's
+light source to 4000× attenuation instead of ~800×. Dropping it is what makes the bench
+reachable with paper.
+
+**Eight and not every gain session 01 measured, because session 01 already measured `R` in ADC counts across its own grid.**
 `R` in electrons is `R_counts × g(gain)`, so this session needs `g` only at enough gains to *fit
 and validate* the log-linear law; the law then carries `g` onto session 01's existing grid. If
 the law fails its own residual test below, that economy is withdrawn and the gain set is the
@@ -122,7 +128,7 @@ slope absorbs the error.
 | 1 — ladder | the nine | 12 | 4 | two independent pairs per rung, so the variance has a repeat |
 | 2 — bias | the nine | — | 10 | one block per gain, shot adjacent to that gain's ladder |
 
-≈ 520 frames written, ≈ 1.1 GB. Capture time is `t_sat`-dominated and follows from Gate 3.
+≈ 464 frames written, ≈ 0.9 GB. Capture time is `t_sat`-dominated and follows from Gate 3.
 
 **Block 2 is a per-gain pedestal, not a re-measurement of read noise.** It exists because signal
 must be measured against a pedestal from *this* session: L14's cautionary tale is a dark sitting
@@ -164,7 +170,7 @@ Statistics on the CFA mosaic, split RGGB, never debayered. Values in ADC counts.
 | single-frame variance exceeds pair variance beyond the pair repeatability | **an FPN term exists.** MISSION's first assumption is refuted rather than untested, and the model gains a term that survives lengthening the sub |
 | L11's archive gains agree with the bench to a few % | two datasets with nothing in common agree, which is stronger evidence than either alone |
 | they disagree | one carries a systematic. **Do not average them** — find it, or publish the bench value with the disagreement recorded beside it |
-| gain 600 is out of family | expected, and not a surprise to explain away: session 01 already found telegraph noise and a 4.027 offset slope there. It is the least trustworthy gain in the set and is off every vendor curve |
+| gain 450 is out of family | the least constrained point in the set: no L25 row, and the vendor chart's last. It weakens the top end of the law and is not on its own evidence the law is wrong. Session 01's telegraph noise and 4.027 offset slope were at gain 600, which is now out of scope |
 
 ## Record for the session
 

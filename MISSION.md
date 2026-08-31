@@ -18,7 +18,7 @@ choice of point on it is mine, per target.
 | Knob | Status |
 |---|---|
 | Sub-exposure length | free — primary axis, inside the bounds below |
-| Gain | free — primary axis, but see *gain nearly cancels* under the model |
+| Gain | free over **0–450**, primary axis, but see *gain nearly cancels* under the model. Above 450 is out of scope — see the gain-domain rule in `CLAUDE.md` |
 | Total integration time | free |
 | Sub-exposure bounds | **constrained, not free**: an upper bound from what the mount tracks unguided-error-free and from cloud/gust loss risk, a lower bound from the sub count that outlier rejection and dithering need, and from `t_dead` |
 | Offset | fixed once, from the offset sweep |
@@ -136,6 +136,6 @@ Every one carries provenance; none is taken from a spec sheet without checking.
 **In:** the signal/noise model, camera and sensor characterisation, sub-exposure and gain
 optimisation, the tooling to attribute a pixel's value to its sources.
 
-**Out:** image processing and PixInsight technique (PixInsight is a referee and an
+**Out:** gain above 450 (`CLAUDE.md`); image processing and PixInsight technique (PixInsight is a referee and an
 integration engine, not a subject); sharpness, focus, guiding and seeing; optics/vignetting
 characterisation (phase 2); scheduling (phase 2); anything premised on gear I do not own.

@@ -90,6 +90,8 @@
 
   <div class="row">
     <span class="dim">wake lock</span> <span id="wake" class="bad">checking&hellip;</span>
+    <span style="flex:1"></span>
+    <span class="dim">bench</span> <span id="remote" class="dim">not connected</span>
   </div>
 
   <div class="row dim">
@@ -224,6 +226,33 @@
     if (document.visibilityState === 'visible' && sentinel === null) acquire();
   });
   acquire();
+
+  // --- the bench may drive the level (patch-server.py) --------------------
+  // Applied only when the server's seq moves, so a tap on the slider is not
+  // fought over on the next poll.  Served from a plain file with no server
+  // behind it, every fetch fails and the page carries on as it always did.
+  var remote = document.getElementById('remote');
+  var seq = -1;
+
+  setInterval(function () {
+    fetch('/level', { cache: 'no-store' }).then(function (r) {
+      return r.json();
+    }).then(function (s) {
+      if (s.seq === seq) return;
+      seq = s.seq;
+      if (s.level === null) {
+        remote.textContent = 'connected, panel free';
+        remote.className = 'dim';
+      } else {
+        setLevel(s.level);
+        remote.textContent = 'driving level ' + s.level;
+        remote.className = 'ok';
+      }
+    }).catch(function () {
+      remote.textContent = 'not connected';
+      remote.className = 'dim';
+    });
+  }, 300);
 })();
 </script>
 </body>
