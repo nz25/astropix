@@ -123,6 +123,28 @@ five rungs below 4% are there to constrain the low end — not because the inter
 (it is not, see the analysis rules) but because a curve unconstrained near zero is a curve whose
 slope absorbs the error.
 
+**The top rung is capped where the frame's own noise stops fitting under 4095.** A rung is only
+usable while the *spread* of its pixels clears the top code: censor the bright tail and the
+measured variance comes in low, which reads as a `g` that is too high — and pair-differencing
+cannot see through it, because the clipping happens before the subtraction. The margin is a
+frame's own sigma, `sqrt(S/g)`, so it is the low-`g` gains that bind, and only two rungs move:
+
+| gain | top rung | margin at 90% | why |
+|---|---|---|---|
+| 0–250 | 90% | 4.8–20 σ | unchanged |
+| 300 | **89%** | 3.6 σ | 0.02% of pixels clipped |
+| 450 | **75%** | 1.5 σ | **6.8%** clipped; σ is 259 counts there |
+
+Formally the top rung is `min(90%, (headroom − 4σ)/headroom)`, with σ from L25's gain anchor and
+L29's slope — a **prediction used to place a rung**, never an input to a result, and conservative
+in the direction that matters since a larger true `g` only widens the margin. The cost is 0.08 dex
+off the top of a 300:1 ladder, which the slope does not notice.
+
+Measured, not anticipated: the scout of 2026-08-31 read `g(450)` as 0.0511 at its clean rungs and
+**0.0593 at 90%** — a 13.5% variance deficit, reproduced in two runs at different panel
+brightness. Uncapped, four frames per gain would be shot at a rung that cannot give a right
+answer, at the gain that anchors the top of the gain law.
+
 | block | gains | rungs | frames each | notes |
 |---|---|---|---|---|
 | 1 — ladder | the nine | 12 | 4 | two independent pairs per rung, so the variance has a repeat |
