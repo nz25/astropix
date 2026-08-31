@@ -1414,3 +1414,82 @@ which is what harvesting was supposed to leave behind.
 **Rejected:** deleting the pre-flight entirely and folding its two human-only items into
 `02-ptc.md`. It reads well today, with one document open at the bench, and costs a silent
 duplication the moment the linearity protocol is written.
+
+---
+
+## 2026-08-31 — Harvest of session 02's LEGACY entries
+
+### D54. Five and a half entries leave the queue: L10, L11, L25, L29, L30, and L32's PRNU half
+Build step 3 has run, so the entries whose `Consumed by` named it are due. Each has a verdict
+published with provenance in `results/ptc_constants.json`, which is the condition for deletion.
+`LEGACY.md` goes 21 entries → 16.
+
+| entry | verdict | where it landed |
+|---|---|---|
+| L10 read noise from a bias pair, not the intercept | used, not merely believed | `protocols/02-ptc.md` — the geometric ladder (×1.679, 0.3–90%) and the one-parameter fit; the free-intercept fit retained as `R_fit` and `g_free` in `results/ptc_gain.csv`; the argument in `00_statistics` and `06_ptc_read` §3 |
+| L11 two-point photon transfer on ordinary frames | agreed: **+1.31%** at gain 50, **−0.33%** at gain 252 | `ptc_constants.json` → `archive_cross_check` |
+| L25 the headline sensor constants | `g₀` **9.3967** against a predicted 9.382, inside the 9.38–9.46 band named in advance; six of seven shared gains inside 0.7% | `ptc_constants.json` → `g_at_gain0`, `system_gain`, `vendor_prediction` |
+| L29 the 0.1 dB gain law, unity gain ~194 | shape reproduced, precision refuted: slope **−0.005102** (1.020× the law), unity gain **192.6**, residual **1.34%** against a 1% test | `ptc_constants.json` → `gain_law` |
+| L30 two of ZWO's panels are measured, two derived | confirmed: **no step in `g`** at the HCG threshold, −0.88% against 1.34% fit scatter | `ptc_constants.json` → `hcg_step_in_gain`; `06_ptc_read` §7, where well and DR are computed as arithmetic and labelled as such |
+| L32's PRNU half | refuted: **1.02% ± 0.45%** against a claimed 0.61% | `ptc_constants.json` → `prnu`, `fpn_term_present` |
+
+**L25's table is carried here in full, because a citation outlives the entry.** `CLAUDE.md`'s
+gain-domain rule quotes its 4.92 stops at gain 600, and D52 quotes its 26 e⁻; both must still
+resolve. Per **real** (12-bit) ADU, from the retired 61-gain sweep:
+
+| gain | e⁻/ADU | read noise (e⁻) | full well (e⁻) | DR (stops) |
+|---:|---:|---:|---:|---:|
+| 0 | 9.382 | 6.18 | 36 057 | 12.51 |
+| 50 | 5.425 | 4.95 | 20 837 | 12.04 |
+| 100 | 2.994 | 4.22 | 11 492 | 11.41 |
+| 190 | 1.051 | 3.39 | 4 017 | 10.21 |
+| 200 | 0.927 | 1.13 | 3 558 | 11.62 |
+| 250 | 0.513 | 1.03 | 1 964 | 10.89 |
+| 300 | 0.284 | 0.97 | 1 083 | 10.12 |
+| 600 | 0.009 | 0.85 | 26 | 4.92 |
+
+**Its read-noise column got a verdict too, and it splits at the cliff.** `R_e` in `ptc_gain.csv`
+is session 01's `R` in counts carried by this session's `g`, so the comparison is a composite of
+two sessions against one: **+0.4%, −0.2%, +0.9%, +1.7%** at gains 0, 50, 100, 190, and then
+**−12.2%, −13.9%, −17.3%** at 200, 250, 300. Below the HCG threshold the two rigs agree to under
+2%; above it this camera reads materially quieter than theirs. Two readings are available — a
+genuinely better part, or a threshold that lands differently — and nothing here separates them.
+The measured value is ours and stands on session 01's bias pairs; L25's is recorded above as the
+prediction it is.
+
+**Its full-well and DR columns were not reproduced, and were never going to be.** Both are
+arithmetic on `g` and the pedestal — L30's point, now confirmed — so reproducing them tests the
+multiplication and not the sensor. The measurement that would make a well figure real is L28's
+1%-departure point, and L28 stays in the queue with a note saying so.
+
+**L29 leaves even though half of it failed.** An entry's job is to be tested, not to be right,
+and its verdict is published: the slope is 1.020× the 0.1 dB law rather than L29's 1.005×, and
+the 1.34% residual fails the interpolation test `02-ptc.md` set in advance. What follows from
+that failure — widen the gain set, densest around the two suspect points 0 and 300, before any
+`g` is read off between measured gains — is *this* project's work item, recorded in
+`ptc_constants.json`'s `gain_law` note and in `06_ptc_read` §11. `LEGACY` holds inherited claims;
+it is not the backlog.
+
+**L32 is split rather than deleted.** The PRNU half has a measurement and leaves; the sky rate
+needs lights and stays, with a line inside the entry saying where its other half went. Same
+treatment L31 got on 2026-08-29, and for the same reason — an entry that is half consumed is not
+harvested, but it should not keep advertising the half that is.
+
+**Rejected: harvesting L09 and L12 as well.** Session 02 *used* both — the full 1024×1024 ROI
+rests on L09's own PTC exemption, and every rung is placed against a `t_sat` solved per plane on
+L12's grounds. Relying on a claim is not checking it: nothing in this session read a bend, so the
+1.34× saturating-exposure spread and the shared bend level are as unverified as they were. Both
+entries now carry a note saying they were leaned on, which is the honest version of the record.
+
+**Rejected: cleaning the citations out of `02-ptc.md` and the notebooks.** D53 removed L06–L08
+from `light-source.md` because that file restated their content in full and the numbers had become
+dangling pointers in a live instruction. These are the opposite case: a protocol that says
+"geometric and not linear because of L10", and a notebook that prints `vs_L25`, are recording
+*which prediction was tested*, and the number is the trail `LEGACY`'s preamble promises will
+survive the file. They stay.
+
+**The queue is regrouped, not just shortened.** Sections are named for the consuming step —
+linearity (L09, L12, L28), the dark bound (L14), stacking (L15), PixInsight (L16–L24), open
+questions (L31, L32) — because the old "Numbers to reproduce — build step 3" heading would
+otherwise have been left holding one linearity entry. Fifteen of the sixteen survivors are now
+one bench session away from a verdict; L32's sky rate is the exception, and needs a clear night.

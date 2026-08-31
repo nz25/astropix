@@ -34,7 +34,7 @@ Treat every number as a prediction to falsify — there is no longer anywhere to
 
 ---
 
-## The light source — build step 6
+## Linearity, full well and `ceiling(gain)` — the linearity session
 
 ### L09. Illumination is uneven enough to smear a linearity bend
 **Claim.** The light source varies **3.8% peak-to-peak across 1024×1024**, so the bright corner
@@ -45,37 +45,6 @@ PTC, which differences frame pairs and is blind to fixed pattern.
 **Consumed by.** The linearity measurement, whenever scheduled.
 **How to check.** Measure peak-to-peak variation across a real flat at each candidate ROI size.
 **Lands in.** `protocols/` for the linearity session.
-
----
-
-## Estimator and PTC method — build steps 2 and 3
-
-### L10. Measure read noise from a bias pair, not from the PTC intercept
-**Claim.** In principle one PTC gives both numbers. In practice the intercept is close to
-worthless if the illumination levels are all bright: with read noise of 1.2 ADU the intercept is
-1.44 ADU², extrapolated back from variances in the thousands, and ordinary scatter in the bright
-points swamps it. A linearly-spaced sweep from 500 to 35 000 e⁻ returned **7.1 e⁻ for a true
-3.0 e⁻** while the gain from the same fit was accurate to 3%. Two fixes: measure read noise
-directly from a bias pair and pass it in; and **log-space the exposure ladder** so several points
-sit near zero signal where the intercept is actually constrained.
-**Consumed by.** Build step 3, PTC design — this determines the ladder before any frame is shot.
-**How to check.** Fit a synthetic PTC with a known intercept, linear vs log spacing, and compare
-the recovered read noise. A test, not a bench night.
-**Lands in.** `DECISIONS`, as the reason the ladder is geometric; and the fitted intercept
-retained as a cross-check rather than as the answer.
-
-### L11. Two-point photon transfer works on ordinary imaging frames
-**Claim.** `g = signal / (var_flat − var_bias)` in real ADU, from one flat level and one bias
-level, recovered the bench constants from Denis's own ASIAIR archive: read noise within **0.62%**
-and system gain within **1.23%** of a full 61-point bench sweep. Per-channel gains agreed to
-0.6% across channels carrying half the signal of one another.
-**Consumed by.** Build step 3 — a cross-check on the bench PTC that costs no bench time, since
-the archive already holds the frames.
-**How to check.** Run it on our own indexed archive at gain 50 and 252 and compare against
-whatever the bench PTC returns. Two datasets with nothing in common agreeing is far stronger
-evidence than either alone.
-**Lands in.** `results/constants_ptc.json`, as a cross-check field beside the bench value,
-and the notebook cell that computes it.
 
 ### L12. Saturation and linearity must be measured per CFA channel
 **Claim.** The four channels have different sensitivities, so under a white-ish source they
@@ -89,6 +58,20 @@ the pixel**.
 the ADC is the limit.
 **Lands in.** `results/` as per-channel bend levels, and `DECISIONS` if it changes how full
 well is defined.
+
+### L28. The linear limit is 63 744 reported ADU, below the hard clip
+**Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
+97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
+the two are 2.9% apart, or 0.041 stops. Adopting the measured limit raised full well by 0.47%.
+**Consumed by.** The linearity measurement; MISSION lists `ceiling(gain)` / full well as a
+constant, gain-dependent and at or below 4 095.
+**How to check.** A 20-rung ladder from 50% to 115% of the saturating exposure, per CFA channel,
+on a small ROI (see L09 and L12).
+**Lands in.** `results/`, as the clip level every other analysis rejects against.
+
+---
+
+## Dark current — `protocols/03-dark-bound.md`, written and unrun
 
 ### L14. Dark current here may be below the detection floor, and must be reported as such
 **Claim.** At −10.5 °C over 120 s the mean dark signal came out at **−0.23 e⁻** — negative,
@@ -104,6 +87,10 @@ the difference exceeds its own uncertainty before attempting a fit.
 **Lands in.** `results/` as `D(T)` with its detection floor — an upper bound is a result and
 is recorded as one — and `MISSION`'s constants table if `D(T)` turns out to be unmeasurable
 rather than merely small.
+
+---
+
+## Stacking — how `η_comb` may be measured
 
 ### L15. Per-pixel statistics across a stack of lights are meaningless before registration
 **Claim.** Measuring σ in a star-free patch as more frames were averaged tracked √N to N ≈ 8 then
@@ -234,65 +221,6 @@ as gain amplifies the outlier tail.
 
 ---
 
-## Numbers to reproduce — build step 3
-
-### L25. The headline sensor constants
-**Claim.** From a 61-gain PTC sweep, per **real** (12-bit) ADU:
-
-| gain | e⁻/ADU | read noise (e⁻) | full well (e⁻) | DR (stops) |
-|---:|---:|---:|---:|---:|
-| 0 | 9.382 | 6.18 | 36 057 | 12.51 |
-| 50 | 5.425 | 4.95 | 20 837 | 12.04 |
-| 100 | 2.994 | 4.22 | 11 492 | 11.41 |
-| 190 | 1.051 | 3.39 | 4 017 | 10.21 |
-| **200** | **0.927** | **1.13** | **3 558** | **11.62** |
-| 250 | 0.513 | 1.03 | 1 964 | 10.89 |
-| 300 | 0.284 | 0.97 | 1 083 | 10.12 |
-| 600 | 0.009 | 0.85 | 26 | 4.92 |
-
-These are already in this project's unit — **e⁻ per ADC count** (`CLAUDE.md`, D41) — so the table
-is directly comparable to our own PTC with no conversion. "Full well" is the **ADC-limited** well,
-not the physical one.
-**Consumed by.** Build step 3 — as the prediction our own PTC either reproduces or refutes.
-**How to check.** Our own sweep, measured independently, compared afterwards. Not used as input.
-**Lands in.** `results/constants_ptc.json` either way — reproduced as the measured value, or
-recorded beside it as the vendor prediction it failed to match. A disagreement is as informative
-as a match, and both need the same provenance.
-
-### L28. The linear limit is 63 744 reported ADU, below the hard clip
-**Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
-97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
-the two are 2.9% apart, or 0.041 stops. Adopting the measured limit raised full well by 0.47%.
-**Consumed by.** The linearity measurement; MISSION lists `ceiling(gain)` / full well as a
-constant, gain-dependent and at or below 4 095.
-**How to check.** A 20-rung ladder from 50% to 115% of the saturating exposure, per CFA channel,
-on a small ROI (see L09 and L12).
-**Lands in.** `results/`, as the clip level every other analysis rejects against.
-
-### L29. The gain law is 0.1 dB per unit, and unity gain lands at ~194
-**Claim.** Fitting log₁₀(system gain) against gain setting over gains 0–150 gives a slope of
-**−0.00502 per unit** against the −0.00500 the 0.1 dB law predicts — agreement 1.005 over 16
-points with 1.0% scatter. System gain crosses **1.000 e⁻ per real ADU at gain 194**, and ZWO
-annotate `GAIN=195` on their own published panel. Unity gain is a landmark, not a target.
-**Consumed by.** Build step 3 — it makes `g(gain)` interpolable between measured steps, which the
-archive needs since it uses gain 252 and a sweep would step by 10.
-**How to check.** Our own sweep, fitted in log space.
-**Lands in.** `results/constants_ptc.json`, as the interpolation rule.
-
-### L30. ZWO's four published panels are two measurements and two derived quantities
-**Claim.** Their e⁻/ADU and read-noise panels are measured; **"FW" is `4095 × e⁻/ADU`** — the ADC
-ceiling, not the physical well — and DR is FW ÷ read noise. The evidence is the HCG
-discontinuity: it appears in the read-noise and DR panels and **not** in the FW or e⁻/ADU panels,
-which is only possible if FW is arithmetic on a smooth input. The size confirms it: published DR
-moves 10.00 → 11.85 stops, and `log2(3.95/1.10) = 1.844`. A "full well" curve that *falls* with
-gain is nonsense read literally — a bucket does not shrink because you amplified its readout.
-**Consumed by.** Build step 3, when comparing our measurement against the vendor's.
-**How to check.** Arithmetic on their published table; no data needed.
-**Lands in.** `results/constants_ptc.json`, as the vendor prediction recorded beside our own
-measurement — and it settles what "full well" means in that comparison.
-
----
-
 ## Open questions inherited
 
 ### L31. Gain 100 was not repeatable and gain 200 was, and nobody knows why
@@ -333,14 +261,15 @@ rather than drift. A notification, or the Screen Wake Lock briefly lapsing.
 **Lands in.** `results/` as a repeatability figure if reproduced, or deleted from here if it
 turns out to be an artefact of their setup.
 
-### L32. Sky rate and PRNU, to be re-derived from our own frames
+### L32. The suburban sky rate, to be re-derived from our own frames
 **Claim.** Sky **1.594 e⁻/px/s** green (R 1.500, B 0.910) at f/4.8, 2.27″/px, unfiltered, near
-zenith, suburban Bortle 5–6 — implying ≈19.1 mag/arcsec². And **PRNU of 0.61%** over a crop
-(1.00% over the full channel), measured as the fixed pattern that stops a stack of flats
-following √N. The sky figure is explicitly "a rate for that night, at that altitude" and fell
-about 5% across a two-hour session as the target rose.
+zenith, suburban Bortle 5–6 — implying ≈19.1 mag/arcsec². The figure is explicitly "a rate for
+that night, at that altitude" and fell about 5% across a two-hour session as the target rose.
 **Consumed by.** MISSION lists `F_sky` as extracted per frame from the lights themselves, so this
 is a sanity check rather than a constant.
 **How to check.** Extract sky per frame from our indexed archive and compare. The NGC 7000 set
 gives eight nights at two gains to do it across.
 **Lands in.** `results/` as the working suburban sky rate, with its variability stated.
+
+**Its PRNU half left in D54**, measured at 1.02% and published as `prnu`. The sky rate is what
+is left.
