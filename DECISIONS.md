@@ -1493,3 +1493,91 @@ linearity (L09, L12, L28), the dark bound (L14), stacking (L15), PixInsight (L16
 questions (L31, L32) — because the old "Numbers to reproduce — build step 3" heading would
 otherwise have been left holding one linearity entry. Fifteen of the sixteen survivors are now
 one bench session away from a verdict; L32's sky rate is the exception, and needs a clear night.
+
+## 2026-08-31 — Session 03 planning: the dark bound is a pedestal measurement
+
+`protocols/03-dark-bound.md` was written before session 02 ran and has sat unrun since. Three
+things measured in the meantime changed it, so it is amended in place — it is still a plan, and
+amending a plan is not editing a record.
+
+### D55. Session 03 shoots at gain 250, not the 252 the protocol was written for
+The protocol's analysis rule 1 said "e⁻/px/s using `g(252)` when session 02 provides it". Session
+02 did not provide it, and said so: `gain_law.residual_pct` is **1.344** against the 1% rule
+`02-ptc.md` fixed in advance, so **`g` is not interpolable** and 252 falls between measured
+points. The choice was to carry a ~1.3% conversion uncertainty or to move.
+
+Moved. **250 is a swept point in both sessions**: `g = 0.51303 ± 0.00097` e⁻/count from
+`ptc_constants.json`, pedestal 76.66 counts and `R = 1.728` counts at offset 15 from
+`bias_sweep.csv`. Every number the night leans on is now measured rather than fitted, including
+the two used by the pre-flight gates.
+
+The cost is real and small. 252 was chosen partly for **commensurability with the archive**,
+which was shot there — and that buys this session nothing, because no published constant comes
+from the archive (`CLAUDE.md`) and nothing tonight is compared against it. The quantisation
+argument that picked a high gain is untouched: 0.513 e⁻ per count at 250 against 0.497 at 252 is
+not a distinction, and both are the six-fold improvement over gain 100 that L14's failure asked
+for.
+
+**Rejected: widening the gain set first so that 252 becomes readable.** That is `gain_law`'s own
+work item and it is real, but it is a second PTC session standing between here and a dark bound
+that does not need it. Nothing about `D` requires gain 252 specifically.
+
+### D56. The interleave is on a 20-minute clock, because the frame count was never the limit
+Working the sensitivity out before the night changed what the night is. Per plane, per 10-frame
+bias block, the statistical floor on the plane mean is `R/√(N_px·N_frames)` = **1.1 × 10⁻³
+counts**; propagated through `g(250)` over a 600 s lever arm that is **1.3 × 10⁻⁶ e⁻/px/s**.
+L14's inherited floor is `< 0.01 e⁻/s`. **The design is four decades finer than the number it is
+testing**, so no frame count in the capture table is doing any work for `D`.
+
+What *is* the limit is the pedestal. **11.7 counts** of wander across a bracket would fake
+`D = 0.01 e⁻/px/s`; **0.12 counts** would fake 10⁻⁴. That is the whole of L14's negative dark
+current — a master bias four hours from its dark, and a result whose sign was set by which way
+the pedestal moved in between.
+
+So the cadence, not the frame count, is the design parameter, and it was tightened: bias after
+every **4** darks in D3 and every **2** in D4, so no bracket spans more than ~20 minutes. More
+bias frames buy nothing statistically. What bracketing buys is that linear drift cancels
+*exactly*, leaving only curvature over the bracket span, which falls as the square of it —
+halving 40 minutes to 20 quarters it. Bias frames are 32 µs plus readout, so the tightening costs
+**≈30 s** of a five-hour night; it was mispriced at 15 minutes when first proposed and taken once
+the arithmetic was done. Analysis rule 1 now says the bias level is **interpolated in time**
+between the bracketing blocks rather than taken from the nearest one, which is what makes the
+cancellation available at all.
+
+**The bias blocks are therefore a published result, not scaffolding.** Fifteen evenly-spaced
+pedestal measurements across five hours at gain 250 answer the question `pedestal_drift_rate`
+answered over 15 minutes, on the span an imaging night actually occupies — and the residual
+scatter of that series about its own trend *is* the published uncertainty on `D`. A session
+designed to bound one constant bounds two.
+
+### D57. A dark-stack stall now means DSNU, and it is a result rather than a disappointment
+When the protocol was written, a stall in σ-versus-N was L15's warning about registration. Two
+measurements since have made it sharper. Session 02 published `prnu = 1.021%` and
+`fpn_term_present = true`, refuting MISSION's first assumption; session 01 published
+`bias_fixed_pattern_ratio = 1.011`, i.e. essentially no fixed pattern at bias level. Fixed
+pattern is identical in every frame of a dark stack and cannot average down, so the stack must
+stall at exactly the dark-signal non-uniformity floor — and since the bias level carries none,
+**a stall at 300 s is a DSNU measurement**. Rule 4 now requires it reported in counts before it
+is reported as a loss factor, and rule 5 makes the full-frame block the same question asked
+spatially, with disagreement between the two named as the interesting outcome.
+
+### D58. `asi.capture` gets a deadline, because 600 s is a failure mode 32 µs never was
+`zwoasi.Camera.capture` polls `while get_exposure_status() == WORKING` with **no bound at all**.
+Sessions 01 and 02 never exposed longer than a couple of seconds, so this was survivable and
+invisible. At 600 s it is neither: a stalled exposure leaves the status at WORKING forever, and
+an unbounded poll reports nothing, logs nothing and never returns — a notebook still polling at
+breakfast with the night gone and nothing written.
+
+`asi._expose` replaces it with the same three SDK calls plus a deadline of `2 × exposure + 30 s`,
+which stops the exposure and raises a `TimeoutError` naming it. Two smaller refusals came with
+it: a non-SUCCESS status raises rather than returning bytes as pixels, and an image type that is
+not RAW16 raises rather than silently losing the 12-bit value the whole project measures.
+
+The timeout is **a deadlock detector, not a performance budget** — generous on purpose, with a
+test asserting that a merely slow frame is still waited for, and the error text saying not to
+widen it. `FakeCamera` grew the three exposure primitives so both paths are tested on a fake
+clock rather than in real time.
+
+**Rejected: wrapping the binding's `capture` in a watchdog thread.** It blocks synchronously, so
+there is nothing to interrupt; the bound has to live inside the poll. Reimplementing the poll
+costs ~30 lines and removes a dependency on image-type branching this project never uses.

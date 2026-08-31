@@ -52,6 +52,10 @@ class FakeCamera:
         self.roi = None
         self.closed = False
         self.closes = 0
+        self.working = 0            # polls spent WORKING; None = stalled forever
+        self.status = asi.EXP_SUCCESS
+        self.image_type = asi.RAW16
+        self.exposures = self.stops = self._polls = 0
 
     def get_controls(self):
         return self.controls
@@ -70,8 +74,29 @@ class FakeCamera:
     def set_roi(self, start_x, start_y, width, height, image_type=None):
         self.roi = (start_x, start_y, width, height, image_type)
 
-    def capture(self):
-        return np.full((8, 8), 1232, np.uint16)
+    # --- the exposure primitives `asi._expose` drives ---------------------
+    # `working` is how many polls the exposure stays WORKING for; None means
+    # it never finishes, which is the stall the timeout exists for.
+    def start_exposure(self, is_dark=False):
+        self.exposures += 1
+        self._polls = 0
+
+    def get_exposure_status(self):
+        if self.working is None:
+            return asi.EXP_WORKING
+        self._polls += 1
+        return asi.EXP_WORKING if self._polls <= self.working else self.status
+
+    def stop_exposure(self):
+        self.stops += 1
+
+    def get_roi_format(self):
+        w, h = (self.roi[2], self.roi[3]) if self.roi else (8, 8)
+        return [w, h, 1, self.image_type]
+
+    def get_data_after_exposure(self, buffer_=None):
+        w, h, _, _ = self.get_roi_format()
+        return np.full(h * w, 1232, np.uint16).tobytes()
 
     def close(self):
         self.closes += 1
@@ -243,6 +268,61 @@ def test_capture_reports_what_the_camera_did_not_what_it_was_asked():
     assert header["BAYERPAT"] == "RGGB"
     assert header["DATE-OBS"].startswith("20") and "T" in header["DATE-OBS"]
     assert header["INSTRUME"] == "ZWO ASI585MC Pro"
+
+
+def test_a_stalled_exposure_raises_instead_of_polling_forever():
+    """The 600 s failure mode session 03 has to survive.
+
+    The binding's own `capture` polls `while status == WORKING` with no bound,
+    so a camera that never leaves WORKING is a notebook that never returns and
+    a night with nothing written.  The clock only moves when the poll sleeps,
+    so this asserts the deadline arithmetic rather than waiting for it.
+    """
+    r = rig()
+    r.cam.working = None                      # never finishes
+    clock = Clock()
+    try:
+        asi._expose(r, 600.0, _sleep=clock.sleep, _now=clock.now)
+    except TimeoutError as exc:
+        assert "600" in str(exc)
+        assert r.cam.stops == 1, "a stalled exposure must be stopped, not abandoned"
+        assert clock.t <= asi.EXPOSURE_TIMEOUT_FACTOR * 600 + asi.EXPOSURE_TIMEOUT_SLACK_S \
+            + asi.EXPOSURE_POLL_S
+        return
+    raise AssertionError("expected TimeoutError")
+
+
+def test_a_slow_exposure_is_waited_for_and_not_failed():
+    """The timeout is a deadlock detector, not a performance budget: a frame
+    that takes longer than asked must still come back."""
+    r = rig()
+    r.cam.working = 40                        # 40 polls of WORKING, then done
+    clock = Clock()
+    mosaic = asi._expose(r, 1.0, _sleep=clock.sleep, _now=clock.now)
+    assert mosaic.shape == (8, 8) and r.cam.stops == 0
+
+
+def test_a_failed_exposure_is_not_returned_as_pixels():
+    r = rig()
+    r.cam.status = 3                          # ASI_EXP_FAILED
+    try:
+        asi._expose(r, 0.001, _sleep=Clock().sleep, _now=Clock().now)
+    except RuntimeError as exc:
+        assert "retaken" in str(exc)
+        return
+    raise AssertionError("expected RuntimeError")
+
+
+def test_capture_refuses_an_image_type_that_is_not_raw16():
+    """Anything but RAW16 loses the 12-bit value the whole project measures."""
+    r = rig()
+    r.cam.image_type = 0                      # ASI_IMG_RAW8
+    try:
+        asi.capture(r, 0.001)
+    except RuntimeError as exc:
+        assert "RAW16" in str(exc)
+        return
+    raise AssertionError("expected RuntimeError")
 
 
 def test_cool_to_reports_each_reading_as_it_is_taken():

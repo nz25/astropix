@@ -46,6 +46,8 @@ from . import fits
 SDK_DLL = pathlib.Path(__file__).resolve().parents[1] / "vendor" / "zwo-asi-sdk" / "ASICamera2.dll"
 SETPOINT_C = -10.0        # every bench run and the model's first pass
 RAW16 = 2                 # ASI_IMG_RAW16; resolved from the SDK when there is one
+EXP_WORKING = 1           # ASI_EXP_WORKING: the exposure is still running
+EXP_SUCCESS = 2           # ASI_EXP_SUCCESS: data is waiting to be read out
 
 # --- cooling thresholds (L03, L04) -------------------------------------------
 # The sensor reports in steps of 0.5 C -- measured, not assumed: every reading
@@ -71,6 +73,18 @@ TREND_S = 60.0            # falling after a minute is the only cooler test that 
 TREND_MIN_FALL_C = 1.0    # ~3 C/min from ambient, so a minute is a wide margin
 
 NEUTRAL_WB = 50           # the camera ships WB_R=55, WB_B=75, applied to RAW16 (L01)
+
+# How long past the requested exposure a frame is allowed to take before the
+# wait is called a fault.  The binding's own `capture` polls `while status ==
+# WORKING` with no bound at all, which is survivable at the sub-second
+# exposures sessions 01 and 02 used and is not survivable at 600 s: a USB stall
+# at 3 a.m. becomes a notebook that is still polling at breakfast, with the
+# night gone and nothing written.  Generous on purpose -- this is a deadlock
+# detector, not a performance budget, and a frame that is merely slow must not
+# trip it.
+EXPOSURE_TIMEOUT_FACTOR = 2.0
+EXPOSURE_TIMEOUT_SLACK_S = 30.0   # readout and USB transfer of a full frame
+EXPOSURE_POLL_S = 0.05            # 12,000 wakeups over a 600 s dark, not 60,000
 
 
 class Rig:
@@ -338,6 +352,46 @@ def cool_to(rig, setpoint=SETPOINT_C, *, band=BAND_C, settle_s=SETTLE_S,
         _sleep(poll_s)
 
 
+def _expose(rig, exposure_s, *, _sleep=time.sleep, _now=time.monotonic):
+    """Run one exposure to completion, or raise rather than wait forever.
+
+    This replaces the binding's `Camera.capture`, and the only thing it adds is
+    a deadline (see `EXPOSURE_TIMEOUT_FACTOR`).  Everything else is the same
+    three SDK calls in the same order; the reshape is narrower only because
+    this project shoots RAW16 and nothing else, which `set_roi` enforces.
+
+    The failure it exists for is silent: a stalled exposure leaves the status
+    at WORKING forever, so an unbounded poll reports nothing, logs nothing and
+    never returns.  A `TimeoutError` names the exposure that hung, which turns
+    a lost night into a lost frame.
+    """
+    deadline = _now() + EXPOSURE_TIMEOUT_FACTOR * exposure_s + EXPOSURE_TIMEOUT_SLACK_S
+    rig.cam.start_exposure()
+    while rig.cam.get_exposure_status() == EXP_WORKING:
+        if _now() > deadline:
+            rig.cam.stop_exposure()
+            raise TimeoutError(
+                f"a {exposure_s:g} s exposure was still WORKING after "
+                f"{EXPOSURE_TIMEOUT_FACTOR * exposure_s + EXPOSURE_TIMEOUT_SLACK_S:g} s.  "
+                "The camera has stalled; the exposure was stopped.  Retake the "
+                "frame -- do not widen the timeout to make this go away"
+            )
+        _sleep(EXPOSURE_POLL_S)
+
+    status = rig.cam.get_exposure_status()
+    if status != EXP_SUCCESS:
+        raise RuntimeError(f"exposure failed with status {status}, not {EXP_SUCCESS} "
+                           "(SUCCESS); the frame does not exist and must be retaken")
+
+    width, height, _bins, image_type = rig.cam.get_roi_format()
+    if image_type != rig.raw16:
+        raise RuntimeError(f"camera is in image type {image_type}, not RAW16 "
+                           f"({rig.raw16}); nothing else preserves the 12-bit "
+                           "value this project measures (CLAUDE.md, units)")
+    data = rig.cam.get_data_after_exposure()
+    return np.frombuffer(data, dtype=np.uint16).reshape(height, width)
+
+
 def capture(rig, exposure_s, imagetyp="BIAS"):
     """One exposure.  Returns `(mosaic, header)` -- pixels, and what the camera
     says it just did.
@@ -351,7 +405,7 @@ def capture(rig, exposure_s, imagetyp="BIAS"):
     """
     rig.set("Exposure", int(round(exposure_s * 1e6)))
     date_obs = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3]
-    mosaic = np.asarray(rig.cam.capture())
+    mosaic = _expose(rig, exposure_s)
     temp = temperature(rig)
     header = {
         "IMAGETYP": imagetyp,
