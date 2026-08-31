@@ -1581,3 +1581,47 @@ clock rather than in real time.
 **Rejected: wrapping the binding's `capture` in a watchdog thread.** It blocks synchronously, so
 there is nothing to interrupt; the bound has to live inside the poll. Reimplementing the poll
 costs ~30 lines and removes a dependency on image-type branching this project never uses.
+
+### D59. The 600 s path was tested on the camera before the night used it, and it refuted two of this session's own claims
+`asi._expose` (D58) had only ever run against a fake clock and a fake camera, which tests the
+deadline arithmetic and says nothing about whether the SDK returns bytes in the shape assumed.
+A smoke test on 2026-08-31 ran gate 1, gate 2, a cool-down, one 600 s dark on the session ROI and
+one 600 s dark full frame. Frames land in a scratchpad, not in `data/session03`: these are not
+protocol frames and nothing here is published.
+
+**The path works.** 600.2 s and 600.3 s for 600 s exposures — an overhead of +0.2 and +0.3 s
+including a 16.6 MB full-frame readout, against a deadline of 1230 s. Stored values stayed on the
+16-grid and the headers carried gain 250 / offset 15.
+
+**It also refuted the claim that this night's thermal load would be lighter than session 02's.**
+The argument was that darks read the sensor 60× less often per hour and readout is what heats it.
+Measured: duty settled at 64%, then **75% after one 600 s dark and 77% after two**, still rising
+half an hour in, with the sensor at exactly −10.0 °C throughout. `SETTLE_S` is satisfied long
+before the camera is in equilibrium — the sensor is cold and the body is still warming. 23%
+headroom remains and the night is not threatened; the protocol now states the measurement instead
+of the prediction.
+
+**And it found the pedestal moving 1.1 counts in ten minutes, on the same pixels.** Nine times
+the 0.12 counts that fakes `D = 10⁻⁴ e⁻/px/s`. The first hypothesis — that the pedestal depends
+on readout mode — was tested directly by alternating ROI and full-frame bias four times over
+eight seconds, and **refuted**: the mode offset is **−0.022 ± 0.004 counts**, resolved at ~5σ and
+fifty times too small. So the movement is in time, and the only other quantity moving over that
+half hour is the duty.
+
+Two changes follow. **FF is bracketed** by 5-frame full-frame bias blocks either side, where it
+used to sit unbracketed for 40 minutes at the end of the night; five frames beat the ROI blocks'
+ten because a full frame has eight times the pixels. And **cooler duty is recorded per frame**,
+with analysis rule 3 requiring the pedestal series be regressed on it. Sensor temperature was
+flat at −10.0 through the entire drift and cannot see this; duty can. One USB read per frame
+turns a confound into a measurement.
+
+**This is D56 arriving as data rather than as arithmetic.** That entry argued from a sensitivity
+calculation that the pedestal, not the frame count, is the error bar on `D`. Ten minutes of real
+frames then produced a 1.1-count pedestal excursion and two 600 s darks whose implied dark
+currents are `+5.3 × 10⁻⁴` and `−3.3 × 10⁻⁴ e⁻/px/s` — one number and its own negation. The
+bracketing is not a precaution against something hypothetical.
+
+**Rejected: treating the 1.1 counts as a result.** It is one pair of frames, and the drift and
+duty hypotheses are confounded in it exactly as mode and time were before the alternation test.
+The night measures this properly, fifteen times, with the duty column beside it; a scratchpad
+smoke test does not get to publish a drift rate.

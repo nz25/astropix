@@ -64,9 +64,21 @@ bracket span. Halving 40 minutes to 20 quarters it. It costs ~30 s of wall clock
 | D3 | **300 s** | **32** | 1024² | ~2 h 40 — insert 10 bias after every **4** darks (20 min) |
 | D4 | 600 s | 8 | 1024² | ~1 h 20 — insert 10 bias after every **2** darks (20 min) |
 | B4 | minimum | 10 | 1024² | — the last of D4's interleaved blocks *is* B4 |
+| BF | minimum | 5 | **full frame** | — brackets FF at its own ROI |
 | FF | 600 s | 4 | **full frame** | ~40 min |
+| BF | minimum | 5 | **full frame** | — |
 
-**234 frames, 0.55 GB**, ≈ 5 h 15 including the cool-down.
+**244 frames, 0.71 GB**, ≈ 5 h 15 including the cool-down.
+
+**FF is bracketed like every other block, and that is a change the smoke test forced.** It used
+to sit unbracketed at the end of the night. On 2026-08-31 two 600 s darks ten minutes apart
+disagreed by **1.1 counts on the same pixels** — nine times the 0.12 counts that fakes
+`D = 10⁻⁴ e⁻/px/s` — so forty unbracketed minutes is worth several counts. Five frames suffice
+because a full frame has eight times the pixels of the ROI, which puts a 5-frame full-frame block
+below a 10-frame ROI one. The bias is taken at **FF's own ROI**: the readout-mode offset was
+measured the same night at **−0.022 ± 0.004 counts** (ROI minus full frame, four alternations),
+which is real, resolved, and small enough that it would not have mattered — but it is free to
+avoid and it is not free to argue about at analysis time.
 
 **D3 is the `η_comb` stack**: 32 identical darks give
 N = 4, 8, 16, 32, enough to see a stall — L15's stall was visible by N ≈ 8. The interleaved
@@ -102,7 +114,15 @@ Per CFA plane, on the mosaic, in ADC counts.
    reported as whichever of the two floors is coarser.
 3. **Report the slope against that uncertainty before fitting anything to it.** If it does not
    exceed it, the result is `D < x e⁻/px/s`, quoted as a bound. **Never quote a signed value**
-   (L14) — a negative dark current is a pedestal artefact announcing itself.
+   (L14) — a negative dark current is a pedestal artefact announcing itself. The smoke test is
+   the worked example: its two 600 s darks give `+5.3 × 10⁻⁴` and `−3.3 × 10⁻⁴ e⁻/px/s` against
+   the same predicted pedestal, which is one number and its own negation, and neither is a dark
+   current.
+   **Then regress the pedestal series on cooler duty**, which is recorded per frame for this
+   purpose. A pedestal that tracks duty rather than the clock is a different thing to report
+   than a drift, and it makes the first hour of the night — the hour the body spends
+   equilibrating — the part to treat with suspicion rather than the part to trust because it is
+   early.
 4. **`η_comb`**: σ of the stack mean against N, compared with σ₁/√N. Integration is a PixInsight
    step and belongs to a later build step — **tonight captures, it does not integrate.** Note for
    then: PixInsight's variance divides by n−1 and numpy's by n (L22).
@@ -136,11 +156,24 @@ Per CFA plane, on the mosaic, in ADC counts.
 Ambient at start and end, capture tool, settle duration before B0, the sensor-temperature range
 over the night, and any block that ran with a changed configuration.
 
-**Ambient is assumed 25 °C.** Session 02 cooled from exactly 25.0 °C and held −10 °C on 65%
-duty — 35% headroom — through a run with zero holds and zero retakes. This night reads the
-sensor 60× less often per hour, and readout is what heats it, so the load is lighter than the
-run that already passed. If ambient is materially above 25 °C, log it and watch the duty at
-setpoint before starting B0 rather than discovering it at 3 a.m.
+**Ambient is assumed 25 °C, and the duty is logged per frame.** Session 02 cooled from exactly
+25.0 °C and settled at −10 °C on 65% duty through a run with zero holds and zero retakes.
+
+**The prediction that this night's load would be *lighter* was wrong, and the smoke test of
+2026-08-31 is what refuted it.** The reasoning was that darks read the sensor 60× less often per
+hour and readout is what heats it. Measured: duty settled at 64%, and then climbed to **75%
+after one 600 s exposure and 77% after two** — half an hour in, still rising, with the sensor
+pinned at exactly −10.0 °C throughout. The settle criterion is satisfied long before the camera
+is in equilibrium: the sensor is cold and the *body* is still warming. There is still 23%
+headroom and nothing here threatens the night, but the number to watch is the trend and not the
+value at settle.
+
+**This is why duty is recorded per frame rather than per session.** The same half hour in which
+duty climbed 13 points is the half hour in which the pedestal moved 1.1 counts, and sensor
+temperature — flat at −10.0 the whole time — cannot see either. Whether those two facts are the
+same fact is a question this night can answer for free, and cannot answer at all if the column is
+not written. If ambient is materially above 25 °C, log it and watch the duty *trend* before
+starting B0 rather than discovering it at 3 a.m.
 
 ## LEGACY entries consumed
 
