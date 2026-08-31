@@ -1,0 +1,121 @@
+{
+  "system_gain": {
+    "value": {
+      "0": 9.39665,
+      "50": 5.38903,
+      "100": 2.98723,
+      "190": 1.04562,
+      "200": 0.92163,
+      "250": 0.51303,
+      "300": 0.27671,
+      "450": 0.04858
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": {
+      "0": 0.03156,
+      "50": 0.01543,
+      "100": 0.01412,
+      "190": 0.00729,
+      "200": 0.00198,
+      "250": 0.00097,
+      "300": 0.0032,
+      "450": 0.00158
+    },
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "rule 3 of protocols/02-ptc.md: the slope of pair-difference variance against signal, weighted 1/var^2, with the intercept fixed at session 01's R^2 (L10).  Mean over the four CFA planes; per-plane values are in ptc_gain.csv and spread 2.02% at worst.  Uncertainty is the scatter of the fitted rungs, not a formal error"
+  },
+  "g_at_gain0": {
+    "value": 9.3967,
+    "unit": "e- per ADC count",
+    "uncertainty": 0.0316,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "the anchor of the gain law.  L25 predicted 9.382 and the reproduction band was 9.38-9.46; measured 9.3967, ratio to L25 1.0016.  Reproduced, so header EGAIN is a standing check rather than a source"
+  },
+  "gain_law": {
+    "value": {
+      "slope": -0.005102,
+      "intercept_log10_g": 0.98234,
+      "unity_gain": 192.6,
+      "residual_pct": 1.344,
+      "slope_without_gain450": -0.005101
+    },
+    "unit": "log10(e- per ADC count) per gain unit",
+    "uncertainty": 0.02292,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "rule 5: g = 10 ** (intercept + slope * gain), fitted over 8 gains.  The 0.1 dB law predicts -0.00500 and L29 measured -0.00502; this is -0.00510, a ratio of 1.0203.  Residual 1.34% against the 1% rule, so g is NOT interpolable -- the gain set must widen before any number is read off between measured points"
+  },
+  "hcg_step_in_gain": {
+    "value": -0.884,
+    "unit": "% change in g across the HCG threshold",
+    "uncertainty": 1.344,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "rule 5's refutation test for L30: the conversion-gain discontinuity should appear in read noise and not in e-/ADU.  Residual at gain 200 minus residual at 190, against a fit scatter of 1.34%.  No step: L30 stands"
+  },
+  "prnu": {
+    "value": 0.01021,
+    "unit": "fraction of signal (fixed-pattern sigma / signal)",
+    "uncertainty": 0.00447,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "rule 4: sqrt(single-frame spatial variance - pair-difference variance) / signal, median over every plane and gain above 10% of headroom.  L32 predicted 0.61%.  The single-frame variance runs 10.55% above the pair variance where two disjoint pairs of the same rung differ by 0.28%, so an FPN term exists and MISSION's first assumption is refuted"
+  },
+  "fpn_term_present": {
+    "value": true,
+    "unit": "boolean",
+    "uncertainty": null,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "whether sigma^2 is shot plus read and nothing else, over the tested range.  The yardstick is the pair repeatability, not zero: two honest estimates of the same variance differ, and an excess below that difference is a statement about the estimator rather than about the sensor"
+  },
+  "archive_cross_check": {
+    "value": {
+      "50": {
+        "g": 5.4598,
+        "bench_g": 5.389,
+        "agreement_pct": 1.31,
+        "egain_hdr": 5.286,
+        "flat_pairs": 3
+      },
+      "252": {
+        "g": 0.4958,
+        "bench_g": 0.4974,
+        "agreement_pct": -0.33,
+        "egain_hdr": 0.5166,
+        "flat_pairs": 3
+      }
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": null,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "rule 6 / L11: two-point photon transfer g = S / (var_flat - var_bias) on the historic archive at gain 50 and 252, cropped to a central 1024x1024.  A cross-check on frames with nothing in common with the bench -- recorded beside the bench value and never averaged into it, because no published constant comes from the archive.  Gain 252 is not in the bench set, so its comparison runs through the fitted law and tests the interpolation too"
+  },
+  "vendor_prediction": {
+    "value": {
+      "0": 9.382,
+      "50": 5.425,
+      "100": 2.994,
+      "190": 1.051,
+      "200": 0.927,
+      "250": 0.513,
+      "300": 0.284
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": null,
+    "source_frames": 464,
+    "measured_on": "2026-08-31",
+    "notebook": "05_ptc.ipynb",
+    "note": "L25's retired 61-point sweep, kept as the prediction this session either reproduced or refuted -- not an input.  Measured/predicted per gain: 0:1.002, 50:0.993, 100:0.998, 190:0.995, 200:0.994, 250:1.000, 300:0.974.  ZWO's own curve is in vendor/asi585specs/ and is read off a plot, +/-5% at best"
+  }
+}
