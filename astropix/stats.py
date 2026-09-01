@@ -3,13 +3,18 @@
 Nothing here opens a file.  Everything takes arrays and returns numbers, which
 is why almost all of it is testable without a FITS file, a Z: mount, or a sky.
 
-Two layers:
+Three layers:
 
 1.  `frame_features` reduces sampled blocks to numbers describing one frame,
     every statistic per CFA sub-plane (D4).
 2.  `classify` turns one of those numbers plus two trusted inputs -- the
     exposure time, and the pedestal for the frame's gain -- into a frame type
     (D18, D50).
+3.  `offset_state` turns a peer group's levels into which discrete black-level
+    state each frame sits in (D60).  It is a *rejection* rule rather than a
+    description: a frame in a far state has a level that is about the camera
+    and not about the light, and any measurement that differences two levels
+    must know which of them to trust.
 
 **Units are ADC counts** -- see the units rule in `CLAUDE.md` (D41).  `to_adc`
 is the only conversion in the project, and `frame_features` applies it once,
@@ -238,3 +243,86 @@ def classify(features, exptime, pedestal):
     if above <= DARK_MAX_ABOVE_PEDESTAL:
         return "dark"
     return "light"
+
+
+# --- the offset state (protocols/04-offset-state.md, rule 1) -----------------
+# Session 03 found the camera's black level occupying discrete states about one
+# ADC count apart, and detected them against a fixed 0.5-count threshold.  That
+# threshold is only correct if the step is 0.993, which is the thing session 04
+# is testing, so the rule here derives its threshold from the data instead.
+STATE_FLOOR_SIGMAS = 5.0     # threshold floor, in units of within-state scatter
+STATE_SPLIT_SIGMAS = 3.0     # gap that separates two states while clustering
+# 3 rather than 5 because the criterion is a gap between order statistics, not
+# between centres: a hundred-frame group spreads ~2.5 sigma either side of its
+# own centre, so a 5-sigma gap rule would need 10 sigma of separation to fire.
+# H2 predicts 0.154 counts at gain 0 against a within-state scatter of ~0.014
+# (session 03), which is 11 sigma -- resolvable at 3, marginal at 5.  Below
+# that the group comes back with no separation, which is the honest answer and
+# not a zero: see `offset_state`.
+
+
+def offset_state(levels):
+    """Which discrete black-level state each frame of one peer group sits in.
+
+    `levels` is one level per frame in ADC counts -- a plane mean, or the mean
+    over planes -- for frames sharing gain, offset, exposure and ROI.  A peer
+    group is exactly that: the only frames whose level a frame has any right
+    to equal.  Mixing settings here would call a pedestal difference a state.
+
+    The rule (protocol 04, rule 1): a frame is in a far state when its
+    departure from the group median exceeds **half the modal separation**,
+    subject to a floor of **five times the within-state scatter**.  Neither
+    number is assumed -- both are measured from the group -- because the size
+    of the step against gain is the session's headline and a threshold that
+    assumed it would be assuming the answer.
+
+    The separation is estimated as the *smallest* spacing between adjacent
+    state centres, not the mean or the median of them: states are a quantiser,
+    so a skipped state gives a multiple of the unit and never a fraction of it.
+
+    **There is a resolution limit and it is reported rather than hidden.**
+    States closer together than `STATE_SPLIT_SIGMAS` times the scatter -- plus
+    the spread of the group's own tails -- do not separate, and the group comes
+    back with `separation` None.  That is "no state I can see", not "no state",
+    and the two must not be published as the same thing: a null at low gain
+    bounds the step at the resolution limit, which is the number to quote.
+
+    MAD is used once, to bootstrap the scatter, and the module docstring's
+    warning about it does not apply: these are plane *means* over ~260,000
+    pixels, which are continuous, not the quantised per-pixel deviations that
+    pin MAD to multiples of a code.
+
+    Returns `departure`, the state `centres` found, their `separation` (None
+    when the group occupies one state), the within-state `scatter`, the
+    `threshold` those two imply, a boolean `far`, an integer `state` per frame
+    (0 is the populated one), and `worst_steps` -- the largest departure in
+    units of the separation, which is how a *third* state announces itself.
+    """
+    x = np.asarray(levels, dtype=np.float64)
+    if x.size < 3:
+        raise ValueError("a peer group needs at least three frames to have a "
+                         "median, a scatter and something to compare with them")
+    departure = x - np.median(x)
+    scatter = float(MAD_TO_SIGMA * np.median(np.abs(departure)))
+    if scatter <= 0:                      # over half the group identical to the digit
+        scatter = float(np.std(departure, ddof=1))
+
+    ordered = np.sort(departure)
+    cuts = np.diff(ordered) > STATE_SPLIT_SIGMAS * scatter
+    groups = np.split(ordered, np.flatnonzero(cuts) + 1)
+    centres = [float(g.mean()) for g in groups]
+    within = [g for g in groups if g.size > 1]
+    if within:
+        pooled = sum(float(np.var(g, ddof=1)) * (g.size - 1) for g in within)
+        scatter = float(np.sqrt(pooled / sum(g.size - 1 for g in within)))
+
+    separation = float(np.min(np.diff(centres))) if len(centres) > 1 else None
+    threshold = (max(separation / 2, STATE_FLOOR_SIGMAS * scatter) if separation
+                 else STATE_FLOOR_SIGMAS * scatter)
+    state = (np.rint(departure / separation).astype(int) if separation
+             else np.zeros(x.size, int))
+    return {"departure": departure, "centres": centres, "separation": separation,
+            "scatter": scatter, "threshold": float(threshold),
+            "far": np.abs(departure) > threshold, "state": state,
+            "worst_steps": (float(np.max(np.abs(departure)) / separation)
+                            if separation else None)}

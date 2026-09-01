@@ -237,3 +237,87 @@ def test_value_step_refuses_a_plane_with_nothing_to_measure():
     except ValueError:
         return
     raise AssertionError("expected ValueError")
+
+
+# --------------------------------------------------------------------------
+# the offset state (protocols/04-offset-state.md, rule 1)
+# --------------------------------------------------------------------------
+#
+# Session 03 detected the state against a fixed 0.5-count threshold, which is
+# only right if the step is ~1 count.  Session 04 exists to test the step
+# against gain, so these check that the rule finds the step it is given rather
+# than the step it was written against.
+
+def _two_states(step, n_far=4, n=100, scatter=0.01, seed=0):
+    """A peer group: `n` levels around 76.66 counts, `n_far` of them one state up."""
+    rng = np.random.default_rng(seed)
+    levels = 76.66 + rng.normal(0, scatter, n)
+    levels[:n_far] += step
+    return levels
+
+
+def test_the_step_is_measured_and_not_assumed():
+    """H2 predicts 9.93 counts at gain 450 and H1 predicts 0.993 everywhere.
+    A rule that only finds one of them cannot separate the hypotheses."""
+    for step in (0.9931, 9.931, 0.154):
+        found = stats.offset_state(_two_states(step))
+        assert abs(found["separation"] - step) < 0.01, step
+        assert found["far"].sum() == 4, step
+
+
+def test_one_state_is_not_split_into_two():
+    """The null outcome is pre-registered: three hours and no state at all.
+    It must come back as no state, not as a separation invented from noise."""
+    found = stats.offset_state(_two_states(0.0, n_far=0))
+    assert found["separation"] is None
+    assert not found["far"].any()
+    assert found["worst_steps"] is None
+
+
+def test_the_floor_binds_when_the_step_is_small():
+    """At gain 0 H2 predicts 0.154 counts.  Against a scatter of 0.02 the two
+    states are 7.7 sigma apart, so they resolve -- but half the separation
+    would put the threshold under 4 sigma and admit noise as a state.  The
+    floor, not the separation, is what the threshold must be there."""
+    found = stats.offset_state(_two_states(0.154, scatter=0.02))
+    assert found["separation"] is not None
+    assert found["threshold"] == stats.STATE_FLOOR_SIGMAS * found["scatter"]
+    assert found["threshold"] > found["separation"] / 2
+
+
+def test_a_step_inside_the_scatter_is_reported_as_no_state():
+    """The resolution limit, made explicit.  H2 at gain 0 predicts 0.154 counts
+    and this session must be able to tell "no state" from "a state I cannot
+    see": a group whose states sit closer than the clustering gap comes back
+    with no separation, and the notebook quotes the limit beside the null
+    rather than reporting a measured zero."""
+    found = stats.offset_state(_two_states(0.154, scatter=0.05))
+    assert found["separation"] is None
+    assert found["threshold"] == stats.STATE_FLOOR_SIGMAS * found["scatter"]
+
+
+def test_a_third_state_announces_itself_in_units_of_the_step():
+    """Rule 4: a departure of two steps is a pre-registered outcome.  The
+    separation must stay the unit even when a state in between is unoccupied."""
+    levels = _two_states(0.993, n_far=4)
+    levels[:2] += 0.993                       # two frames two steps out
+    found = stats.offset_state(levels)
+    assert abs(found["separation"] - 0.993) < 0.02
+    assert round(found["worst_steps"]) == 2
+    assert sorted(set(found["state"].tolist())) == [0, 1, 2]
+
+
+def test_the_scatter_is_within_state_and_not_across_states():
+    """The floor is 5x the *within*-state scatter.  Pooling the far frames into
+    it would inflate it by the step and disable the floor exactly where the
+    step is small, which is where the floor is the only thing protecting it."""
+    found = stats.offset_state(_two_states(0.993, n_far=20, scatter=0.01))
+    assert found["scatter"] < 0.02, found["scatter"]
+
+
+def test_a_peer_group_too_small_to_have_a_median_refuses():
+    try:
+        stats.offset_state([76.6, 76.7])
+    except ValueError:
+        return
+    raise AssertionError("two frames are not a peer group")
