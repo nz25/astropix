@@ -1,0 +1,85 @@
+{
+  "offset_state_step": {
+    "value": 0.9931,
+    "unit": "ADC counts",
+    "uncertainty": 0.01,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "the camera's black level occupies discrete states this far apart, on every plane at once and uniformly across the frame.  Detected per frame as a departure of a plane mean from its peers (threshold 0.5 counts against a within-state scatter of ~0.01), so it is rejectable rather than merely present.  It refutes protocol rule 1 as written: dark-minus-bias measures the state whenever the two frames differ in it, and the step is 4x the dark signal a 600 s exposure produces"
+  },
+  "offset_state_incidence": {
+    "value": 0.04098,
+    "unit": "fraction of frames",
+    "uncertainty": null,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "10 of 244 frames.  Zero in the first 160 frames and then intermittent, so it is not a property of the settings; it appeared 161 min into a 5 h run at a fixed configuration"
+  },
+  "pedestal_stability": {
+    "value": 0.0206,
+    "unit": "ADC counts (residual sd about a linear trend)",
+    "uncertainty": 0.0421,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "15 interleaved bias blocks over 262 min at gain 250, offset 15, -10 C, anomalous frames excluded. Trend -0.0251 counts/hour.  Session 01 bounded the rate at +/-0.254 counts/min over 15 min; this is the same question over the span an imaging night occupies, and it is ~250x tighter"
+  },
+  "dark_current_bound": {
+    "value": 0.000534,
+    "unit": "e-/px/s at -10 C",
+    "uncertainty": null,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "an upper bound, not a value, and never a signed one (L14).  The implied rate read off each exposure separately spans -2.004e-02 to +1.009e-03 e-/px/s and disagrees in sign, which is what a dark current cannot do.  What limits it is the offset state, not statistics: the state step over a 600 s exposure is 8.49e-04 e-/px/s, while the statistical floor is 1.3e-6.  L14 inherited < 1e-2"
+  },
+  "dsnu_300s": {
+    "value": 0.8517,
+    "unit": "ADC counts at 300 s",
+    "uncertainty": 0.2694,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "single-frame spatial variance minus pair-difference variance, on the G1 plane of 32 clean 300 s darks with the hottest 0.1% of pixels masked.  Immune to the offset state, which is uniform and cancels in a spatial difference.  The 32-frame stack stalls at 0.930 counts against this 0.852: the stall is DSNU, which is what protocol rule 4 pre-registered rather than an eta_comb failure"
+  },
+  "eta_comb": {
+    "value": {
+      "2": 0.9864,
+      "4": 0.9762,
+      "8": 0.9439,
+      "16": 0.883,
+      "32": 0.7902,
+      "64": 0.6706,
+      "128": 0.536
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N)",
+    "uncertainty": null,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "measured on the BIAS stack, not the dark stack.  L15 required frames that need no registration; darks satisfy that and then stall on their own DSNU, which is a property of darks and not of combination.  Bias carries no dark-signal non-uniformity (session 01's bias_fixed_pattern_ratio 1.011), so it isolates the rejection-and-averaging half honestly.  Averaging is ideal to N~8 and then approaches a fixed-pattern floor of 0.2426 counts.  This is an upper bound on the real loss: no registration, no resampling, and the sky half is unmeasured"
+  },
+  "glow_gradient": {
+    "value": 0.3329,
+    "unit": "ADC counts at 600 s (worst corner minus centre)",
+    "uncertainty": null,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "median-combined full-frame 600 s darks against their own full-frame bias, so a uniform offset state cancels.  Per-region means are centre +0.5406, top_left +0.7877, top_right +0.5786, bot_left +0.8735, bot_right +0.6412, session_roi +0.5552.  The session ROI sits in the quiet part of the frame, which is why the ROI's own value is what the model uses (protocol rule 5)"
+  },
+  "setpoint_held": {
+    "value": [
+      -10.0,
+      -9.5
+    ],
+    "unit": "C",
+    "uncertainty": 0.5,
+    "source_frames": 244,
+    "measured_on": "2026-09-01",
+    "notebook": "07_dark.ipynb",
+    "note": "every one of 244 frames in band; 0 retaken, 0 out of band across 5.03 h"
+  }
+}

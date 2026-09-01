@@ -71,41 +71,6 @@ on a small ROI (see L09 and L12).
 
 ---
 
-## Dark current — `protocols/03-dark-bound.md`, written and unrun
-
-### L14. Dark current here may be below the detection floor, and must be reported as such
-**Claim.** At −10.5 °C over 120 s the mean dark signal came out at **−0.23 e⁻** — negative,
-because the master dark sat one reported ADU below the master bias, which is pedestal drift
-between sessions four hours apart. Quote it as **"below the detection floor, < 0.01 e⁻/s"**,
-never as a signed value. The 12-bit quantisation makes it worse: the *median* dark and *median*
-bias land on the same code and the difference reads as a clean zero; only the mean over millions
-of pixels reveals the sub-code offset. **Do not fit a temperature-scaling model on it** — with no
-measurable signal at either end there is nothing to fit a doubling temperature to.
-**Consumed by.** The `D(T)` measurement, which MISSION lists as a model constant.
-**How to check.** Take darks at the extremes of the achievable temperature range and see whether
-the difference exceeds its own uncertainty before attempting a fit.
-**Lands in.** `results/` as `D(T)` with its detection floor — an upper bound is a result and
-is recorded as one — and `MISSION`'s constants table if `D(T)` turns out to be unmeasurable
-rather than merely small.
-
----
-
-## Stacking — how `η_comb` may be measured
-
-### L15. Per-pixel statistics across a stack of lights are meaningless before registration
-**Claim.** Measuring σ in a star-free patch as more frames were averaged tracked √N to N ≈ 8 then
-stalled hard — 3.5× at N = 50 against an ideal of 7.1×. The cause was **not** fixed-pattern
-noise: the mount drifts and dithers, so the patch looks at different sky in every frame, stars
-wander in, and sigma-clipping hides them from the statistic but not from the mean. Use frames
-where pointing does not exist — bias, darks and flats are perfectly registered by construction.
-**Consumed by.** The combination-efficiency constant `η_comb`, which MISSION requires be measured
-rather than assumed √N.
-**How to check.** The tell: the stalled curve did not move when flat-field correction was
-applied. Had PRNU been the floor, flat-fielding would have lowered it.
-**Lands in.** `DECISIONS`, as a constraint on how `η_comb` may be measured.
-
----
-
 ## PixInsight — build step 5
 
 ### L16. The CLI invocation, and the flag that hangs a headless run forever

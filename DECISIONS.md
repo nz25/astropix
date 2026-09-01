@@ -1625,3 +1625,114 @@ bracketing is not a precaution against something hypothetical.
 duty hypotheses are confounded in it exactly as mode and time were before the alternation test.
 The night measures this properly, fifteen times, with the duty column beside it; a scratchpad
 smoke test does not get to publish a drift rate.
+
+## 2026-09-01 — Session 03 ran, and found a state the model did not have
+
+The night captured clean: **244 of 244 frames, 0 retaken, 0 out of band, 5.03 h**, every block
+at −10.0 °C. The analysis is `07_dark.ipynb`; the constants are
+`results/dark_constants.json`, with `pedestal_series.csv` and `dark_blocks.csv` beside them.
+
+### D60. The camera's black level occupies discrete states ~1 ADC count apart
+**Measured: 0.9931 counts**, on every plane at once and uniformly across the frame, in
+**4.1% of the night's 244 frames**. Zero in the first 160 frames, then intermittent from
+**161 minutes** into a five-hour run at a fixed configuration — so it is not a property of the
+settings.
+
+It was found by asking why identical 600 s dark blocks disagreed by ±0.55 counts when the bias
+series was stable to 0.06. Three eliminations got there: the scatter is in the **clipped** mean
+and not the tail, so it is a level and not cosmic rays or hot pixels; it survives taking the
+pedestal from the block before, the block after, or the interpolation, which moves the excess by
+at most 0.04 counts against a 1.2-count swing, so it is not the interpolation; and per-frame bias
+levels turn out to be **bimodal at 76.48 and 77.51**, with the wild block — blk27 — having *both*
+of its 600 s darks in the far state.
+
+**This refutes protocol rule 1 as written.** Dark-minus-bias measures the state, not the sensor,
+whenever the two frames are not in the same one, and the step is **four times the entire dark
+signal a 600 s exposure produces here**. The rule is not repaired by better bracketing or more
+frames; it needs the state classified first.
+
+**The good news is that it is rejectable.** A plane mean separates the states by roughly a
+thousand sigma — the within-state scatter of a plane mean is 0.0072 counts against a 0.99-count
+step — so a threshold at 0.5 counts is a formality rather than a judgement. Rejecting the ten
+anomalous frames took the pedestal series' residual scatter from 0.061 to **0.0206 counts** and
+brought the three surviving 600 s blocks into agreement at 0.005.
+
+**Open, and named as open.** Why it happens, and why it began 161 minutes into a fixed
+configuration. This night varied nothing that could cause it and therefore cannot answer it.
+There is a second thread: the 600 s and 300 s dark levels differ by **+0.811 counts** against a
+0.993-count step, which looks like the two exposures sitting in different states — if the state
+is exposure-dependent, that is a bigger fact than the intermittency and it is a candidate
+session, not an analysis.
+
+### D61. `D` is published as a bound, and the bound is set by the state
+**`|D| < 5.34 × 10⁻⁴ e⁻/px/s` at −10 °C**, against L14's inherited `< 10⁻²`.
+
+The bound comes from the **longest lever arm and nowhere else**, and the first version of this
+analysis got that wrong: taking the largest implied rate across exposures let the 1 s block —
+0.04 counts of offset divided by one second — set a "bound" of 2 × 10⁻², which says nothing about
+dark current and everything about dividing by one second. A fixed offset divided by an exposure
+always looks like a rate, and only the longest exposure converts a level error into a tight one.
+
+What makes this a bound rather than a measurement: the implied rate is **−3.7 × 10⁻⁴ at 300 s and
++5.3 × 10⁻⁴ at 600 s**. It changes sign. A dark current cannot. So the excess is an offset, and
+what limits the night is the state (8.5 × 10⁻⁴ e⁻/px/s over 600 s) and not the statistics, which
+sit at 1.3 × 10⁻⁶ — a factor of 650 below. **More frames would not have helped**, which is D56's
+argument confirmed from the other side.
+
+**The consequence for MISSION is that the dark term is settled, and settled as absent.** Even the
+bound is four orders of magnitude under the sky rate L32 predicts, at every exposure this project
+will use. `D` leaves `σ²`. **This is a change to a canonical document and is not made here** —
+MISSION's constants table still lists `D(T)` from a temperature sweep, and retiring that row is a
+conversation.
+
+### D62. `η_comb` moves from the dark stack to the bias stack
+L15 required frames that need no registration, and darks satisfy that. They also **stall on their
+own dark-signal non-uniformity**, which is a property of darks and not of combination: the
+32-frame stack stalls at **0.930 counts** against an independently measured **DSNU of 0.852
+counts at 300 s** (single-frame variance minus pair-difference variance). Those are the same
+number. Protocol rule 4 pre-registered exactly this reading, on the strength of session 02's
+`fpn_term_present` and session 01's `bias_fixed_pattern_ratio`, so it is confirmed rather than
+rationalised.
+
+Bias carries no DSNU, so `η_comb` is measured on the **143 clean bias frames** instead:
+**0.986 at N = 2, 0.976 at N = 4, 0.944 at N = 8**, then falling as the stack approaches a
+fixed-pattern floor of **0.2426 counts**. Session 01's `bias_fixed_pattern_ratio` of 1.011
+predicts 0.2592 for that floor — an independent reproduction of a session 01 number from
+different frames, which neither session was designed to provide.
+
+It remains an **upper bound**: no registration, no resampling, and the sky half unmeasured.
+
+### D63. There is glow, and the ROI sits in the quiet part of the frame
+**Worst corner minus centre: +0.3329 counts at 600 s**, from median-combined full-frame darks
+against their own full-frame bias. Bottom-left +0.874, top-left +0.788, centre +0.541, and the
+session ROI +0.555 — indistinguishable from the centre.
+
+**This is measurable precisely because it is spatial.** A uniform offset state cancels in a
+difference between two regions of the same frame, so D60 does not touch it, and neither does the
+pedestal. The same immunity is what makes the DSNU number in D62 firm. Two of the night's four
+results survive the state entirely, and both are the ones defined as differences in space rather
+than in time.
+
+Protocol rule 5 asked whether `D` is position-dependent. It is, at the 0.33-count level across
+the frame — and the ROI the model uses is in the quiet part, which is the answer the rule wanted.
+
+### D64. L14 and L15 leave the queue; `LEGACY` goes 16 → 14
+| entry | verdict | where it landed |
+|---|---|---|
+| L14 dark current is below the detection floor and must be reported as such | **confirmed, mechanism corrected**. It is below the floor, and the floor is the offset state rather than session-to-session pedestal drift. Quoted as a bound, never signed | `dark_constants.json` → `dark_current_bound`, D60, D61 |
+| L15 per-pixel statistics across a stack are meaningless before registration | **confirmed and sharpened**: unregistered frames are necessary and not sufficient — darks also stall on DSNU, so the constant is measured on bias | D62; `dark_constants.json` → `eta_comb` |
+
+L14's advice not to fit a temperature model stands and was never tested: MISSION fixes the
+setpoint, so no temperature axis was opened.
+
+**Rejected: publishing a dark-current value by dropping blk27.** Excluding the one 600 s block in
+the far state and fitting the remaining three gives a clean-looking positive rate. That is the
+same move as L14's negative dark current with the sign reversed — an artefact of which state the
+surviving frames happened to occupy — and the 300 s blocks, equally clean, still disagree in sign
+with it. The night bounds `D`; it does not measure it.
+
+**Rejected: MAD and medians as the estimators.** The first pass used both and produced a DSNU of
+exactly 0.0000 and glow figures of exactly +0.5000 and +0.0000: on 12-bit-quantised data they
+return multiples of the code size and cannot see below one count. That is L14's own failure mode
+arriving in this project's analysis rather than the retired one's. Means and variances
+throughout, and the published numbers are all from the second pass.
