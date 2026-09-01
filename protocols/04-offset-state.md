@@ -79,8 +79,18 @@ is the reason the session is worth three hours.
   per frame with cooler duty**. Duty is not decoration here: session 03's smoke test showed duty
   climbing 13 points through the same half hour in which the pedestal moved, while sensor
   temperature sat flat at −10.0. If the state tracks duty, that is the answer, and it is free.
-- **Ambient at start and end**, read and written down. Arm A's whole claim is about a machine
-  warming up in a room; the room is a variable.
+- **The room is a variable, and duty is how it is measured.** Arm A's whole claim is about a
+  machine warming up in a room, but this camera has no ambient probe — `ASI_TEMPERATURE` is the
+  only thermometer the SDK exposes, and once settled it reads the setpoint by construction. Duty
+  against a fixed −10 °C setpoint is the proxy that is left, and it is the better instrument
+  anyway: sampled once per frame for the whole run rather than read off a thermometer twice.
+  **No manual ambient reading is taken**; one that has to be remembered after three hours is one
+  that gets defaulted.
+- **Record whether the camera was equilibrated at power-on.** The first cool-down sample is kept
+  as `sensor_at_cooler_on_C` and is *not* ambient: it equals the room only if the camera had been
+  sitting powered off long enough, and the camera cannot tell us whether it had. A camera still
+  cold from an earlier run starts arm A with a body that is not at rest, which is the one
+  confound the 10-minute settle exists to remove.
 
 ## Capture
 
@@ -212,10 +222,15 @@ attempt to *fix* the state. We characterise the camera we own; we do not modify 
 
 ## Record for the session
 
-Ambient at start and end, settle duration, the sensor-temperature and duty range over the run, the
+Cooler duty at both ends of the run and its range across it, the sensor reading at cooler-on with
+the equilibrated-at-power-on flag beside it, settle duration, the sensor-temperature range, the
 random seed used for arm A's gaps and arm B's cycle order — **the seed is part of the record**,
 because an interleave that cannot be reconstructed cannot be checked — and any block that ran with
 a changed configuration.
+
+The ends live in `session_record.json`, written when the camera closes; the per-frame duty and
+sensor temperature are columns of the frames table, and the cool-down curve is `cooldown.csv`.
+Nothing here is typed in by hand.
 
 ## Notebooks
 
