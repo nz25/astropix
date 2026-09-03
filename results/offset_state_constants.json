@@ -1,0 +1,168 @@
+{
+  "offset_state_mechanism": {
+    "value": "H2",
+    "unit": "one of H1 (after the gain stage), H2 (before it), undecided, null",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "the step measured at gains [0, 450] against two pre-registered predictions normalised to session 03's 0.9931 counts at gain 250.  RMS residual 6.612952226620051 for H1 and 0.2665052570312193 for H2; the losing prediction H1 misses by 6.612952226620051 counts.  H1 is a digital or post-ADC level and leaves the published sweeps safe; H2 is analog and puts session 01's R and session 02's g at high gain in question"
+  },
+  "offset_state_step_vs_gain": {
+    "value": {
+      "0": 0.1581,
+      "100": null,
+      "250": null,
+      "450": 10.3079
+    },
+    "unit": "ADC counts, per gain",
+    "uncertainty": {
+      "0": 0.00204,
+      "100": 0.25867,
+      "250": 0.01449,
+      "450": 0.03708
+    },
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "measured separation between adjacent black-level states at offset 15.  **None is not a zero**: it means no state resolved there, which is either no frame leaving the base state or a step under the resolution limit, and the uncertainty field carries the scatter that prices the difference.  H1 predicted 0: 0.993, 100: 0.993, 250: 0.993, 450: 0.993; H2 predicted 0: 0.154, 100: 0.488, 250: 0.993, 450: 9.931"
+  },
+  "offset_state_step_electrons": {
+    "value": {
+      "0": 1.4856,
+      "100": null,
+      "250": null,
+      "450": 0.5008
+    },
+    "unit": "e- per state",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "the same steps through session 02's measured g at each gain.  A step that is a constant number of *electrons* is a statement about the sense node and is the most physically specific outcome this session can reach; a constant number of *counts* is a statement about the converter or later"
+  },
+  "offset_state_within_branch": {
+    "value": {
+      "lcg": null,
+      "hcg": null
+    },
+    "unit": "ADC counts (max minus min separation within a branch)",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "H2 predicts the step varies within a conversion-gain branch and jumps at gain 200; H1 predicts neither.  Measured ratio across the threshold: {'gains': [0, 450], 'measured': 65.19949287364415, 'h2_predicts': 64.38563933804306}"
+  },
+  "offset_state_quarter_offset_unit": {
+    "value": null,
+    "unit": "boolean",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "whether the step is a quarter of an offset unit (1.0008 counts, from session 01's 4.0032 per unit) and independent of the offset selected.  Measured at offsets [15, 30, 60]; the step against the offset setting is None counts per unit, which a property of the DAC would leave at zero"
+  },
+  "offset_state_occupancy": {
+    "value": 0.04321,
+    "unit": "fraction of frames",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "35 of 810 frames across all three arms, against session 03's 4.1% of 244.  Per setting in offset_state_settings.csv; worst 33.3%.  This is rule 6's rejection cost: what a session at these settings loses to the filter"
+  },
+  "offset_state_transitions": {
+    "value": {
+      "p_near_to_far": 0.0,
+      "p_far_to_near": 0.0,
+      "mean_far_run": null,
+      "isolated_fraction": null,
+      "reading": "no far frames in arm A"
+    },
+    "unit": "per-frame probability, arm A",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "arm A only -- 290 frames at a fixed configuration, gaps drawn from (2, 15, 60) s.  A slow drift dithering across a quantisation boundary gives long runs and no isolated frames; an independent per-frame event gives geometric run lengths.  First far frame at None min"
+  },
+  "offset_state_reconfiguration": {
+    "value": {
+      "arm_a_frame_to_frame": 0.0,
+      "c_set": {
+        "pairs": 40,
+        "changed": 0,
+        "rate": 0.0
+      },
+      "c_open": {
+        "pairs": 10,
+        "changed": 0,
+        "rate": 0.0
+      }
+    },
+    "unit": "transition rate per interval",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "H3's direct test: 40 pairs straddling a no-op `configure` with identical values, and 10 straddling a close/reopen, against arm A's frame-to-frame baseline.  A rate at the baseline refutes H3 whatever rule 2 decides; a rate far above it makes the fix a protocol rule -- do not reconfigure mid-block -- rather than a filter"
+  },
+  "offset_state_regressors": {
+    "value": {
+      "duty_pct": null,
+      "ccd_temp": null,
+      "t_min": null,
+      "gap_s": null
+    },
+    "unit": "point-biserial r against the far/near label, arm A",
+    "uncertainty": 0.1174,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "rule 5, in its order of suspicion: cooler duty, sensor temperature, elapsed time, and the idle gap before the frame.  Reported even where null.  The uncertainty field is the 2-sigma band for no relation.  Duty is the suspect because session 03 saw it climb 13 points through the same half hour in which the pedestal moved 1.1 counts, at a flat -10.0 C; the gap is the one that separates a sensor-idle effect from a warm-up effect"
+  },
+  "offset_state_rule_agreement": {
+    "value": false,
+    "unit": "boolean",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "whether the modal-separation rule and session 03's fixed 0.5-count threshold label the same frames.  Where they disagree the modal rule is the published one and the disagreement is a result (protocol rule 1): a fixed 0.5 is only correct if the step is 0.993 everywhere"
+  },
+  "session_record": {
+    "value": {
+      "seed": 20260901,
+      "sensor_at_cooler_on_C": 16.5,
+      "equilibrated_at_power_on": true,
+      "cooldown_s": 1091.1,
+      "duty_settled_pct": 58,
+      "duty_end_pct": 61,
+      "settle_s": 600.0,
+      "gate3_spread_counts": 0.01641368865966797,
+      "gate3_limit_counts": 0.1,
+      "bias_exposure_s": 3.2e-05,
+      "roi": [
+        1408,
+        568,
+        1024,
+        1024
+      ],
+      "hours": 2.79,
+      "temp_range_C": [
+        -10.0,
+        -9.5
+      ],
+      "duty_range_pct": [
+        58,
+        62
+      ]
+    },
+    "unit": "the protocol's *Record for the session*",
+    "uncertainty": null,
+    "source_frames": 810,
+    "measured_on": "2026-09-02",
+    "notebook": "09_offset_state.ipynb",
+    "note": "the seed is part of the record because an interleave that cannot be reconstructed cannot be checked.  gate3_spread is the first 20 frames of arm A against its limit: over it, the camera was already switching at minute zero and the onset question was moot"
+  }
+}

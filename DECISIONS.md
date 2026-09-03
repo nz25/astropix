@@ -1736,3 +1736,206 @@ exactly 0.0000 and glow figures of exactly +0.5000 and +0.0000: on 12-bit-quanti
 return multiples of the code size and cannot see below one count. That is L14's own failure mode
 arriving in this project's analysis rather than the retired one's. Means and variances
 throughout, and the published numbers are all from the second pass.
+
+---
+
+## 2026-09-01 — Session 04 runs, and the one hand-typed field defaults
+
+### D65. `equilibrated_at_power_on` is True, on evidence rather than on memory
+Session 04's protocol takes no manual ambient reading, deliberately: "one that has to be
+remembered after three hours is one that gets defaulted." The one field it does leave to a
+human is `EQUILIBRATED_AT_POWER_ON` in `09` cell 19, and **it had defaulted** — it carried
+`False` with a comment citing a 16.0 C first sample, which was a previous run's number. Tonight's
+first cool-down sample is **19.0 C**.
+
+Set to **True**, on two recorded numbers rather than on recollection: 19.0 C at cooler-on reads
+as room temperature, and cooler duty is **flat at 60-61% from the first frame through arm A**,
+where session 03 saw 13 points of climb over a comparable stretch. A body still cold from an
+earlier run warms, and this one is not warming.
+
+**The flag gates nothing.** It is written once into `session_record.json` and read by no
+capture decision, no threshold and no gate; every frame is valid whichever way it reads. What
+it carries is the *interpretation* of arm A: if duty stays flat for three hours and no state
+appears, the null bounds less than the protocol's outcome table assumed, because no warm-up
+transient was in the window to find one in. `10` writes that caveat.
+
+**Rejected: treating the flag as the instrument.** Duty is recorded per frame for the whole run
+and outvotes anything anyone remembers. The flag is a cross-check on the proxy, not the primary
+evidence, and it was over-weighted in conversation before the duty trace was read.
+
+### D66. Outstanding for the morning: the comment, not the value
+The value was changed in the running notebook; **the comment was not**, and now reads
+`True # still cold from an earlier run; see the 16.0 C first sample`. The boolean and its
+justification disagree, and the justification cites a temperature that is not in tonight's
+`cooldown.csv`.
+
+To apply tomorrow, in `09` cell 19:
+
+```
+EQUILIBRATED_AT_POWER_ON = True    # 19.0 C at cooler-on and duty flat at 60-61%
+                                   # from the first frame: the body was at rest
+```
+
+**Why it waited.** The notebook was open and autosaving mid-run — the file grew 65,361 to
+68,038 bytes as arm A's outputs accumulated — so any write from outside would have been
+clobbered by the editor's next save within minutes. Nothing depends on the timing: cell 19
+writes only the boolean, so the record is correct tonight and only the audit trail is not.
+
+**The general point, which is why this is an entry and not a note.** The comment survived a
+deliberate edit *to the line above it* because attention went to the token under discussion.
+A justification that cites a recorded number is checkable against `cooldown.csv`; "still cold
+from an earlier run" never was, which is how it lasted a session while being wrong. Prefer the
+former in any hand-typed field.
+
+---
+
+## 2026-09-03 — Session 04's verdict: the state is analog, and it was in session 01's frames
+
+The night captured clean: **810 frames, 2.79 h**, every block at −10.0 °C, gate 1 passing at
+every reopen and gate 3 at 0.0164 counts against its 0.1 limit. The analysis is
+`09_offset_state.ipynb`; the constants are `results/offset_state_constants.json`, with
+`offset_state_frames.csv` and `offset_state_settings.csv` beside them.
+
+### D67. The offset state is H2 — it happens before the gain stage
+**Measured: H2.** RMS residual against the two pre-registered predictions, both normalised to
+session 03's 0.9931-count step at gain 250, is **0.2665 counts for H2 against 6.6130 for H1**.
+The step is **0.1581 ± 0.0020 counts at gain 0** and **10.3079 ± 0.0371 at gain 450**, against
+H2's predicted 0.154 and 9.931 — 2.6% and 3.8% out. All four CFA planes step together, to within
+0.0006 counts at gain 0 and 0.014 at gain 450, so it is one level shift and not a per-channel
+effect.
+
+In electrons the same step is **1.4856 e⁻ at gain 0 and 0.5008 at gain 450**. That is the whole
+finding: a step roughly constant in *electrons* and varying 65× in *counts* is a statement about
+the sense node, upstream of the analog gain. H1 — a digital or post-ADC level — required a
+constant number of counts and misses by 6.6.
+
+**The unit conversion is the consequence.** MISSION's model works in electrons, where the state is
+0.5–1.5 e⁻ against a sky delivering thousands per sub; the bench works in counts, where at gain
+450 it is 10.3 against the quarter-count of dark signal a 600 s exposure produces. **The state is
+a calibration problem and not an imaging problem.** The SNR model's *predictions* are untouched;
+what is touched is the bench-measured constants it consumes, and D68 takes them one at a time.
+
+**H3 is refuted directly.** 0 of 40 pairs straddling a no-op `configure` and 0 of 10 straddling a
+close/reopen changed state, against arm A's frame-to-frame baseline of 0. Reconfiguration does
+not trigger it, so *do not reconfigure mid-block* does not become a protocol rule. A rule we do
+not have to add is a result, and it was pre-registered as one.
+
+**Session 03's fixed 0.5-count threshold is retired, and the night refutes it rather than
+arguing with it.** At gain 0 the step is 0.158 counts, so the old rule found **0** far frames
+where the modal-separation rule found **20 of 60**; `offset_state_rule_agreement` is published
+`false`. A fixed 0.5 is only correct if the step is 0.993 everywhere, and H2 is precisely the
+claim that it is not. The replacement threshold is a function of the measured separation at each
+setting, which is what `offset_state_settings.csv` carries per row.
+
+**Rejected: reading the 4.32% occupancy as a rate.** 35 of 810 frames, but they are not spread:
+**33.3% at gain 0, 25% at gain 450, and 0 at gains 100 and 250**. An occupancy averaged over a
+gain sweep describes no setting anyone uses.
+
+### D68. What it costs each constant, and `R` is not one of them
+Taken one at a time, because "high gain is in question" was too coarse and sent the first pass
+after the wrong constant.
+
+**`pedestal` — hit, and demonstrably.** Session 01 published **234.2696 counts** at gain 450 /
+offset 15. Tonight's two states sit at **236.3312 ± 0.0386** (45 frames) and **226.0233 ± 0.0292**
+(15 frames). The published value is *neither*: it sits 2.06 counts below the near state, which is
+where a mixture mean lands. Backing out the implied occupancy gives **20.0% far in session 01's
+own frames against 25.0% tonight** — two nights, four days apart, agreeing. Session 01's
+high-gain pedestals are mixture means of a distribution nobody knew was bimodal. **The pedestal
+is not a number at a gain; it is a number at a gain *and a state*.**
+
+**`R(gain)` — safe, by the mechanism that saved D62 and D63.** It is measured as pair-difference
+σ/√2, a *spatial* spread. A uniform state shift moves the mean of a difference image and not its
+width, so R in counts is immune. This corrects a claim made in conversation before the method
+note was read: the first pass reasoned "high gain amplifies it, so R is inflated" without
+checking how R was computed, and that was wrong.
+
+**`g(gain)` — the real exposure, and it is a re-analysis rather than a re-shoot.** The PTC is
+"the slope of pair-difference variance against signal, weighted 1/var², **with the intercept
+fixed at session 01's R²**". The variance axis is immune as above; the signal axis is
+`mean − pedestal`, and the intercept is *fixed rather than fitted*. Pin the intercept and shift
+the signal axis, and the error lands in the slope, which is 1/g. **How exposed depends on how
+`05_ptc.ipynb` took its pedestal per rung** — a systematic ~2-count offset at gain 450 is one
+thing, per-rung bias frames independently hopping ±10 counts is another and worse. That check
+reads existing frames and is the next session.
+
+**`R` in electrons — hit only by inheritance**, since `R_e = R_ADU · g` and carries whatever bias
+`g` carries at high gain.
+
+**`ceiling(gain)` and the star-colour constraint — untouched.** 2 counts against 4095 is 0.05%,
+an order under the ±5% of reading a vendor chart. Not worth a re-measure.
+
+**`D` — already right.** D61 published a bound and not a value *because* of this state; the
+mechanism now has a name and the bound does not move. **`η_comb`, `t_dead`, `F_sky` — untouched**,
+being differences, timestamps, and an on-sky quantity where 0.1 e⁻ is nothing.
+
+### D69. H2 predicted a gain nobody could resolve, and session 01's frames already held it
+The modal rule resolved nothing at gain 100: the predicted step, 0.488 counts, sits under that
+setting's 0.776-count resolution limit. But the frame-to-frame level scatter there is **0.2587
+counts against 0.0145 at gain 250** — 18× — and an unresolved two-state mixture with a 0.488 step
+predicts √(p(1−p))·step ≈ 0.24. So the scatter says *hopping, unresolved* where the classifier
+says nothing.
+
+**The test needed no camera.** `results/pedestal_drift.csv` is session 01's 450 bias frames at
+**gain 100** over 15 minutes, captured 2026-08-28 for an entirely different purpose. Its pedestal
+distribution is starkly bimodal — two tight clusters with an **empty interior gap of 0.4849
+counts**, against H2's predicted 0.488, agreeing to **0.6%**, with roughly 45/55 occupancy and a
+spread of 0.2539 counts matching tonight's 0.2587.
+
+**This is the strongest evidence the session has, and it is out-of-sample in three ways at once**:
+a different night, a different notebook, and a gain that this night's own classifier could not
+resolve. The in-sample fit chose H2 over H1; this predicted an unobserved separation to within a
+part in 160 before anyone looked.
+
+**It also explains a published uncertainty rather than merely adding to it.**
+`pedestal_drift_rate` reads −0.00133 ± 0.254 counts/min. That ± is not measurement scatter, it is
+the mixture width. The slope is genuinely flat, and a state hopping frame-to-frame contributes
+no slope at all — only spread. Which is exactly how L31's dark arm concluded "nothing in the
+camera drifts on this timescale" and cleared a camera that was switching states throughout.
+
+**L31 stays in the queue.** It now has a named mechanism and a cheap test, and that is not the
+same as being verified: its `Lands in` is a repeatability figure in `results/`, the numbers above
+come from a scratchpad check rather than a notebook, and nothing enters `results/` except through
+one. **A lead is not a harvest.** The entry is drained when a notebook reproduces the bimodality
+and reports the separation with provenance — and if it holds, L31's gain-100 irreproducibility
+(1.79% against gain 200's 0.011%) stops being unresolved and becomes this state seen from the
+other side.
+
+**Rejected: treating tonight's anchor as confirmed.** The whole H2 normalisation hangs on session
+03's 0.9931 counts at gain 250, and **gain 250 showed nothing tonight — 0 far frames in 510, at a
+0.043-count resolution limit where a 0.993-count step would have stood out at 23σ.** Session 03
+saw it in 4.1% of 244 frames at that same setting. The step *sizes* fit H2 to a few percent and
+D69 confirms the law out of sample, so the mechanism call stands; but the recurrence is
+condition-dependent in a way nothing here explains, and **the anchor gain is the one gain where
+this night has no data of its own**. Gain 200 — unmeasured, predicted at 0.5585 counts, and the
+HCG boundary — is the point that would put the law on its own feet.
+
+### D70. D66's fix went stale in one run, and there was a second copy of it
+Caught while staging D67: the comment D66 prescribed reads **19.0 C at cooler-on and duty flat at
+60-61%**, and tonight's `cooldown.csv` opens at **16.5 C** with duty at **58%**. The 19.0 C night
+is not in `data/session04` at all — `capture_log.txt` holds exactly one run, `session 04 starting
+2026-09-02 20:45`. D66 was written on 09-01 about a night that was then re-run.
+
+**The value was right and the evidence was from the wrong night.** 16.5 C is room temperature and
+duty is flat at 58% from frame 0 to frame 110, so `True` stands; only the citation moved. Both
+numbers are now tonight's, and both are checkable against files in the same directory — which is
+the whole of D66's argument, applied to D66's own output.
+
+**The second copy is the more serious half.** The markdown cell above the cool-down, untouched by
+D66, still read *"**Tonight it had not** — 16.0 °C at cooler-on, in a warmer room, because it was
+still cold from an earlier run."* So the notebook asserted in prose the exact negation of the
+`equilibrated_at_power_on: true` it published, and would have been committed that way. **A record
+that contradicts itself is worse than one that is merely wrong**, because both halves look
+authoritative and nothing flags the disagreement. Fixed to match.
+
+**The general point, and it is not the one D66 drew.** D66 concluded *prefer justifications that
+cite recorded numbers*, and that rule worked exactly as intended — the citation was checkable, so
+it got checked, and it failed in under a day. What D66 missed is that a hand-typed justification
+is **per-run state living in a file that outlives the run**, and it goes stale on the next
+execution whether or not anyone edits it. The durable fix is not a better comment: it is for the
+cell to *derive* the sentence from `trace` and the duty column, so re-running the notebook
+rewrites its own justification. **That is a change to `09` for the next session and it is not
+made here**, mid-commit, on a notebook whose outputs have just been stripped.
+
+**Rejected: fixing the value as well as the comment.** Nothing about `True` is in doubt — two
+recorded numbers support it — and re-litigating a flag D65 settled, while correcting the prose
+around it, is how a correction turns into a second decision nobody asked for.
