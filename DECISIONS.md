@@ -1939,3 +1939,101 @@ made here**, mid-commit, on a notebook whose outputs have just been stripped.
 **Rejected: fixing the value as well as the comment.** Nothing about `True` is in doubt — two
 recorded numbers support it — and re-litigating a flag D65 settled, while correcting the prose
 around it, is how a correction turns into a second decision nobody asked for.
+
+---
+
+## 2026-09-03 — The explainer reads the verdict back, and three of its numbers move
+
+`10_offset_state_read.ipynb` is session 04's explaining half: it reads `results/` back, measures
+nothing and writes nothing. Writing it moved three numbers that were settled less than a day ago,
+which is what an explainer is for — the measuring notebook is checked by whoever runs it, and the
+explainer is checked by whoever has to state the result in a sentence.
+
+### D71. D69's out-of-sample agreement is 5.1%, not 0.6% — the estimator was wrong, not the finding
+D69 confirmed H2 out of sample on session 01's `pedestal_drift.csv` — 450 bias frames at **gain
+100**, a gain this night's own classifier could not resolve — and quoted the separation as
+**0.4849 counts against H2's predicted 0.4878, agreeing to 0.6%**. That 0.4849 is the **empty
+interior gap** between the two clusters: the largest run of unoccupied values, measured
+edge-to-edge.
+
+**That is not the quantity H2 predicts, and it is not the one the session publishes.** H2 predicts
+the distance between state *centres*, and `stats.offset_state` — the rule protocol 04 fixed before
+the frames existed, and the rule every number in `offset_state_settings.csv` comes from — estimates
+it as the difference of cluster means. Run that same published classifier over that same published
+column and it returns **0.5129 counts**, with a within-state scatter of 0.0049, an occupancy of
+0.429, and a largest departure of 1.01 steps (so no third state). Against H2's 0.4878 that is
+**+5.1%**.
+
+An edge-to-edge gap is biased low by both clusters' tails, by construction and by roughly the
+amount seen here: two tails of ~0.005 counts each on clusters 0.51 apart.
+
+**The finding is unchanged and the correction makes it more consistent, not less.** H1 predicted
+0.9931. The in-sample residuals at gains 0 and 450 are 2.5% and 3.8%; an out-of-sample 5.1% sits
+with them, where 0.6% sat oddly far below them and should have been the tell. Two nights, two
+notebooks, one law with no free parameters, agreeing to a few percent at three gains spanning a
+factor of 65 in step size.
+
+**Rejected: editing D69.** It is history and it is append-only; a reversal is a dated entry. What
+was rejected more specifically is quoting *both* numbers as if the choice were stylistic. The
+published rule is the classifier, `10` prints what the classifier says, and a record that offers a
+reader two estimators without saying which one governs has not made a decision.
+
+**The general point.** D69's numbers came from a scratchpad check, and a scratchpad is exactly
+where an ad-hoc estimator gets invented — `np.diff` on a sorted column is one line, and the
+published classifier is an import. The rule that caught it is the one already written down:
+**nothing enters `results/` except through a notebook.** L31 stays queued for that reason, and the
+notebook that eventually drains it must use `stats.offset_state`, not a gap.
+
+### D72. Cooler duty is confounded with the arm, not with the gain — and half of that is breakable
+Not previously recorded, and it changes what arm A's null is worth. Duty steps from **58-59%
+through the whole of arm A to 60-62% from the arm B boundary onward**, and stays up: arm B's bias
+frames come back-to-back with no gaps, a heavier thermal load than arm A's one frame per 26 s.
+
+So **every one of the night's 35 far frames was taken at 60% duty or above, and arm A's 290-frame
+null sits entirely at 58-59%.** Arm A does not clear duty. It cannot: duty is confounded with the
+arm, and therefore with the randomised idle gap as well, and `offset_state_regressors` publishes
+`None` on all four regressors because there is no far/near label inside arm A to regress against.
+
+**The half that breaks is the more useful half.** Gain 250 has **212 frames at 60% duty or above,
+184 of them at 62%, and not one of them far** — at a 0.0435-count resolution limit where a
+0.993-count step would have shown at 23 sigma — while gains 0 and 450 at that same 62% duty do go
+far. **Duty does not explain the pattern across gains.** What it is confounded with is arm A's
+silence, not arm B's structure.
+
+**Nothing here touches D67.** The verdict rests on the *size* of the step at each gain, and a duty
+effect would have to reproduce a factor of 65 in counts to reach it. What stays open is what
+governs *how often* — which is D67's own "Rejected: treating tonight's anchor as confirmed", now
+with a named candidate that this night's design cannot test.
+
+**What it costs the next session.** If duty is to be a regressor rather than a passenger, the arms
+have to stop being duty regimes: draw the idle gap in arm B as well, or run a block of the
+baseline gain at arm B's cadence. That is a change to protocol 04's shape, not to its analysis
+rules, and it is cheap — it costs frames, not hours.
+
+**Rejected: reading the first pass, "every far frame was taken at 62% duty".** Written into a
+commit message before the crosstab was made. It is false — the far frames are spread over 60, 61
+and 62 — and it made the confound sound total when it is one-sided. The crosstab took one cell.
+
+### D73. The factor of three in electrons is the conversion-gain branch ratio, not a residual
+D67 published the step as **1.4856 e⁻ at gain 0 and 0.5008 at gain 450** and read it as "roughly
+constant in *electrons*", against a factor of 65 in counts. The remaining factor of three was left
+unexplained, and it does not need to be.
+
+**The two resolved gains straddle the HCG threshold.** Session 01's pedestal law carries a separate
+analog term on each side, and `B_hcg / B_lcg` = **0.362**. The measured ratio of the step in
+electrons is **0.337**. Those agree to **7%**, on constants from three sessions that were not
+measured together.
+
+So the sharper statement, and the most physically specific one the session can reach: **the state
+is a fixed packet of charge at the sense node — about 1.5 e⁻ in low conversion gain and 0.5 e⁻ in
+high — and it changes across the threshold by exactly the factor the sensor's own conversion gain
+changes by.** Everything else, the factor of 65 in counts included, is the amplifier chain
+faithfully doing its job on it.
+
+**This is a sharpening, not a correction**, and it is an entry because the record did not have it:
+"roughly constant" invites a reader to treat the factor of three as slop in the measurement, when
+it is a third independent confirmation of the same branch structure H2 was built on.
+
+**What it does not license.** Two resolved gains, one per branch, cannot show the step is constant
+*within* a branch — that reading is still what gain 200 would buy, and it stays the point that
+would put the law on its own feet.
