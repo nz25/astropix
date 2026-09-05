@@ -1,0 +1,128 @@
+{
+  "ptc_pedestal_mixture_offset": {
+    "value": {
+      "0": 0.0315,
+      "50": 0.0,
+      "100": 0.1026,
+      "190": 0.0,
+      "200": 0.0568,
+      "250": 0.0,
+      "300": -0.3705,
+      "450": 0.0
+    },
+    "unit": "ADC counts (pedestal session 02 used, minus its near-state level)",
+    "uncertainty": {
+      "0": 0.00218,
+      "50": 0.14808,
+      "100": 0.00463,
+      "190": 0.00406,
+      "200": 0.0035,
+      "250": 0.00616,
+      "300": 0.00747,
+      "450": 0.03191
+    },
+    "note": "ten bias frames per gain through stats.offset_state.  A mixture mean sits f_far*step above the near state, so this is f_far*step and not an error in the mean itself -- section 3 is why subtracting it alone would make g worse, not better",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "ptc_bias_occupancy": {
+    "value": {
+      "0": 0.2,
+      "50": 0.0,
+      "100": 0.2,
+      "190": 0.0,
+      "200": 0.1,
+      "250": 0.0,
+      "300": 0.2,
+      "450": 0.0
+    },
+    "unit": "fraction of frames far, session 02's bias groups",
+    "uncertainty": null,
+    "note": "a third independent night at these settings.  Session 04 measured 0.333 at gain 0 and 0.250 at gain 450; notebook 10 backed 0.200 out of session 01's published pedestal",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "system_gain_restated": {
+    "value": {
+      "0": 9.40264,
+      "50": 5.38851,
+      "100": 2.99042,
+      "190": 1.04644,
+      "200": 0.92306,
+      "250": 0.51303,
+      "300": 0.27351,
+      "450": 0.04924
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": {
+      "0": 0.0,
+      "50": 0.00052,
+      "100": 0.00305,
+      "190": 0.00082,
+      "200": 1e-05,
+      "250": 0.0,
+      "300": 0.001,
+      "450": 0.00066
+    },
+    "note": "session 02's estimator on a signal axis with flats and bias reduced to the same state, on the rungs section 3 found readable against panel drift.  The uncertainty field is the spread between the bias-side-only and both-sides fits, which is what the drift-limited rungs leave open.  It does NOT supersede ptc_constants.json's system_gain: that is a record decision, not a notebook's",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "system_gain_move_pct": {
+    "value": {
+      "0": 0.064,
+      "50": -0.01,
+      "100": 0.107,
+      "190": 0.078,
+      "200": 0.156,
+      "250": -0.0,
+      "300": -1.158,
+      "450": 1.36
+    },
+    "unit": "percent change from session 02's published system_gain",
+    "uncertainty": null,
+    "note": "what the state cost g at each gain.  Session 02's own fit residual is 1.344%, so a move below that is inside the noise the gain law already carries",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "state_step_at_gain100": {
+    "value": 0.5129,
+    "unit": "ADC counts",
+    "uncertainty": 0.0049,
+    "note": "stats.offset_state over session 01's 450-frame pedestal_drift block, out of sample in three ways: a different night, a different notebook, and a gain session 04 could not resolve (its limit there was 0.776 against a 0.488 prediction).  H2 predicts 0.4878, agreeing to +5.1%.  Measured with the published classifier and not with an edge-to-edge gap (D71)",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "state_explains_L31": {
+    "value": false,
+    "unit": "boolean",
+    "uncertainty": null,
+    "note": "L31 contrasts a 1.79% repeat spread at gain 100 with 0.011% at gain 200, a factor of 163.  H2's steps at those gains are 0.488 and 0.558 counts, a factor of 0.87: the mechanism predicts the two behave the same.  Independently, 1.79% of a linearity rung near 2000 counts is ~36 counts against a half-count state.  L31 stays queued with its mechanism unknown; what IS confirmed is the bimodality itself",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "dark_bound_limited_by": {
+    "value": "exposure-correlated offset, not random hopping",
+    "unit": "one of: random hopping, exposure-correlated offset, statistics",
+    "uncertainty": null,
+    "note": "session 03 rejected 0 anomalous frames in every block and its 300 s blocks agree to 0.008 counts, so within-group hopping is refuted by its own published table.  What survives is an offset that tracks exposure length, which a peer-group rule cannot see because exposure is what defines a peer group",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  },
+  "dark_current_conditional": {
+    "value": 0.00143981,
+    "unit": "e-/px/s at -10 C, CONDITIONAL on the best integer-step assignment",
+    "uncertainty": null,
+    "note": "excess against exposure with each group allowed an integer number of H2 steps: the assignment (0, 0, 1, 1) linearises 14 blocks to 0.0161 counts rms, at the within-group noise floor.  It is NOT a replacement for dark_current_bound: slope, intercept and 3 relative integers against 4 exposure groups is under-determined.  The decisive test is a fifth and sixth exposure, which is a bench night",
+    "source_frames": 928,
+    "measured_on": "2026-09-04",
+    "notebook": "11_state_repair.ipynb"
+  }
+}
