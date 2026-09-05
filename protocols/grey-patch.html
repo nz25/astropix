@@ -50,11 +50,15 @@
     padding: 6px 12px; border-radius: 12px;
   }
   #hint.gone { display: none; }
+  #dot { position: fixed; left: 0; top: 0; width: 4px; height: 4px; background: #000; }
 </style>
 </head>
 <body>
 
 <div id="patch"></div>
+<!-- The probe dot.  4x4 px in the very corner, black on black until the bench
+     turns it on, and never on while a frame is being taken. -->
+<div id="dot"></div>
 
 <div id="panel">
   <div class="row">
@@ -92,6 +96,19 @@
     <span class="dim">wake lock</span> <span id="wake" class="bad">checking&hellip;</span>
     <span style="flex:1"></span>
     <span class="dim">bench</span> <span id="remote" class="dim">not connected</span>
+  </div>
+
+  <div class="row">
+    <span class="dim">frames served</span> <span id="hz" class="dim">measuring&hellip;</span>
+    <span style="flex:1"></span>
+    <span class="dim">probe</span> <span id="probe" class="dim">off</span>
+  </div>
+  <div class="row dim">
+    This is the rate the compositor hands <i>this page</i>, not a reading of the backlight.
+    With adaptive refresh a still page is served fewer frames than the panel drives, which is
+    what the probe separates: it animates a 4&times;4 px dot in the top-left corner and the rate
+    should rise if the panel was only being throttled. The dot is off unless the bench asks
+    for it, and it is outside any sane capture ROI.
   </div>
 
   <div class="row dim">
@@ -227,6 +244,53 @@
   });
   acquire();
 
+  // --- how fast is this page being served? -------------------------------
+  // `requestAnimationFrame` timestamps, as a rolling window.  What this
+  // measures is the rate the compositor hands *this page*, which is not the
+  // same question as what the backlight does: a panel with adaptive refresh
+  // serves a still page fewer frames than it drives.  So a low rate here is a
+  // question, and the probe is what answers it -- if animating four pixels
+  // raises the rate, the page was being throttled and the panel was not slow.
+  var dot = document.getElementById('dot');
+  var hzOut = document.getElementById('hz');
+  var probeOut = document.getElementById('probe');
+  var probing = false;
+  var times = [];
+
+  function pctile(sorted, p) {
+    return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
+  }
+
+  function frame(t) {
+    times.push(t);
+    if (times.length > 121) times.shift();
+    // Any change forces a repaint.  #000 to #010101 is one code of black in the
+    // corner: enough for the compositor, nothing for the camera.
+    if (probing) dot.style.background = (times.length % 2) ? '#010101' : '#000000';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  function summary() {
+    if (times.length < 20) return null;
+    var d = [];
+    for (var i = 1; i < times.length; i++) d.push(times[i] - times[i - 1]);
+    d.sort(function (a, b) { return a - b; });
+    return { ms: pctile(d, 0.5), lo: pctile(d, 0.05), hi: pctile(d, 0.95),
+             n: d.length, animated: probing };
+  }
+
+  setInterval(function () {
+    var s = summary();
+    if (s === null) return;
+    hzOut.textContent = (1000 / s.ms).toFixed(1) + ' Hz  (' + s.ms.toFixed(2) + ' ms, ' +
+      s.lo.toFixed(2) + '-' + s.hi.toFixed(2) + ' ms)';
+    hzOut.className = (s.hi - s.lo) < 0.5 * s.ms ? 'ok' : 'bad';
+    fetch('/refresh?ms=' + s.ms.toFixed(4) + '&lo=' + s.lo.toFixed(4) +
+          '&hi=' + s.hi.toFixed(4) + '&n=' + s.n + '&animated=' + (s.animated ? 1 : 0),
+          { cache: 'no-store' }).catch(function () {});
+  }, 2000);
+
   // --- the bench may drive the level (patch-server.py) --------------------
   // Applied only when the server's seq moves, so a tap on the slider is not
   // fought over on the next poll.  Served from a plain file with no server
@@ -238,6 +302,13 @@
     fetch('/level', { cache: 'no-store' }).then(function (r) {
       return r.json();
     }).then(function (s) {
+      if (!!s.probe !== probing) {
+        probing = !!s.probe;
+        times = [];                      // never mix animated and still frames
+        if (!probing) dot.style.background = '#000';
+        probeOut.textContent = probing ? 'on -- dot animating' : 'off';
+        probeOut.className = probing ? 'ok' : 'dim';
+      }
       if (s.seq === seq) return;
       seq = s.seq;
       if (s.level === null) {
