@@ -2206,3 +2206,57 @@ rather than decided.
 
 **Housekeeping.** The dry run writes into `data/session05/` and `results/`; both were deleted
 afterwards. Simulated numbers must never be left where a reader would take them for measurements.
+
+### D78. The first real bench attempt stops in Gate 4, and the panel turns out to fall asleep
+Gate 4 raised on its second iteration at gain 0: *the page never confirmed patch [180, 213, 231]
+within 10 s*, whose message went on to blame an old copy of `grey-patch.html`. **The message was
+wrong and the page was fine.** The server's own state showed `applied` carrying seq 8 and rgb
+[180, 213, 231] — the page had painted the colour and confirmed it, just late. Three round trips
+timed against that same live page immediately afterwards came back at **0.21 s, 0.34 s and
+0.41 s**, and it was reporting its frame rate every 2 s on the dot.
+
+**What it was.** Gate 4's first reading at gain 0 came back `t_sat` = 141.6 s at grey 128, so the
+probe walked its exposure up toward the 60 s clip: minutes pass with nobody touching the iPad, the
+screen sleeps, and iOS stops servicing the page. It woke, polled, painted and confirmed — outside
+a 10 s window.
+
+**The handshake timeout was the symptom. The bug it exposed is much worse.** A slept screen is a
+**black panel**. Any frame captured across a sleep is a dark frame wearing a flat's header, and
+nothing in the pixels says so. The monitor bracket would have caught it downstream — a dark
+monitor makes its correction explode — but that is after the night, and the session is the
+expensive part. Nothing in the notebook was watching the panel *during* capture.
+
+**Three fixes, and only the first is the one that was reported:**
+
+- `set_patch` waits **60 s**, not 10, and treats a throttled page as slow rather than gone. On
+  failure it prints what the server actually heard — last `applied` seq, and how old the page's
+  frame-rate report is — and names the screen-sleep cause first, since a page that is still
+  reporting is demonstrably not an old copy.
+- **The page's frame-rate report is now the panel's liveness signal across every written frame.**
+  `capture_frames` retakes on a dark panel exactly as it retakes on an out-of-band temperature,
+  on the same budget. **Recency alone is not enough**: a page that slept through a 60 s exposure
+  and woke at the end reports a fresh timestamp, so for frames longer than a few reporting periods
+  the timestamp must also have *moved*. Elapsed wall time is used rather than commanded exposure,
+  because what matters is how long the panel had to stay lit, readout included.
+- `GAINS` is no longer filtered in place. Gate 4 ended with
+  `GAINS = [g for g in GAINS if g not in dropped_gains]`, so a **second** run of that cell started
+  from the already-shortened list and dropped more. That trap is armed precisely when it would be
+  sprung: the protocol's own escape hatch for a too-slow gain is to pull a diffuser sheet and
+  re-run Gate 4, which would then have silently shot three gains instead of four. `PLANNED_GAINS`
+  is now the constant and `GAINS` is re-set from it at the top of the cell.
+
+The guard was tested rather than assumed: an awake page across a long frame is accepted, a frozen
+page is caught by the movement test on long frames and by the staleness test on short ones, and
+the raised message names Auto-Lock. The full simulated session still returns all sixteen ceilings
+at 0.28–0.57% below the planted answer.
+
+**What this says about `light-source.md` item 2.** "Auto-Lock set to Never" was written there as
+bench hygiene in a list of three. It is not hygiene — it is the only thing standing between this
+session and a ladder of dark frames, because the Screen Wake Lock does not exist over plain
+`http://` and the page says so itself. The protocol now states that, and the notebook now enforces
+it rather than trusting it.
+
+**The general point, and it is the third of these in a row.** D75's gate could not pass, D77's
+gate answered its own question, and this one trusted a device to stay awake without checking. All
+three are the same omission: **a condition the measurement depends on, with nothing measuring it.**
+The bench found this one in eight minutes, which is the cheapest of the three.

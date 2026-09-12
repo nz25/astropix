@@ -211,7 +211,21 @@ Analysis crops to the Gate 6 box.
 Discard the first 2 frames after every gain change and the first frame after every exposure
 change, and do not write them. **After every patch colour change, wait for the page's handshake
 and then discard 2 frames** — the handshake says the page painted, the discards cover the panel
-settling behind it. Both are needed and neither substitutes for the other. Temperature discipline and the retake budget are session 02's: 10 retakes of one frame slot, or a
+settling behind it. Both are needed and neither substitutes for the other.
+
+**A frame is written only if the panel was lit across it, and that is a retake condition beside
+temperature.** The panel is an iPad and an iPad's screen sleeps; the Screen Wake Lock does not
+exist over plain `http://` (`light-source.md` item 2), so **Auto-Lock set to Never is the only
+thing holding the panel on** — and a slept screen is a *black panel*, which makes a flat frame a
+dark frame wearing a flat's header, with nothing in the pixels to say so. The page reports its
+frame rate every 2 s and stops when iOS stops servicing it, so that report is the liveness signal:
+a frame across which it did not arrive is discarded and retaken on the same budget as a
+temperature excursion. **Recency alone is not enough** — a page that slept through a 60 s exposure
+and woke at the end reports a fresh timestamp — so for any frame longer than a few reporting
+periods the timestamp must also have *moved*. The monitor bracket would expose a dark frame
+eventually, in the analysis; that is a night too late, and a retake costs one frame.
+
+Temperature discipline and the retake budget are session 02's: 10 retakes of one frame slot, or a
 hold past 300 s, stops the session.
 
 ### The gain set
