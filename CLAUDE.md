@@ -187,9 +187,20 @@ to make.
 ## Library budget
 
 Six modules — `fits.py`, `spatial.py`, `stats.py`, `model.py`, `asi.py`, `pixinsight.py` — and
-roughly 1000 lines total until the model passes its validation gate. A seventh module, or
+roughly 2000 lines total until the model passes its validation gate. A seventh module, or
 crossing the budget, is a conversation, not a commit. Notebooks are the workspace and the
 narrative; the library is only the distilled residue; `results/` is the record of truth.
+
+**2000 is not 1000 doubled because the work grew; it is 1000 corrected.** The original figure was
+set before any module existed, and four modules covering only the bench half of the project had
+already reached it — with `model.py` and `pixinsight.py`, the two the validation gate actually
+needs, still unwritten. A budget that binds hardest on the modules it has never seen is not
+measuring what it meant to. **What it meant to measure is the cost of holding the physics in your
+head, and that cost is mostly docstring here**: the rule that a measurement, a threshold or a
+correction never moves into a notebook is what puts the reasoning beside the code, and it is worth
+more than the line count that was supposed to enforce it. The line count stays as a tripwire, set
+where it will fire when a module is doing a notebook's job rather than every time the library
+explains itself.
 
 **Two invariants keep the first three apart.** *Only `spatial.py` and `stats.py` touch pixel
 arrays* — `fits.py` moves bytes and never interprets a value. And *nothing in the package

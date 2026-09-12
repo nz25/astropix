@@ -2388,3 +2388,50 @@ Both numbers stay published in `results/linearity_constants.json`; only one is t
 reason on all twelve fits, and names `linear_to_at_least` as what the model reads instead. Its
 constants table row says the same. No code, no notebook and no published number moved: this is a
 decision about which already-measured constant the model consumes.
+
+### D81. The library budget goes to 2000 lines — supersedes D13's figure
+
+D13 set the library at **~1000 lines across six modules** before a single module existed. That
+figure is now raised to **~2000**. Six modules, the one-way dependency chain, the "a seventh is a
+conversation" rule and `tests/` sitting outside the budget are all unchanged; only the number
+moves.
+
+**Why.** The budget was binding on the wrong thing. At the point it was raised, `astropix/` held
+1027 lines across four modules — `fits.py`, `spatial.py`, `stats.py`, `asi.py` — and those four
+cover the *bench* half of the project only. `model.py` and `pixinsight.py`, the two modules the
+validation gate actually needs, were both still unwritten. A budget already exhausted by the
+modules it has seen, with a third of the library still to come, no longer discriminates between a
+library that is growing usefully and one that is growing badly. It just says no to everything.
+
+**What the budget was actually protecting, and what really protects it.** The fear D13 names is a
+library that swallows the analysis — notebooks reduced to `import astropix; astropix.run()`, with
+the reasoning locked inside functions nobody reads. The rule that prevents that is not the line
+count. It is the pair already written in this file: *the library does one frame, the notebook does
+the loop*, and *what must never move into a notebook is physics*. Those two put orchestration in
+the notebook and reasoning beside the code, and they bind on structure rather than on volume.
+
+The line count is also a poor proxy here because of how this library is written. `stats.py` is 377
+lines and a large share of them are docstring — `classify` explains why `light` is the deliberate
+fallback and where its domain of validity ends; `offset_state` explains why the separation is the
+*smallest* spacing and not the mean; the module docstring explains why its own `sigma` must never
+be fed to a fit. That prose is the thing that makes the physics re-checkable a year later, and it
+is exactly what a tight line budget taxes hardest. A budget that makes the library terser makes it
+worse.
+
+**The immediate trigger, named so the reasoning is not mistaken for a principle invented to fit
+it.** `stats.sky_level` — the modal sky level `F_sky` is defined on — took the package from 978 to
+1027. It is unambiguously physics: a measurement with a threshold and a quantisation argument, used
+by every sky rate the project will publish. Under the old budget the only compliant homes for it
+were a notebook, which the physics rule forbids, or a deletion elsewhere to pay for it, which is
+budget-driven surgery on working code. That is a rule producing a worse repo, which is the
+condition CLAUDE.md names for changing a rule rather than working around it.
+
+**What was rejected.** Removing the budget entirely. It still has a job: it is the tripwire for a
+module quietly taking over a notebook's work, and 2000 is set where it will fire for that rather
+than every time the library explains itself. Also rejected: exempting docstrings from the count,
+which would make the number unmeasurable at a glance and invite the terse-code outcome the budget
+is supposed to prevent.
+
+**What changed.** `CLAUDE.md`'s *Library budget* section, one figure and a paragraph saying why
+2000 is 1000 corrected rather than 1000 doubled. No code, no notebook and no published number
+moved.

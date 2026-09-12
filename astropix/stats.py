@@ -110,6 +110,55 @@ def value_step(a):
     return int(gaps[np.argmax(counts)])
 
 
+def sky_level(a, window_sigmas=6.0, min_px=1000):
+    """The modal level of one CFA plane of sky background, in ADC counts.
+
+    `F_sky` is defined on the mode and not on the mean or the median
+    (`protocols/06-sky-pair.md`, rule 3), and the reason is the shape of the
+    tail rather than a preference between averages.  A sky box on a real field
+    is a symmetric noise core with light added to one side of it: stars drag
+    the mean, unresolved nebulosity drags the median, and neither drags the
+    peak.  The mode is where the background actually sits.
+
+    Measured on a histogram at the ADC's own spacing -- one bin per count,
+    because there is nothing between two codes -- with the peak refined by a
+    parabola through it and its two neighbours.  That refinement is not
+    decoration: at gain 50 in a 30 s sub the whole core spans about five
+    codes, so the bare peak bin quantises `F_sky` at roughly 0.8 sigma, and a
+    3% error in the sky rate is inside what L32 varies by across one night.
+    The parabola is exact for a Gaussian core sampled on a regular grid, which
+    is what a star-free box is once the pedestal is off it.
+
+    The window is `window_sigmas` either side of the median, from a MAD
+    bootstrap, with a floor of four counts.  It is there so the histogram spans
+    the core rather than the star field: the peak bin is unaffected by what is
+    outside it, but a range that reaches 4095 makes the bin search wasteful and
+    an empty-neighbour parabola ill-conditioned.
+
+    Raises on fewer than `min_px` pixels.  A mode estimated from a handful of
+    samples is an order statistic of noise, and returning one silently is how a
+    sky rate ends up being about the box size.
+    """
+    x = np.asarray(a, dtype=np.float64).ravel()
+    if x.size < min_px:
+        raise ValueError(f"{x.size} pixels is too few for a mode; need {min_px}")
+    med = float(np.median(x))
+    half = max(window_sigmas * MAD_TO_SIGMA * float(np.median(np.abs(x - med))), 4.0)
+    edges = np.arange(np.floor(med - half) - 0.5, np.ceil(med + half) + 1.5, 1.0)
+    counts = np.histogram(x, bins=edges)[0]
+    if not counts.any():
+        raise ValueError("no pixels inside the window; the plane is not sky-like")
+
+    k = int(np.argmax(counts))
+    peak = float(edges[k]) + 0.5
+    if 0 < k < counts.size - 1:
+        lo, mid, hi = (float(counts[k - 1]), float(counts[k]), float(counts[k + 1]))
+        curvature = lo - 2.0 * mid + hi
+        if curvature < 0:            # a real peak, not a plateau or a cliff edge
+            peak += 0.5 * (lo - hi) / curvature
+    return peak
+
+
 def frame_features(blocks):
     """Reduce sampled blocks to the numbers the index stores about one frame.
 

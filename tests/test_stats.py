@@ -240,6 +240,63 @@ def test_value_step_refuses_a_plane_with_nothing_to_measure():
 
 
 # --------------------------------------------------------------------------
+# the modal sky level (protocols/06-sky-pair.md, rule 3)
+# --------------------------------------------------------------------------
+
+def _sky_box(level, sigma, n=256, seed=0):
+    """A quantised sky core: Gaussian noise on the ADC's integer grid."""
+    rng = np.random.default_rng(seed)
+    return np.rint(rng.normal(level, sigma, (n, n)))
+
+
+def test_sky_level_recovers_a_known_background():
+    """The whole point of the estimator: on a clean symmetric core it must
+    agree with the mean it was built from, well inside the ADC's own spacing."""
+    for level in (100.0, 100.4, 277.7):
+        got = stats.sky_level(_sky_box(level, 2.6))
+        assert abs(got - level) < 0.25, f"{got} vs {level}"
+
+
+def test_sky_level_beats_mean_and_median_on_a_contaminated_box():
+    """Rule 3's reason, as a test, with both contaminants it names.
+
+    Stars are a few bright pixels and they wreck the *mean*; a median shrugs
+    them off, which is why the rule does not stop at the median.  What the
+    median cannot survive is unresolved nebulosity -- faint light over a large
+    fraction of the box, which is exactly what a sky ROI on a nebula field
+    has in it.  The mode follows neither.
+    """
+    rng = np.random.default_rng(2)
+    box = _sky_box(100.0, 2.6, seed=1)
+    nebula = rng.random(box.shape) < 0.3         # 30% carries a faint pedestal
+    box = box + nebula * rng.uniform(2.0, 6.0, box.shape)
+    star = rng.random(box.shape) < 0.002         # and a sparse, bright star field
+    box = box + star * rng.uniform(500, 3000, box.shape)
+
+    mode = stats.sky_level(box)
+    assert abs(mode - 100.0) < 0.5, f"mode dragged to {mode}"
+    assert float(np.median(box)) - 100.0 > 0.9, "the median should be dragged"
+    assert float(box.mean()) - 100.0 > 2.0, "the mean should be dragged harder"
+
+
+def test_sky_level_resolves_inside_one_adc_count():
+    """A 30 s sub at gain 50 puts the whole core inside about five codes, so
+    the bare peak bin quantises F_sky at ~0.8 sigma.  The parabola is what
+    makes a sub-count shift measurable rather than rounded away."""
+    fine = [stats.sky_level(_sky_box(100.0 + d, 1.3, seed=3)) for d in (0.0, 0.4)]
+    assert 0.15 < fine[1] - fine[0] < 0.65, fine
+    assert fine[0] != fine[1]
+
+
+def test_sky_level_refuses_a_box_too_small_to_have_a_mode():
+    try:
+        stats.sky_level(np.full((8, 8), 100.0))
+    except ValueError:
+        return
+    raise AssertionError("expected ValueError on a box with too few pixels")
+
+
+# --------------------------------------------------------------------------
 # the offset state (protocols/04-offset-state.md, rule 1)
 # --------------------------------------------------------------------------
 #
