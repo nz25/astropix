@@ -35,9 +35,15 @@ line from cold, delete this item** — do not keep a ritual whose reason has bee
 
 ## 2. Settle the iOS settings
 
-Off, all three, every session — each one changes the light mid-run with nothing in the data to
-show it: **Auto-Brightness** (Accessibility → Display & Text Size), **Auto-Lock** set to Never
-(Display & Brightness), **Night Shift** (Display & Brightness).
+Four, every session — each one changes the light mid-run with nothing in the data to show it:
+**Auto-Brightness** off (Accessibility → Display & Text Size), **Auto-Lock** set to Never
+(Display & Brightness), **Night Shift** off and **True Tone** off (both Display & Brightness).
+
+**Night Shift and True Tone retune the panel's white point**, which moves the four CFA planes by
+different amounts and moves them against each other. Night Shift does it on a clock; True Tone
+does it from an ambient sensor, so it can change between two frames because someone turned a lamp
+on. Any session that treats the four planes separately — `05-linearity.md` chooses the panel's
+colour deliberately — cannot have iOS choosing it too.
 
 Auto-Lock is the one that matters most and the one the page cannot help with. `grey-patch.html`
 requests a Screen Wake Lock, but that API exists only in a secure context: served over plain

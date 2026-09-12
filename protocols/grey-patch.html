@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<title>Grey patch &mdash; astropix flat source</title>
+<title>Flat patch &mdash; astropix light source</title>
 <style>
   html, body {
     margin: 0; padding: 0; height: 100%; width: 100%;
@@ -32,6 +32,8 @@
   #panel.hidden { display: none; }
   .row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 8px 0; }
   .big { font-size: 30px; font-weight: 600; color: #fff; font-variant-numeric: tabular-nums; }
+  /* a bench colour is three codes, not one, and does not fit at 30px */
+  .big.triple { font-size: 21px; letter-spacing: 0.5px; }
   .dim { color: #8b8b8b; font-size: 13px; }
   button {
     font: inherit; color: #eee; background: #2a2a2a; border: 1px solid #444;
@@ -74,6 +76,12 @@
     <input id="slider" type="range" min="0" max="255" step="1" value="128">
     <button data-step="1">+1</button>
     <button data-step="16">+16</button>
+  </div>
+
+  <div class="row dim">
+    The slider is grey only, and deliberately: a hand wants one number. A <b>colour</b> is the
+    bench's to set &mdash; <code>05-linearity.md</code> Gate 4 balances the four CFA planes by
+    driving the three subpixels to different codes, and solves for them from measured flux.
   </div>
 
   <div class="row">
@@ -128,31 +136,59 @@
   var patch = document.getElementById('patch');
   var panel = document.getElementById('panel');
   var hint  = document.getElementById('hint');
-  var level = 128;
+  // The patch is three codes.  Grey is the case where they agree, which is what
+  // every control on this page produces; a colour only ever arrives from the
+  // bench, because solving for one needs measured flux and this page has none.
+  var rgb = [128, 128, 128];
 
   function hex2(n) { var s = n.toString(16); return s.length < 2 ? '0' + s : s; }
+  function hex(c) { return '#' + hex2(c[0]) + hex2(c[1]) + hex2(c[2]); }
+  function isGrey(c) { return c[0] === c[1] && c[1] === c[2]; }
+  function clamp255(v) { return Math.max(0, Math.min(255, Math.round(v))); }
 
   function render() {
-    var h = '#' + hex2(level) + hex2(level) + hex2(level);
-    patch.style.background = 'rgb(' + level + ',' + level + ',' + level + ')';
-    document.getElementById('level').textContent = level;
-    document.getElementById('levelPct').textContent =
-      (level / 255 * 100).toFixed(1) + ' % of white  ' + h;
-    document.getElementById('slider').value = level;
-    document.getElementById('record').textContent =
-      'grey level ' + level + '/255 (' + h + '), brightness 100%';
-    hint.style.color = level > 110 ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
-    try { localStorage.setItem('astropix.grey', level); } catch (e) {}
+    var h = hex(rgb);
+    var grey = isGrey(rgb);
+    patch.style.background = 'rgb(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ')';
+
+    var big = document.getElementById('level');
+    big.textContent = grey ? rgb[0] : rgb.join(',');
+    big.className = grey ? 'big' : 'big triple';
+
+    document.getElementById('levelPct').textContent = grey
+      ? (rgb[0] / 255 * 100).toFixed(1) + ' % of white  ' + h
+      : h + '  · bench colour, not grey';
+
+    document.getElementById('slider').value = rgb[0];
+    document.getElementById('record').textContent = grey
+      ? 'grey level ' + rgb[0] + '/255 (' + h + '), brightness 100%'
+      : 'patch ' + rgb.join(',') + '/255 (' + h + '), brightness 100%';
+
+    // Readability of the hint text over whatever is behind it.  Relative
+    // luminance, because a dark red patch and a dark grey one need the same
+    // decision and only one of them has a low first code.
+    var luma = 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+    hint.style.color = luma > 110 ? 'rgba(0,0,0,0.35)' : 'rgba(255,255,255,0.35)';
+
+    try { localStorage.setItem('astropix.patch', rgb.join(',')); } catch (e) {}
   }
 
-  function setLevel(v) {
-    level = Math.max(0, Math.min(255, Math.round(v)));
+  function setRGB(c) {
+    rgb = [clamp255(c[0]), clamp255(c[1]), clamp255(c[2])];
     render();
   }
 
+  function setLevel(v) { setRGB([v, v, v]); }
+
   try {
-    var saved = parseInt(localStorage.getItem('astropix.grey'), 10);
-    if (saved >= 0 && saved <= 255) level = saved;
+    var saved = (localStorage.getItem('astropix.patch') || '').split(',');
+    if (saved.length === 3 && saved.every(function (s) { return /^\d+$/.test(s); })) {
+      rgb = saved.map(Number).map(clamp255);
+    } else {
+      // an iPad that last ran the grey-only page
+      var old = parseInt(localStorage.getItem('astropix.grey'), 10);
+      if (old >= 0 && old <= 255) rgb = [old, old, old];
+    }
   } catch (e) {}
   render();
 
@@ -160,8 +196,12 @@
     setLevel(+e.target.value);
   });
 
+  // Every manual control steps from the first code and writes all three, so a
+  // hand on the slider takes a bench colour back to grey.  That is the intent:
+  // the human controls are for grey, and half-nudging a solved triple would
+  // leave the panel on a colour nobody measured.
   Array.prototype.forEach.call(document.querySelectorAll('[data-step]'), function (b) {
-    b.addEventListener('click', function () { setLevel(level + (+b.dataset.step)); });
+    b.addEventListener('click', function () { setLevel(rgb[0] + (+b.dataset.step)); });
   });
   Array.prototype.forEach.call(document.querySelectorAll('[data-set]'), function (b) {
     b.addEventListener('click', function () { setLevel(+b.dataset.set); });
@@ -170,7 +210,7 @@
   document.addEventListener('keydown', function (e) {
     var d = (e.key === 'ArrowUp' || e.key === 'ArrowRight') ? 1
           : (e.key === 'ArrowDown' || e.key === 'ArrowLeft') ? -1 : 0;
-    if (d !== 0) { setLevel(level + d * (e.shiftKey ? 16 : 1)); e.preventDefault(); }
+    if (d !== 0) { setLevel(rgb[0] + d * (e.shiftKey ? 16 : 1)); e.preventDefault(); }
     if (e.key === 'h' || e.key === 'Escape') hidePanel();
   });
 
@@ -291,12 +331,26 @@
           { cache: 'no-store' }).catch(function () {});
   }, 2000);
 
-  // --- the bench may drive the level (patch-server.py) --------------------
+  // --- the bench may drive the patch (patch-server.py) --------------------
   // Applied only when the server's seq moves, so a tap on the slider is not
   // fought over on the next poll.  Served from a plain file with no server
   // behind it, every fetch fails and the page carries on as it always did.
   var remote = document.getElementById('remote');
   var seq = -1;
+
+  // The bench must not capture into the gap between asking for a colour and the
+  // panel showing it: this poll is 300 ms and a repaint is one frame after that.
+  // So the page says what it painted, and for which seq, on the frame after it
+  // painted it -- `requestAnimationFrame` fires once the new patch is composited.
+  // The bench waits for applied.seq to reach its own before it discards and
+  // captures.  This reports what the *page* did; whether the backlight has
+  // settled is a different question, and the post-change discards cover it.
+  function reportApplied(n) {
+    requestAnimationFrame(function () {
+      fetch('/applied?rgb=' + rgb.join(',') + '&seq=' + n,
+            { cache: 'no-store' }).catch(function () {});
+    });
+  }
 
   setInterval(function () {
     fetch('/level', { cache: 'no-store' }).then(function (r) {
@@ -311,13 +365,16 @@
       }
       if (s.seq === seq) return;
       seq = s.seq;
-      if (s.level === null) {
+      if (s.rgb === null || s.rgb === undefined) {
         remote.textContent = 'connected, panel free';
         remote.className = 'dim';
+        reportApplied(seq);              // a freed panel is still a state to confirm
       } else {
-        setLevel(s.level);
-        remote.textContent = 'driving level ' + s.level;
+        setRGB(s.rgb);
+        remote.textContent = 'driving ' +
+          (s.level === null ? s.rgb.join(',') : 'level ' + s.level);
         remote.className = 'ok';
+        reportApplied(seq);
       }
     }).catch(function () {
       remote.textContent = 'not connected';

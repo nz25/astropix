@@ -2037,3 +2037,128 @@ it is a third independent confirmation of the same branch structure H2 was built
 **What it does not license.** Two resolved gains, one per branch, cannot show the step is constant
 *within* a branch — that reading is still what gain 200 would buy, and it stays the point that
 would put the law on its own feet.
+
+## 2026-09-12 — Protocol 05 is redesigned around a balanced source, and its first run is deleted
+
+### D74. One white-ish source does not fill four planes, and L12 said it would
+Protocol 05's first run captured 593 frames, passed every gate, and **published no ceiling at
+all** — sixteen nulls, one per (gain, plane). Two independent faults, D75 and D76 below. This
+entry is the one that forced a redesign rather than a repair.
+
+**The design rested on L12's number and L12's number is wrong for this bench.** L12 claims the four
+CFA channels saturate at exposures differing by **1.34×** under a white-ish source. At 1.34× a
+single grey ladder very nearly covers all four planes and the protocol's shape is sound. The run
+measured, at gain 0 and grey level 160, in counts per second:
+
+| plane | R | G1 | G2 | B |
+|---|---|---|---|---|
+| counts/s | 63.5 | 35.1 | 34.9 | 25.6 |
+| share of R | 1.000 | 0.553 | 0.549 | **0.403** |
+
+That is **2.48×**, not 1.34. Our panel is far redder than whatever theirs was. At 2.48× the design
+cannot work at any exposure: `t_sat` at gain 0 was already **63.8 s** against the protocol's 22 s
+target, meaning the panel was flat out at its brightest usable level, so reaching blue's saturation
+would have needed ~158 s to saturation and ~182 s top rungs. Gain 0 alone becomes most of a night.
+
+**Second measurement, and it is the one that shapes the new gate.** Blue is 0.403 of red at grey
+level 160 and **0.625 of red at grey level 64**. The panel's colour shifts with its level, because
+the backlight leaks through nominally-closed subpixels and the leak is not the colour of the panel
+driven hard. **Any balance has to be re-solved at every gain**, since each gain runs at its own
+level.
+
+**The redesign.** The panel is an LCD with three subpixels; driving them to three different codes
+changes the colour of the light without touching the backlight. The new Gate 4 solves, per gain,
+for the triple that makes all four planes collect equal flux. One ladder then takes every plane to
+its own saturation together — four independent measurements out of one session, and no exposure
+longer than the balanced `t_sat` demands.
+
+**The new protocol hardcodes neither 1.34 nor 2.48.** Replacing their constant with ours would
+break the day the iPad is replaced or a diffuser sheet moves. Gate 4 starts from grey, reads the
+four plane fluxes back, and solves — so it works at 1.34×, at 2.48×, at 5×, and needs no number
+from the deleted run to be written down. That is what made a clean rewrite possible rather than a
+patch.
+
+**Run 1 is deleted in full — frames, gate tables, published files.** It was 1.2 GB against 11 GB
+free, so this was not a disk decision: it is a complexity one, Denis's call and the right one.
+Leftovers exert design pressure, and every number run 1 could justify is re-measured by Gate 4 as
+its first act, at more gains and on the light actually used. What it could not re-measure is the
+account above, which is why that account is here and in no other file. **The numbers in this
+section are quoted from a run whose data is gone. They are the reason for a design, never a
+measurement to cite.**
+
+**What is lost, and it is worth naming.** Run 1's refit by hand showed red straight to ~4045 counts
+at all four gains, with the last unclean-free rung departing only −0.44% to −1.15%, and the bend
+arriving only where pixels start pinning — the converter, not the well, which is L12's and L28's
+core claim answered for one plane. Gain 0's red crossed 1% at **4016 counts** against L28's
+predicted 3984. Publishing a one-plane ceiling we are about to supersede is worse than publishing
+nothing, so it went with the rest.
+
+**Rejected: a new `07-linearity.md` beside the old 05.** Two protocols for one measurement, and the
+next session has to work out which is live. Nothing published depended on 05 — the three
+`results/` files were never committed — and its LEGACY entries L09, L12 and L28 were still queued,
+which by this repo's own rule means the step had not finished. An unfinished step is rewritten, not
+forked. Git holds the old text.
+
+**Rejected: keeping the frames in `data/session05-run1/`.** Argued for on re-derivability, and the
+argument is weak: the new Gate 4 re-measures all of it by design. A folder nobody may publish from
+is a folder that invites the question every session.
+
+### D75. A gate that could never pass, and the fallback that ate the session
+Run 1's flicker gate compared frame-to-frame scatter against the **shot noise of the mean**. On a
+1024×1024 ROI that is 262 144 pixels per plane, so the shot floor is **0.006%** of signal. The
+panel's real wobble is 0.1–0.2%: measured scatter of 2.43, 1.58 and 5.21 counts on signals of
+1007, 2009 and 3981. The ratios were therefore **37.6×, 17.3× and 40.6×** against a threshold of
+3.0. **No panel could have passed it**, however good.
+
+**And it was testing a region the ladder never visits.** Gate 4 already guaranteed every rung ≥150
+redraws, so the shortest exposure the gate could reach was 341 redraws. The question it asked —
+does a *sub-redraw* exposure collect a proportional share — had no rung to be asked about.
+
+**The fallback is what did the damage.** With no passing exposure the floor fell back to
+`max(periods) * 2` = **2733 redraws = 46 s**, and every rung below that was cut from the line *and*
+the bend search. Only rungs at 75% of `t_sat` and above survived; the reference line is fitted on
+rungs *below 50%*. No overlap, no line, sixteen nulls. The protocol's prose had promised a
+different fallback — "the reference line will be fitted on the long rungs only" — and the code did
+something else.
+
+**The fix is to delete the gate, not to re-tune it.** Its honest content is the question "does
+measured flux depend on how long the shutter was open", which the stability gate's second arm
+already asks directly and answered **0.9925** in run 1. The two are merged. The new protocol has
+**no flicker floor anywhere in the analysis**, stated as a rule: Gate 4 refuses to shoot a gain
+whose rungs are too short, so by analysis time there is nothing left to cut, and a cut that fires
+anyway is a cut that has gone wrong. Seven gates became six.
+
+**The general point, and it is not about flicker.** A threshold compared against a floor that falls
+as `1/sqrt(N_pixels)` is a threshold that tightens silently as the ROI grows. What made it fatal
+was not the bad threshold but the **unbounded fallback**: `max × 2` is a number with no physical
+meaning that was allowed to become a cut on real data. A fallback that cannot be justified in the
+same units as the thing it replaces should raise instead.
+
+### D76. Gate 4's balance loop needed a capped scale, and a simulation found it before the bench did
+The loop has two knobs per iteration: balance the three codes toward the dimmest channel, then
+scale all three to move `t_sat` toward 22 s. The first implementation clipped each code
+independently at 255.
+
+**That is exactly backwards at the ceiling.** When the panel is already too dim, the scale term
+pushes every code up; the channels that reach 255 stop, the ones with headroom keep climbing, and
+the balance just bought in step 1 is spent by step 2. Run against a simulated panel — per-channel
+gamma, Bayer crosstalk so panel-blue lifts the red plane, and a backlight leak that never turns
+off — it **failed 5 of 7 cases**, one ending at rgb 222,255,255 with a 62% spread.
+
+**The fix: the common scale factor is capped so no channel is asked for more than code 255 can
+give, and the ratios are kept.** What is given up is brightness, which is the thing this session
+can afford to lose — a slower `t_sat` costs session time and nothing else, and the protocol already
+names removing a diffuser sheet as the escape hatch. Same seven cases: **7 of 7 balanced inside
+5%, in 4–5 iterations of the 8 allowed**, including a deliberately blue-heavy panel that the loop
+correctly drives *red*, which is the check that it is not tuned for one direction.
+
+**Worth recording that the simulation was cheap and the bench night is not.** The loop is the one
+genuinely new piece of control logic in the session; it was driven by a fake panel that knows
+things the loop does not, and it caught a failure that would have shown up as four unbalanced
+gains at two in the morning.
+
+**Also changed, and small:** `light-source.md` item 2 now lists **True Tone** beside Night Shift.
+Both retune the panel's white point — Night Shift on a clock, True Tone from an ambient sensor, so
+it can change between two frames because someone turned a lamp on. It was already on the panel
+page's checklist and missing from the protocol. A session that chooses the panel's colour on
+purpose cannot have iOS choosing it too.
