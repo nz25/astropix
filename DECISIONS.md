@@ -2162,3 +2162,47 @@ Both retune the panel's white point — Night Shift on a clock, True Tone from a
 it can change between two frames because someone turned a lamp on. It was already on the panel
 page's checklist and missing from the protocol. A session that chooses the panel's colour on
 purpose cannot have iOS choosing it too.
+
+### D77. The dry run answers "are we ready", and Gate 5's second arm was answering its own question
+Notebook 13 was run end to end before any bench time: **real** `astropix.fits` / `spatial` /
+`stats`, the **real** `patch-server.py` over HTTP with a thread playing the part of the iPad page —
+`/applied` handshake included — and a **simulated** camera whose four plane fluxes differ, whose
+three panel channels have different gammas, whose subpixels crosstalk and whose backlight leaks. A
+soft roll-off is planted at a known level so the published ceiling has something to be right or
+wrong about. Only sizes and durations were overridden: ROI, crop boxes, arm length, frame gap. No
+threshold, rule or formula was touched.
+
+**It passes, and on the thing run 1 failed at.** 1064 frames written over 1649 captures; **all
+sixteen (gain, plane) fits yielded a ceiling and `not_measured` came back empty.** Plane balance
+landed at **2.86–3.02%** against the 5% bar. The published ceiling sits **0.30–0.49% below** the
+planted answer — low, which is the direction rule 6 already argues for — and the residual is
+linear interpolation across one rung of a curving departure, rungs being 4% of `t_sat` apart. The
+verdict came back `converter`, correct, since the roll-off was planted at a fixed count level.
+Gates 4 accepted `t_sat` of 74.4 s and 41.8 s at gains 0 and 50 against its 22 s target, which is
+the flat-out-panel outcome the protocol names rather than a failure.
+
+**The finding is Gate 5 arm 2, and it was mine, not the retired project's.** As first written the
+arm compared counts per second at **10% and 90%** of `t_sat`. The long leg landed at **3525 counts**
+— above the planted knee at 3200 — so the arm reported **0.967**, and the notebook's own note reads
+that as "the measured flux depends on how long the shutter was open". It does not. That is the
+*sensor's* roll-off, which is the quantity this session exists to publish.
+
+**An arm placed inside the region under measurement answers its own question with its own answer.**
+Gate 5's job is to *license* the ladder, and it cannot do that using the ladder's result. Both arms
+now sit at or below `LINE_MAX_PCT` — **10% against 45%** — which keeps a 4.5× lever on exposure
+length, and that is all the arm needs: a redraw-envelope error goes as one pulse in `N`. Re-run,
+the ratio comes back **1.000** with both legs at 405 and 1823 counts.
+
+**The general point.** This is the same shape as D75's unpassable gate, one level up. There the
+threshold was compared against a floor that moved with the ROI; here the diagnostic was placed
+where the effect under study lives. Both are gates that cannot return a clean answer no matter how
+well the bench behaves, and neither is visible by reading the code — the first showed up as
+sixteen nulls after a bench night, the second in a dry run that cost minutes.
+
+**Not committed: the simulator.** It is a scratchpad harness, not a library module and not a test
+of one, and `tests/` mirrors the package. What it produced that is durable is this entry. If a
+second session wants it, it is cheap to rebuild and should probably then earn a place — noted
+rather than decided.
+
+**Housekeeping.** The dry run writes into `data/session05/` and `results/`; both were deleted
+afterwards. Simulated numbers must never be left where a reader would take them for measurements.

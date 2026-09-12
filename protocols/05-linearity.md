@@ -151,10 +151,18 @@ ladder:
    **5 minutes**, timestamped. Plane mean against wall clock. Session 01's dark arm already ran
    this with the light taken out and was flat to −0.00133 ± 0.254 counts/min, so anything here is
    upstream of the sensor.
-2. **Exposure length against elapsed time.** Interleave a short (~10% `t_sat`) and a long (~90%)
-   exposure, alternating, for **5 minutes**. Counts per second must match. This is the arm the
-   retired project could not run: their two gains differed in exposure length *and* in elapsed
-   time, so the confound was built in.
+2. **Exposure length against elapsed time.** Interleave a short (**10%** `t_sat`) and a long
+   (**45%**) exposure, alternating, for **5 minutes**. Counts per second must match. This is the
+   arm the retired project could not run: their two gains differed in exposure length *and* in
+   elapsed time, so the confound was built in.
+
+**Both arms sit at or below `LINE_MAX_PCT`, and that placement is the whole of their validity.**
+Put the long arm near `t_sat` and its level lands where the response may already be bending — and
+a long/short flux ratio can then no longer separate *the light short-changes long exposures* from
+*the sensor is non-linear near full scale*. The second is the quantity this session publishes, so
+an arm up there answers its own question with its own answer. 10% against 45% keeps a 4.5×
+lever on exposure length, which is all the arm needs: a redraw-envelope error goes as one pulse
+in `N`.
 
 **Arm 2 is also the whole of the redraw worry, and there is deliberately no separate flicker
 gate.** Light arriving in pulses only distorts a ladder if the pulse count is not proportional to
