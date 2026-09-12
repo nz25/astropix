@@ -32,6 +32,13 @@ bench therefore waits for `applied.seq` to reach the `seq` its `/set` returned,
 and only then starts discarding frames.  It says the page painted, not that the
 backlight settled -- the discards after a colour change are what cover that.
 
+`/refresh` carries a redraw **count** beside the rate, and the count is the only
+thing in this file that can tell a lit panel from a dark one.  The page sends the
+report from a timer, which iOS keeps running while the screen is off, and counts
+redraws in `requestAnimationFrame`, which iOS freezes with the screen.  A fresh
+report therefore proves the page exists; only a *moving* `frames` proves the
+panel is being painted.
+
 `/refresh` is still not a measurement of the *light*: `requestAnimationFrame`
 reports the rate the compositor hands the page, and a display with adaptive
 refresh serves a still page fewer frames than the panel drives.  That is what
@@ -95,6 +102,15 @@ def payload():
 
 
 class Handler(http.server.SimpleHTTPRequestHandler):
+    # Keep-alive.  Under HTTP/1.0 every poll is a fresh TCP connection, and
+    # three of them poll continuously -- the page's 3 Hz `/level`, its 0.5 Hz
+    # `/refresh`, and the bench while it waits on a handshake.  That is a steady
+    # stream of connection setups competing for the accept queue, and the page
+    # is the one that loses: the bench is on localhost and the iPad is a wifi
+    # round trip away.  Every response here sets Content-Length, which is what
+    # lets a connection stay open honestly.
+    protocol_version = "HTTP/1.1"
+
     def _json(self, body, code=200):
         raw = json.dumps(body).encode("utf-8")
         self.send_response(code)
@@ -131,6 +147,15 @@ class Handler(http.server.SimpleHTTPRequestHandler):
                     "p95_ms": float(q["hi"][0]),
                     "intervals": int(q["n"][0]),
                     "animated": q.get("animated", ["0"])[0] == "1",
+                    # The liveness half, and `frames` is required rather than
+                    # optional on purpose.  iOS keeps the page's timers running
+                    # with the screen off and freezes its redraws, so a report
+                    # arrives on time from a panel that has been black for a
+                    # minute -- the arrival is not the signal, the count is.  An
+                    # older copy of the page sends neither, and is rejected here
+                    # so it reads as "no report" rather than as a lit panel.
+                    "frames": int(q["frames"][0]),
+                    "raf_age_ms": float(q["age"][0]),
                     "at": time.time(),
                 }
             except (KeyError, ValueError, IndexError) as exc:
@@ -178,7 +203,13 @@ class Handler(http.server.SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):
         # the poll is once every 300 ms and the refresh report every 2 s;
         # logging either buries everything else
-        line = args[0] if args else ""
+        #
+        # `args[0]` is the request line for a normal log and an integer status
+        # code for an error one, and testing `p in args[0]` on the integer threw
+        # -- inside the handler, so the thread died and the client saw a closed
+        # connection instead of a 404.  Every miss went that way, and a page load
+        # asks for a favicon it will not find.  Stringify everything instead.
+        line = " ".join(str(a) for a in args)
         if not any(p in line for p in ("/level", "/refresh", "/applied")):
             super().log_message(fmt, *args)
 
@@ -186,6 +217,12 @@ class Handler(http.server.SimpleHTTPRequestHandler):
 class Server(socketserver.ThreadingTCPServer):
     allow_reuse_address = True
     daemon_threads = True
+    # The default backlog is 5, and a dropped connection here is not a fast
+    # failure: the kernel never answers the SYN, so iOS retries on a doubling
+    # timer -- 1 s, 2 s, 4 s, and up.  One unlucky `/applied` then reaches the
+    # bench a minute after the page sent it, which reads from the notebook as a
+    # panel that never painted.  Depth is free and the queue is normally empty.
+    request_queue_size = 128
 
 
 if __name__ == "__main__":

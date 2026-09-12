@@ -296,6 +296,13 @@
   var probeOut = document.getElementById('probe');
   var probing = false;
   var times = [];
+  // The report below is sent from a `setInterval`, and iOS keeps timers running
+  // on a page whose screen has gone off while it freezes `requestAnimationFrame`
+  // entirely.  So the *arrival* of a report says nothing about whether the panel
+  // is lit, and the bench was reading it as if it did.  These two count redraws
+  // instead, which is the thing that stops when the screen does.
+  var frames = 0;
+  var lastFrameAt = 0;
 
   function pctile(sorted, p) {
     return sorted[Math.min(sorted.length - 1, Math.floor(p * sorted.length))];
@@ -303,6 +310,8 @@
 
   function frame(t) {
     times.push(t);
+    frames++;
+    lastFrameAt = t;
     if (times.length > 121) times.shift();
     // Any change forces a repaint.  #000 to #010101 is one code of black in the
     // corner: enough for the compositor, nothing for the camera.
@@ -326,8 +335,13 @@
     hzOut.textContent = (1000 / s.ms).toFixed(1) + ' Hz  (' + s.ms.toFixed(2) + ' ms, ' +
       s.lo.toFixed(2) + '-' + s.hi.toFixed(2) + ' ms)';
     hzOut.className = (s.hi - s.lo) < 0.5 * s.ms ? 'ok' : 'bad';
+    // `frames` and `age` are the liveness half of this report and the rest is
+    // the measurement.  A frozen page still sends the measurement, from its
+    // stale window, so only a *moving* frame count says the panel is being
+    // redrawn.  `age` is how long ago the last redraw was, in ms.
     fetch('/refresh?ms=' + s.ms.toFixed(4) + '&lo=' + s.lo.toFixed(4) +
-          '&hi=' + s.hi.toFixed(4) + '&n=' + s.n + '&animated=' + (s.animated ? 1 : 0),
+          '&hi=' + s.hi.toFixed(4) + '&n=' + s.n + '&animated=' + (s.animated ? 1 : 0) +
+          '&frames=' + frames + '&age=' + Math.round(performance.now() - lastFrameAt),
           { cache: 'no-store' }).catch(function () {});
   }, 2000);
 
@@ -345,11 +359,18 @@
   // The bench waits for applied.seq to reach its own before it discards and
   // captures.  This reports what the *page* did; whether the backlight has
   // settled is a different question, and the post-change discards cover it.
+  function sendApplied(n) {
+    fetch('/applied?rgb=' + rgb.join(',') + '&seq=' + n,
+          { cache: 'no-store' }).catch(function () {});
+  }
+
+  // The *first* report waits for a redraw, so the confirmation can never reach
+  // the bench before the pixels reach the panel.  A *repeat* needs no such wait:
+  // the paint it confirms happened at least one poll ago, and going through
+  // `requestAnimationFrame` again would be the one thing guaranteed not to fire
+  // on a page whose screen has slept -- which is exactly when a repeat is needed.
   function reportApplied(n) {
-    requestAnimationFrame(function () {
-      fetch('/applied?rgb=' + rgb.join(',') + '&seq=' + n,
-            { cache: 'no-store' }).catch(function () {});
-    });
+    requestAnimationFrame(function () { sendApplied(n); });
   }
 
   setInterval(function () {
@@ -363,7 +384,20 @@
         probeOut.textContent = probing ? 'on -- dot animating' : 'off';
         probeOut.className = probing ? 'ok' : 'dim';
       }
-      if (s.seq === seq) return;
+      if (s.seq === seq) {
+        // The page has already painted this seq.  Whether the *server* knows is
+        // a separate question, and it used to be one nobody asked: the report
+        // was sent once, fire-and-forget, and `seq` moved on regardless.  One
+        // lost fetch, or one `requestAnimationFrame` callback frozen with the
+        // screen and fired after the bench gave up, wedged the handshake for
+        // the rest of the session -- no later poll would ever revisit that seq,
+        // so the panel sat on the right colour while the bench timed out
+        // waiting to be told so.  Now the page repeats itself until the server
+        // admits it heard, which costs one request per 300 ms in the only case
+        // where anything is wrong at all.
+        if (seq >= 0 && !(s.applied && s.applied.seq >= seq)) sendApplied(seq);
+        return;
+      }
       seq = s.seq;
       if (s.rgb === null || s.rgb === undefined) {
         remote.textContent = 'connected, panel free';
