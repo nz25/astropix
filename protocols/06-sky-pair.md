@@ -317,4 +317,6 @@ The notebook does the loop; the library does one frame. These are the rules it f
 `LEGACY.md`'s L32 is the only entry this session consumes. L31 needs the light source and stays
 queued for `05-linearity.md`.
 
-The measuring notebook is `14_sky_pair.ipynb`; its explainer is `15_sky_pair_read.ipynb`.
+The measuring notebook is `17_sky_pair.ipynb`; its explainer is `18_sky_pair_read.ipynb`. (This
+protocol was written expecting 14 and 15; the linearity pair took those numbers, and the repair
+session this night's setpoint forced — `07-cold-constants.md` — took 15 and 16.)
