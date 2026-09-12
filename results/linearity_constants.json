@@ -1,0 +1,317 @@
+{
+  "ceiling": {
+    "value": {
+      "50": null,
+      "100": null,
+      "200": null
+    },
+    "unit": "ADC counts",
+    "uncertainty": {
+      "50": null,
+      "100": null,
+      "200": null
+    },
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "rule 5 of protocols/05-linearity.md: the level at which the response departs 1.0% from a line fitted through the rungs below 50.0% of t_sat and forced through the origin.  Null at every gain, and that is this session's result rather than a failure to measure: the response does not depart 1% from its own line anywhere below the clip, so there is no such level to report.  What replaces it is linear_to_at_least, the highest level proved straight, with worst_departure as the quality of that proof and clip_level as where the ladder actually stopped.  Read those three, not this null.  L28 predicted 3984 counts, 97.3% of the top code"
+  },
+  "ceiling_per_plane": {
+    "value": {
+      "50": {
+        "B": null,
+        "G1": null,
+        "G2": null,
+        "R": null
+      },
+      "100": {
+        "B": null,
+        "G1": null,
+        "G2": null,
+        "R": null
+      },
+      "200": {
+        "B": null,
+        "G1": null,
+        "G2": null,
+        "R": null
+      }
+    },
+    "unit": "ADC counts",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "the constraint binds per plane: sky flux differs per CFA channel, so the exposure floor is set by the dimmest plane and the clipping ceiling by the brightest (MISSION).  Gate 4 balanced the source so all four planes reach their own saturation on the same ladder; a null here means either that plane did not get there, or -- as in this session -- that no plane produced a bend at all.  not_measured says which"
+  },
+  "not_measured": {
+    "value": {
+      "50/B": "no sustained departure before the clip",
+      "50/G1": "no sustained departure before the clip",
+      "50/G2": "no sustained departure before the clip",
+      "50/R": "no sustained departure before the clip",
+      "100/B": "no sustained departure before the clip",
+      "100/G1": "no sustained departure before the clip",
+      "100/G2": "no sustained departure before the clip",
+      "100/R": "no sustained departure before the clip",
+      "200/B": "no sustained departure before the clip",
+      "200/G1": "no sustained departure before the clip",
+      "200/G2": "no sustained departure before the clip",
+      "200/R": "no sustained departure before the clip"
+    },
+    "unit": "reason per (gain, plane)",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "every fit that did not yield a ceiling, and why.  A published null with a reason is the point of this entry: the alternative is a number that looks like a measurement"
+  },
+  "linear_to_at_least": {
+    "value": {
+      "50": 3958.3618,
+      "100": 3889.4785,
+      "200": 3854.2673
+    },
+    "unit": "ADC counts",
+    "uncertainty": {
+      "50": 77.9785,
+      "100": 45.0839,
+      "200": 35.0114
+    },
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "the highest level this ladder proved straight: the mean over the four CFA planes of the last rung with under 1% of its pixels at the top code, in the central 256 box.  A LOWER BOUND on the linear range and not an edge -- above it the pixels are pinned and this ladder has nothing to say, not because the sensor was shown to bend there.  Its resolution is one rung, 4% of t_sat, and no interpolation can improve on that because there is no crossing to interpolate towards.  Uncertainty is the per-plane scatter.  Per-plane values are in linear_to_per_plane; every rung is in linearity_rungs.csv"
+  },
+  "linear_to_per_plane": {
+    "value": {
+      "50": {
+        "B": 3949.2227,
+        "G1": 4018.5639,
+        "G2": 4014.1642,
+        "R": 3851.4963
+      },
+      "100": {
+        "B": 3955.8112,
+        "G1": 3863.4006,
+        "G2": 3859.1687,
+        "R": 3879.5338
+      },
+      "200": {
+        "B": 3902.9377,
+        "G1": 3849.1682,
+        "G2": 3845.392,
+        "R": 3819.5712
+      }
+    },
+    "unit": "ADC counts",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "linear_to_at_least, per CFA plane.  The planes differ here by where gate 4's balance left each one on the rung grid, not by sensor behaviour: a plane whose flux is 2% high pins one rung earlier and its bound comes out one rung lower"
+  },
+  "worst_departure": {
+    "value": {
+      "50": 0.4168,
+      "100": 0.3863,
+      "200": 0.8267
+    },
+    "unit": "% from the fitted line",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "how far from straight the response actually got, anywhere between 50.0% of t_sat and linear_to_at_least -- the quality of that bound, and the number that makes the ceiling null meaningful.  All of these sit under the 1.0% that rule 5 defines a bend as, which is why there is no ceiling.  Worst over the four planes.  Read it against line_resid: the rungs below 50.0% scatter about their own line by a comparable amount, so a departure of this size is at the edge of what this ladder resolves and must not be reported as a measured curvature"
+  },
+  "line_resid": {
+    "value": {
+      "50": 0.2318,
+      "100": 0.23,
+      "200": 0.4124
+    },
+    "unit": "% from the fitted line",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "the worst of the reference rungs about the line they define, per gain -- the noise floor of this whole measurement.  Rule 5's first precision gate is 0.5%"
+  },
+  "clip_level": {
+    "value": {
+      "50": 4094.9999,
+      "100": 4094.9975,
+      "200": 4094.9937
+    },
+    "unit": "ADC counts",
+    "uncertainty": {
+      "50": 0.0002,
+      "100": 0.005,
+      "200": 0.0054
+    },
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "where the ladder stopped: the mean level of the rungs with over 99% of their pixels at the top code, per gain, over the four planes.  Not a threshold anyone chose -- it is the ADC's last code, arrived at by a response that was still straight, and it is what full_well and bend_follows are computed from in this session"
+  },
+  "full_well": {
+    "value": {
+      "50": 21718.2991,
+      "100": 12027.1436,
+      "200": 3710.3408
+    },
+    "unit": "e-",
+    "uncertainty": {
+      "50": 62.1844,
+      "100": 56.8497,
+      "200": 7.9712
+    },
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "(saturation - pedestal) x g(gain), with g consumed from ptc_constants.json and never re-measured here.  Saturation is `clip_level` in this session -- the top code, because the response reached it without bending, so the well is what a pixel holds when the converter runs out of codes rather than what it holds when it starts to lie.  L28 adopted a bend 2.9% below the clip and this value is correspondingly higher; see linear_to_at_least for the conservative figure, which is the same arithmetic against the proved-straight bound.  The uncertainty is g's alone: the level's own scatter is published with the level, and the two are not independent enough to add"
+  },
+  "full_well_at_linear_to": {
+    "value": {
+      "50": 20981.9522,
+      "100": 11413.2112,
+      "200": 3488.48
+    },
+    "unit": "e-",
+    "uncertainty": {
+      "50": 62.1844,
+      "100": 56.8497,
+      "200": 7.9712
+    },
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "the same arithmetic against linear_to_at_least instead of the saturation level: the charge this session proved a pixel collects linearly.  The conservative full well, for anything that would rather under-run the sensor than trust a bound"
+  },
+  "bend_follows": {
+    "value": "converter",
+    "unit": "one of: converter, pixel well",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "rule 8.  Saturation varies 0.0002% across gains in ADC counts and the full well varies 144.23% in electrons; whichever is flat is what binds.  Worst per-plane spread at one gain is 0.0003%, against L12's 1.6%.  Measured from `clip_level`: with no bend anywhere below the clip, the level the response runs into IS the top code, and it is the same code at three gains an octave apart while the charge it represents falls as 1/g.  That is a stronger form of L12's reading, not a weaker substitute for it -- a bend at a common level is consistent with a well that happens to fill there, a straight line into the top code at every gain is not.  null means fewer than two gains yielded a level, so the question was not answered"
+  },
+  "roi_sensitivity": {
+    "value": {
+      "128": 0.0384,
+      "256": 0.0,
+      "512": 0.162,
+      "1024": 0.3026
+    },
+    "unit": "% change in linear_to against the analysis box",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "rule 7 / L09.  The analysis box is the central 256: the *largest* whose illumination spread is under 0.5%, measured on the gain-50 monitor stack with the shot-noise floor subtracted (odd frames against even).  Largest, because among boxes flat enough to trust the biggest has the quietest mean.  L09 predicted 3.8% at 1024, 1.25% at 512 and 0.53% at 256, and claimed a wide box reads the level low.  Measured on linear_to, which has one rung of resolution, so roi_curvature is the sharper test of the same claim and should be read with it"
+  },
+  "roi_curvature": {
+    "value": {
+      "128": 0.8286,
+      "256": 0.8267,
+      "512": 0.8212,
+      "1024": 0.8354
+    },
+    "unit": "worst % departure from the fitted line, per analysis box",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "rule 7 / L09, on the continuous quantity rather than the rung-quantised one.  L09's mechanism -- a wide box averaging pixels that reach the clip at different exposures -- predicts a wider box curves harder as well as earlier.  A flat column here says the smearing is below what this measurement resolves, which leaves L09's illumination map standing (gate 6 measured it directly) and its ROI rule not load-bearing"
+  },
+  "panel_redraw_period": {
+    "value": 17.0,
+    "unit": "ms",
+    "uncertainty": 1.0,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 3: the page timed its own requestAnimationFrame callbacks and reported the median interval, still and with a 4x4 px corner dot animating.  still and probed agree.  It is the rate frames are *served*, which bounds the panel from below and is not a reading of the backlight -- what the backlight does is gate 5 arm 2, with the camera"
+  },
+  "patch_colour_per_gain": {
+    "value": {
+      "50": [
+        85,
+        255,
+        235
+      ],
+      "100": [
+        85,
+        255,
+        235
+      ],
+      "200": [
+        55,
+        171,
+        154
+      ]
+    },
+    "unit": "panel RGB codes 0-255",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 4: the subpixel codes that make the four CFA planes collect equal flux at that gain, solved by measured iteration from the plane fluxes themselves -- no panel gamma, crosstalk matrix or backlight-leak model is assumed anywhere.  Solved per gain because the panel's colour shifts with its level: the backlight leaks through closed subpixels and the leak is not the colour of the panel driven hard.  This is also the per-plane sensitivity of this bench under this source, read directly rather than inferred from pinned-pixel plateaus (L12).  It is a property of *this panel*, not of the camera"
+  },
+  "plane_balance": {
+    "value": {
+      "50": 4.573,
+      "100": 4.5499,
+      "200": 3.2679
+    },
+    "unit": "% spread across the four plane fluxes",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 4's pass criterion, at 5%.  The top rung is 115% of t_sat and the dimmest plane must still clear 100% of its own, so a 13% imbalance is where the ladder stops saturating it; this is how much margin there actually was"
+  },
+  "t_sat_per_gain": {
+    "value": {
+      "50": 63.303,
+      "100": 35.044,
+      "200": 19.2145
+    },
+    "unit": "s",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 4: the exposure that fills the headroom above the pedestal at the balanced colour, target 22 s.  Every rung is a percentage of it.  A gain further from target than the rest is one where the panel was flat out, which costs session time and nothing else"
+  },
+  "gains_out_of_reach": {
+    "value": {
+      "0": "balance stuck at 8.3% against 5%"
+    },
+    "unit": "reason per gain",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 4 shoots a gain only if its four planes balance to 5% and its faintest rung clears 150 redraws -- one pulse in N, so that is 0.67% of quantisation against a 1.0% bend.  A gain that cannot is published here rather than shot with a ladder nobody can defend"
+  },
+  "light_drift": {
+    "value": 0.3137,
+    "unit": "ADC counts per minute",
+    "uncertainty": 0.0468,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 5 arm 1 (L31): 32 frames at gain 100 over 4.6 minutes at a fixed exposure, panel warm.  Session 01's dark arm measured -0.00133 +/- 0.254 counts/min with the light taken out, so anything here is upstream of the sensor"
+  },
+  "flux_vs_exposure_length": {
+    "value": 0.9886,
+    "unit": "ratio of counts/s at 45% t_sat to counts/s at 10%",
+    "uncertainty": null,
+    "source_frames": 456,
+    "measured_on": "2026-09-12",
+    "notebook": "13_linearity.ipynb",
+    "note": "gate 5 arm 2 (L31): the arm the retired project could not run, because their two gains differed in exposure length and in elapsed time at once.  1.0 means the measured flux does not depend on how long the shutter was open -- which is also this session's whole test of the redraw worry, since light arriving in pulses can only distort a ladder if the pulse count is not proportional to the shutter time.  Both arms sit inside the reference-line region on purpose: near t_sat the sensor's own roll-off is in the level, and the ratio could no longer separate a light that short-changes long exposures from a response that bends near full scale -- which is the quantity this session publishes.  Scatter: 0.299% short, 0.089% long, against L31's 1.79% at this gain"
+  }
+}

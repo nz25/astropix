@@ -34,43 +34,6 @@ Treat every number as a prediction to falsify — there is no longer anywhere to
 
 ---
 
-## Linearity, full well and `ceiling(gain)` — the linearity session
-
-### L09. Illumination is uneven enough to smear a linearity bend
-**Claim.** The light source varies **3.8% peak-to-peak across 1024×1024**, so the bright corner
-saturates ~4% of exposure before the dim one. For a measurement defined as a 1% departure from a
-straight line, that smears the bend over more range than the effect. Central 512 gives 1.25%;
-central **256 gives 0.53%**. Use a small ROI for linearity — and note this does *not* affect the
-PTC, which differences frame pairs and is blind to fixed pattern.
-**Consumed by.** The linearity measurement, whenever scheduled.
-**How to check.** Measure peak-to-peak variation across a real flat at each candidate ROI size.
-**Lands in.** `protocols/` for the linearity session.
-
-### L12. Saturation and linearity must be measured per CFA channel
-**Claim.** The four channels have different sensitivities, so under a white-ish source they
-saturate at **exposures differing by 1.34×**. The pinned-pixel fraction plateaus at exactly 25%,
-then 75% — one channel topping out, then three. Reading the bend off the frame mean gets it
-wrong by −11.5% at gain 200 and +18.7% at gain 100, in opposite directions. Measured per channel,
-all four bend at the same *level* to within 1.6%, which is what shows **the converter bends, not
-the pixel**.
-**Consumed by.** The linearity measurement.
-**How to check.** Per-channel bend levels; if they agree while the saturating exposures differ,
-the ADC is the limit.
-**Lands in.** `results/` as per-channel bend levels, and `DECISIONS` if it changes how full
-well is defined.
-
-### L28. The linear limit is 63 744 reported ADU, below the hard clip
-**Claim.** The response departs 1% from a straight line at **63 744 reported = 3 984 real ADU =
-97.3% of the top code**, measured twice with 0.05% agreement. The hard clip is 65 520 / 4 095;
-the two are 2.9% apart, or 0.041 stops. Adopting the measured limit raised full well by 0.47%.
-**Consumed by.** The linearity measurement; MISSION lists `ceiling(gain)` / full well as a
-constant, gain-dependent and at or below 4 095.
-**How to check.** A 20-rung ladder from 50% to 115% of the saturating exposure, per CFA channel,
-on a small ROI (see L09 and L12).
-**Lands in.** `results/`, as the clip level every other analysis rejects against.
-
----
-
 ## PixInsight — build step 5
 
 ### L16. The CLI invocation, and the flag that hangs a headless run forever
@@ -188,43 +151,35 @@ as gain amplifies the outlier tail.
 
 ## Open questions inherited
 
-### L31. Gain 100 was not repeatable and gain 200 was, and nobody knows why
-**Claim.** In two linearity runs, frame pairs at each rung should have differed only by noise.
-At gain 200 the repeat-to-repeat spread was **0.011%**; at gain 100 it was **1.79%**, with one
-rung 5.5% off on its own. Ruled out: source settling (a second run minutes later with a
-demonstrably steady source failed identically), display-refresh beating (gain 100 integrates over
-*more* refresh cycles, which should average better), and dark current (orders of magnitude too
-small at −10 °C over 2 s). What is left is something varying on a timescale of tens of seconds —
-gain 200's whole ladder was ~11 s of exposure inside one quiet stretch, gain 100's spanned ~70 s.
-**Marked UNRESOLVED, and worth resolving before any measurement relies on second-long exposures
-at a fixed light level.** It does not affect a PTC, which plots variance against measured signal
-and never against exposure time.
-**Consumed by.** Any bench measurement using exposures of order seconds.
-**How to check.** Their comparison could not settle it: gain 100 and gain 200 differ in
-*exposure length* (1.08–2.48 s vs 0.33–0.77 s) **and** in *elapsed time* (~70 s vs ~11 s), so the
-confound was built in. A clean version, ~15 minutes at one gain and no ladder: fix everything,
-capture continuously for five minutes with timestamps, and plot mean level against wall-clock
-time; then repeat interleaving a short and a long exposure throughout. The first separates drift
-from noise, the second separates elapsed time from exposure duration.
+### L31. The panel drifts while it warms, and nobody has watched it from cold
+**Claim.** The retired project's version of this — gain 100 irreproducible at 1.79% while gain 200
+managed 0.011% — **has been run and is not reproduced.** Session 05's arm 2 interleaved a short
+and a long exposure at gain 100 throughout a block: repeat scatter **0.089% long, 0.299% short**,
+six times better than L31 at the same gain, with a long/short flux ratio of 0.9886. Their confound
+(exposure length and elapsed time varying together) is gone and nothing was hiding under it.
 
-**One candidate they did not test: backlight thermal drift.** LED backlights dim as they warm, a
-panel at 100% brightness reaches equilibrium over minutes, and that fits the leftover timescale.
-It also survives their settling check — re-running minutes later does not help if the panel is
-still heating rather than having settled once. `protocols/light-source.md` item 1 carries a
-ten-minute warm-up as a precaution against this; **if the trace is flat from cold, delete that
-item** rather than keeping a ritual whose reason has been falsified.
+**What is left is one untested candidate: backlight thermal drift.** LED backlights dim as they
+warm, a panel at 100% brightness reaches equilibrium over minutes, and session 05 measured a real
+drift of **+0.314 ± 0.047 ADC counts/min** — small, seven sigma from zero, and upstream of the
+sensor, because session 01's dark arm over the same timescale was −0.00133 ± 0.254 counts/min with
+the light taken out. **But that arm was run with the panel already warm**, which is the one state
+that cannot distinguish a panel still heating from a panel that has settled. So the mechanism is
+consistent with the measurement and remains unproven by it.
 
-**The dark arm has run, and it was flat.** Session 01's drift block — 450 bias frames at gain 100
-over 15 minutes at −10 °C, `results/pedestal_drift.csv` — is the first half of that clean test
-with the light source taken out of it: **−0.00133 ± 0.254 ADC counts/min**, a slope two orders of
-magnitude inside its own uncertainty. So nothing in the *camera* drifts on this timescale, and
-whatever is left is upstream of the sensor. That is the arm this project could run without the
-light source; arms 1 and 2 still need it, and `light-source.md` item 1 stands until they do.
+**Consumed by.** `protocols/light-source.md` item 1, the ten-minute warm-up, which is currently a
+precaution whose reason has been neither confirmed nor falsified.
+**How to check.** One block, no ladder: wake the panel from genuinely cold, start capturing
+immediately at a fixed gain and exposure, and run for twenty minutes with timestamps. If the trace
+is flat from the first frame, **delete item 1** rather than keeping a ritual with no reason behind
+it. If it decays to a floor, item 1 stays and its duration should be set from where the trace
+flattens rather than from a round number.
+**Lands in.** `protocols/light-source.md` — either item 1 deleted, or its ten minutes replaced by
+a measured settling time. `results/` gains nothing either way: this is a property of the bench
+light, not of the camera.
 
-The separate 5.5% single-rung outlier looks like a different mechanism — an occasional bad frame
-rather than drift. A notification, or the Screen Wake Lock briefly lapsing.
-**Lands in.** `results/` as a repeatability figure if reproduced, or deleted from here if it
-turns out to be an artefact of their setup.
+*(Session 05 resolved the repeatability half of this entry; see DECISIONS D79. The 5.5%
+single-rung outlier the retired project saw did not recur either, and its most likely cause —
+the screen briefly sleeping — is now caught during capture rather than after it, per D78.)*
 
 ### L32. The suburban sky rate, to be re-derived from our own frames
 **Claim.** Sky **1.594 e⁻/px/s** green (R 1.500, B 0.910) at f/4.8, 2.27″/px, unfiltered, near

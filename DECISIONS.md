@@ -2260,3 +2260,102 @@ it rather than trusting it.
 gate answered its own question, and this one trusted a device to stay awake without checking. All
 three are the same omission: **a condition the measurement depends on, with nothing measuring it.**
 The bench found this one in eight minutes, which is the cheapest of the three.
+
+---
+
+### D79. The ladder finds no bend, and `ceiling(gain)` is published as a null with three constants in its place
+456 frames, three gains, four CFA planes, four analysis boxes. **Nowhere below the clip does the
+response depart 1% from its own line.** The worst departure anywhere between 50% of `t_sat` and
+the last unclipped rung is **0.42% at gain 50, 0.39% at gain 100, 0.83% at gain 200** — against a
+reference line whose own rungs scatter **0.23%, 0.23% and 0.41%** about it. The departure is
+roughly twice the noise floor of the measurement that found it, which is enough to say *no bend*
+and nowhere near enough to say *this much curvature*. It is published as `worst_departure` beside
+`line_resid` so that nobody can read the first without the second.
+
+**L28 is refuted, and the refutation is specific.** Its claim was a 1% bend at 3984 counts, 97.3%
+of the top code, "measured twice with 0.05% agreement". This ladder places rungs either side of
+3984 and the response through them is straight to 0.42%. What sits near 3984 is where pixels
+begin to pin — at gain 50 the 95%-of-`t_sat` rung is 1.6% pinned and the 99% rung is 99.98%
+pinned. A plane mean taken across pinning pixels is dragged down, and a 1% drag arrives within a
+rung or two of where L28 put its bend. **The most likely reading of L28 is that it measured the
+onset of clipping and called it non-linearity**, which is exactly the failure rule 6 of
+`protocols/05-linearity.md` exists to prevent and why that rule was written before the session
+rather than after it.
+
+**Rule 5 could not be satisfied, so four constants carry what the ladder did establish.**
+`ceiling` and `ceiling_per_plane` are published null, with `not_measured` giving the reason for
+all twelve (gain, plane) fits. In their place:
+
+| constant | gain 50 | gain 100 | gain 200 |
+|---|---|---|---|
+| `linear_to_at_least`, counts | 3958 ± 78 | 3889 ± 45 | 3854 ± 35 |
+| `worst_departure`, % | 0.42 | 0.39 | 0.83 |
+| `line_resid`, % | 0.23 | 0.23 | 0.41 |
+| `clip_level`, counts | 4095.000 | 4094.997 | 4094.994 |
+| `full_well`, e⁻ | 21718 | 12027 | 3710 |
+| `full_well_at_linear_to`, e⁻ | 20982 | 11413 | 3488 |
+
+`linear_to_at_least` is **a bound and is named so it cannot be read as an edge**: the response is
+straight up to there, and above there the pixels are pinned and this ladder has nothing further to
+say. Its resolution is one rung — 4% of `t_sat` — and the per-plane scatter quoted as its
+uncertainty is not sensor behaviour but where gate 4's residual 3–5% imbalance left each plane on
+the rung grid. A plane running 2% bright pins one rung earlier and its bound comes out one rung
+lower. That is why the scatter shrinks with gain exactly as `plane_balance` does.
+
+**Full well went up, not down.** L28 subtracted 2.9% from the clip for a bend that is not there,
+and `full_well` is now `(clip_level − pedestal) × g(gain)`. The conservative figure is published
+beside it as `full_well_at_linear_to`, the same arithmetic against the proved-straight bound, so
+anything that would rather under-run the sensor than trust a bound has a number to use. **What
+changed is not mainly the value but the reason**: the well is now what a pixel holds when the
+converter runs out of codes, not what it holds when the response starts to lie.
+
+**Rule 8 was answered, and more decisively than it was designed to be.** It was written expecting
+a bend to test. With no bend, it runs on `clip_level` — and the logic is stronger that way, not
+weaker. Saturation varies **0.0002%** across gains in ADC counts and **0.0003%** across the four
+planes at one gain, against L12's 1.6% yardstick; the same saturation in electrons varies
+**144%**, falling as `1/g`. A bend at a common level is consistent with a well that happens to
+fill there. A straight line into the same top code at three gains spanning two octaves is not.
+**The converter binds, at every gain this session shot.** L12's conclusion survives; what does not
+survive is its route to it.
+
+**L12's other half is confirmed and was load-bearing.** Measuring per channel was not optional:
+gate 4 needed a per-gain patch colour to get all four planes saturating on one ladder at all, and
+`plane_balance` records that it only ever got within 3.3–4.6%. The pinned-pixel plateaus at 25%
+then 75% that L12 used to infer per-plane sensitivity did not recur, because the source was
+balanced so that they could not — all four planes pin together.
+
+**L09's illumination map is real and its ROI rule is not load-bearing here.** Gate 6 measured the
+spread directly and reproduced L09's ordering — 0.20% at the central 128 box rising to 3.36% at
+1024, against L09's 0.53% / 3.8%, the same shape with this bench about 0.5% flatter. But the
+consequence L09 predicted does not appear: across those boxes `linear_to` moves **0.303%** and in
+the *opposite* direction to the prediction that a wide box reads low, and the worst departure from
+straight moves **0.014 percentage points**. Both are far inside the effect they would need to
+have. The central 256 box is kept because it costs nothing, **not** because a wider one was shown
+to fail, and `roi_curvature` is published alongside `roi_sensitivity` because curvature is
+continuous where the bound is quantised to a rung and is therefore the sharper test of the same
+claim.
+
+**L31's two light-source arms ran, and the result is mixed.** Arm 1: **+0.314 ± 0.047 counts/min**
+over 4.6 minutes at gain 100 with the panel warm — small, but seven sigma from zero, and session
+01's dark arm was −0.00133 ± 0.254, so this is upstream of the sensor and is the panel. The
+per-rung monitor bracket is what absorbs it and `monitor_factor` shows it doing so, spanning
+0.79–0.93% per gain. Arm 2: a long/short flux ratio of **0.9886** with repeat scatter of 0.089%
+long and 0.299% short. **L31's 1.79% at gain 100 is not reproduced** — this bench is six times
+better at the same gain — so whatever the retired project hit is either theirs or was fixed by
+something this bench does differently. **L31 is not deleted.** Its cold-start question is
+untouched: arm 1 was run warm, so `light-source.md` item 1's ten-minute warm-up is still a ritual
+whose reason has been neither confirmed nor falsified, and the entry is narrowed to that.
+
+**One repo bug found on the way out.** `13_linearity.ipynb` published its constants with
+`CONSTANTS.write_text(json.dumps(...))`, and `tests/test_record.py`'s writer detector matches
+`json.dump(` — so `linearity_constants.json` read as an orphan that no notebook cell writes, and
+the suite failed on it. Every other publishing notebook uses `with open(CONSTANTS, "w") as fh:
+json.dump(...)`. This one now does too. The detector was right and the notebook was the outlier;
+widening the detector would have been the wrong fix, because the value of that test is that there
+is one recognisable way to publish.
+
+**What this leaves open.** MISSION lists `ceiling(gain)` as a published constant. On this bench it
+is null and is likely to stay null, because the response reaches the ADC's last code without
+bending and there is nothing for a 1% test to find. Whether MISSION should keep asking for it, ask
+for `linear_to_at_least` instead, or ask for both, is a change to a canonical document and is
+Denis's call, not this session's.
