@@ -2359,3 +2359,32 @@ is null and is likely to stay null, because the response reaches the ADC's last 
 bending and there is nothing for a 1% test to find. Whether MISSION should keep asking for it, ask
 for `linear_to_at_least` instead, or ask for both, is a change to a canonical document and is
 Denis's call, not this session's.
+
+### D80. `ceiling(gain)` takes the proved-straight bound, not the clip
+
+D79 left this open and named it Denis's call. It is made: **MISSION's `ceiling(gain)` is
+`linear_to_at_least`** — the highest level the linearity ladder proved straight — and the model's
+star-colour constraint reads that, not `clip_level`.
+
+**Why.** The two differ by 3–6%: 3958 / 3889 / 3854 counts at gain 50 / 100 / 200, against a clip
+at 4095. The asymmetry of being wrong decides it. Under-exposing a star by a few percent costs a
+little SNR on that star and nothing else. Over-running into counts nobody proved straight costs a
+star colour, which is the quantity the constraint exists to protect. `full_well_at_linear_to`
+follows for the same reason and is what the model consumes in electrons.
+
+**What was rejected.** Using `clip_level` (4095) as the ceiling. It is the truer physical
+statement — D79 established that nothing lied below it, the converter binds at every gain, and
+the well is what a pixel holds when the codes run out. It is kept and published as `full_well`
+for exactly that reason. But `linear_to_at_least` is a *bound*, and the 3–6% above it is a region
+this bench has nothing to say about rather than a region shown to be good. A model that spends
+that margin is spending measurement it does not have.
+
+**What was also rejected.** Asking MISSION for both and letting the reader choose. A constant
+with two values is two constants, and the one the model consumes has to be named in one place.
+Both numbers stay published in `results/linearity_constants.json`; only one is the ceiling.
+
+**What changed.** MISSION's `ceiling(gain)` paragraph now states the three things that can bind
+— codes, well, bend — says which one does here, says the published `ceiling` is a null with a
+reason on all twelve fits, and names `linear_to_at_least` as what the model reads instead. Its
+constants table row says the same. No code, no notebook and no published number moved: this is a
+decision about which already-measured constant the model consumes.

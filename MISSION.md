@@ -85,8 +85,25 @@ Star-colour constraint, per channel:
 pedestal + (F_star_peak + F_sky + D) · t / g(gain)  ≤  ceiling(gain)
 ```
 
-`ceiling(gain)` is the **measured** saturation level, not 4095: whichever binds first, the ADC's
-top code or the full well, and below either if linearity rolls off before it.
+`ceiling(gain)` is the **measured** level above which a pixel's value may no longer be trusted,
+not 4095. Three things can set it, and whichever comes first wins: the ADC runs out of codes,
+the pixel well fills, or the response bends before either. The first two are hard stops and the
+third is not — past a bend the value is unclipped and wrong, which is worse.
+
+**The model takes the conservative branch: `ceiling(gain)` is `linear_to_at_least`, the highest
+level the linearity sweep *proved* straight, not the level at which it was seen to stop.** On
+this sensor those differ by 3–6% (3958 / 3889 / 3854 counts at gain 50 / 100 / 200, against a
+clip at 4095). Under-exposing a star by a few percent costs almost nothing; trusting counts
+nobody proved costs a star colour. `full_well_at_linear_to` is the matching well in electrons,
+and `full_well` against the clip is published beside it for anything that wants the physical
+figure rather than the safe one.
+
+Which of the three binds is itself a measurement, and on this sensor it is the converter at
+every gain: the response reaches the top code without bending, and it is the *same* code at
+three gains spanning two octaves while the charge it represents falls as 1/g. So the published
+`ceiling` — the level at which the response departs 1% from its own line — is a **null with a
+reason** on all twelve gain-plane fits (`results/linearity_constants.json`). That is the result,
+not a gap, and it is why the model reads `linear_to_at_least` instead.
 
 **The two constraints bind on different CFA planes, and the gap between them is the Pareto
 curve.** Sky flux differs per plane, so `m = F_sky·t/R²` is per channel: the exposure floor is
@@ -126,7 +143,7 @@ Every one carries provenance; none is taken from a spec sheet without checking.
 | HCG threshold | dedicated fine gain sweep (ZWO's own figure moved 252 → ~200) |
 | `D(T)` — dark current, e⁻/px/s | dark-current-vs-temperature sweep |
 | `pedestal` — ADC counts | offset sweep |
-| `ceiling(gain)` / full well — ADC counts, ceiling ≤ 4095 | linearity sweep. Gain-dependent: the ADC top code and the well bind at different gains |
+| `ceiling(gain)` / full well — ADC counts, ceiling ≤ 4095 | linearity sweep. The model consumes `linear_to_at_least` — the proved-straight bound, not the clip — and `full_well_at_linear_to` as its well |
 | `η_comb` — combination efficiency | measured from real stacks, not assumed √N. Provenance records stack size and rejection settings |
 | `t_dead` — per-sub overhead, s | measured from frame timestamps: download, save and dither settle between subs |
 | `F_sky` — sky flux, per CFA plane | extracted per frame from the light frames themselves, on the uncalibrated sub after pedestal subtraction |
