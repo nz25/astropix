@@ -250,6 +250,45 @@ def test_cool_to_gives_up_rather_than_polling_forever():
     raise AssertionError("expected TimeoutError")
 
 
+def soak(temps, duties):
+    return [(float(i), t, d) for i, (t, d) in enumerate(zip(temps, duties))]
+
+
+def test_a_soak_at_the_bands_warm_edge_is_not_a_soak_at_the_setpoint():
+    """Session 07's failure, in one trace: -19.5 C is inside +/-0.5 C and is
+    still the cooler saying it cannot reach -20.0."""
+    ok, why = asi.judge_cold_soak(soak([-19.5] * 20, [60] * 20), -20.0)
+    assert not ok and "at its limit" in why
+
+
+def test_a_soak_that_ends_near_full_duty_fails_even_at_the_setpoint():
+    """Reaching the temperature is not the question -- having somewhere left to
+    go when the body soaks is."""
+    ok, why = asi.judge_cold_soak(soak([-20.0] * 20, [86] * 20), -20.0)
+    assert not ok and "no headroom" in why
+
+
+def test_a_soak_whose_duty_is_still_climbing_fails_under_the_bar():
+    """The probe that passed was at 86% *and rising*; a rising duty under the
+    bar is the same cooler a few minutes earlier."""
+    ok, why = asi.judge_cold_soak(soak([-20.0] * 20, [50] * 10 + list(range(60, 70))), -20.0)
+    assert not ok and "losing ground" in why
+
+
+def test_an_approach_finishing_inside_the_soak_is_not_counted_as_a_climb():
+    """Duty falling into equilibrium is the shape of a cooler winning.  Judging
+    the second half is what keeps it from reading as the shape of one losing."""
+    ok, why = asi.judge_cold_soak(soak([-20.0] * 20, list(range(70, 60, -1)) + [60] * 10), -20.0)
+    assert ok, why
+
+
+def test_a_soak_the_camera_never_reported_fails_rather_than_passes():
+    """L03: with the cooler off every reading is None.  A gate that cannot see
+    has not been cleared."""
+    ok, why = asi.judge_cold_soak([(0.0, None, None), (1.0, None, 40)], -20.0)
+    assert not ok and "blind gate" in why
+
+
 # --------------------------------------------------------------------------
 # capture
 # --------------------------------------------------------------------------

@@ -103,24 +103,45 @@ at 24 is the fingerprint of white balance still being applied.
 
 **Nothing captured before this passes is usable.** Stop; do not correct it later.
 
-### Gate 2 — the cooler reaches −20 °C, and holds it
+### Gate 2 — the cooler reaches −20 °C, and holds it **under load**
 
-**This is the gate that can end the session, and it has never been run on this rig.** Every bench
-setpoint in this repo has been −10 °C. −20 °C is 10 °C further down, the duty cycle will be far
-higher, and a TEC that cannot hold it indoors in a warm room is a real possibility rather than a
-formality — session 06 held it under a September night sky, which is not the same test.
+**This is the gate that can end the session, and the first time it ran it passed a rig that then
+failed.** Every bench setpoint in this repo has been −10 °C. −20 °C is 10 °C further down, the duty
+cycle is far higher, and a TEC that cannot hold it indoors in a warm room is a real possibility
+rather than a formality — session 06 held it under a September night sky, which is not the same
+test.
 
-The rule: **in band (±0.5 °C) for a continuous 30 seconds, with the duty cycle recorded**, judged by
-the temperature trend and not by duty. Then, and this is the part that matters, **the duty at the
-end of the −20 °C arm is compared against the duty at its start.** A TEC climbing towards 100 % is
-one that will lose the setpoint later in the arm, and a frame shot on the way out of band is a frame
-that has to be retaken.
+**What the first attempt got wrong, because it is the whole of why this gate is shaped as it is.**
+It settled the cooler, read the duty at the setpoint, and let anything under 90 % through. What it
+let through had stopped at **−19.5 °C on 86 % duty and still climbing**, never reaching −20.0 at
+all (`data/session07/cooldown_gate2_probe.csv`). Twenty-five minutes into the cold arm the sensor
+drifted to −18.0 °C and never came back, and the session ended with two of its three arms unshot.
+Two mistakes: it judged an **idle** cooler, and it accepted the **warm edge of the band**.
+
+The rule now. `asi.cool_to` settles it as before — in band (±0.5 °C) for a continuous 30 seconds,
+judged on the temperature trend and not on duty. Then the rig is **soaked for ten minutes under the
+readout load the arms will run**, shooting and discarding frames at the shortest exposure the
+session uses anywhere, and `asi.judge_cold_soak` reads that trace against three bars at once:
+
+| what is asked | why it is asked |
+|---|---|
+| no reading warmer than the setpoint **itself** | ±0.5 °C is the right tolerance for *accepting a frame*, where the sensor's quantiser is the whole story, and the wrong one for *judging a cooler* — a TEC that cannot reach −20.0 has already reported its limit |
+| duty at the end of the soak ≤ **75 %** | 86 % cleared the old 90 % bar and lost the arm |
+| duty flat across the soak's second half (≤ 3 points of climb) | what runs out over an arm is not the TEC's instantaneous pull but the body's ability to shed the heat the TEC moves into it, and that only appears once the body has soaked |
+
+The three bars live in `asi.py` beside `BAND_C`, with the reasoning as their provenance. **Ten
+minutes here buys what the first attempt took ninety minutes to find out.**
 
 If −20 °C cannot be held, **stop and say so.** The fallback is stated here so nobody has to invent
 one at midnight: session 06's frames are then characterised by a *bounded* argument rather than a
 measured one — the constants at −10 °C, with the temperature coefficient published as unmeasured
 and `F_sky` carrying the full uncertainty that implies. That is a worse answer, published as a worse
-answer. It is not a reason to shoot at −15 °C and interpolate.
+answer. It is not a reason to shoot at −15 °C and interpolate, and it is not a reason to widen the
+band.
+
+**The one lever worth pulling before the fallback is the room.** Ambient sets how far this TEC can
+pull, and the first attempt was asking it for 33 °C from a 13.0 °C idle sensor. A colder room is the
+only change that moves the gate; a retry into the same room does not.
 
 ### Gate 3 — `t_sat(gain)`, measured cold at each gain and each arm
 
@@ -209,8 +230,12 @@ Statistics on the CFA mosaic, split RGGB, never debayered. Values in ADC counts.
 Ambient at start and end, panel warm-up start time, grey level and patch colour per gain, sheet
 count, measured flux and `t_sat` per gain **per arm**, ROI, offset, WB values after setting, gate 1
 modal steps per plane, the cool-down trace and settle duration **for each of the three arms**, the
-duty cycle at the start and end of the −20 °C arm, capture tool and version, and anything touched
-mid-session.
+gate-2 soak trace and its verdict, the duty cycle at the start and end of the −20 °C arm, capture
+tool and version, and anything touched mid-session.
+
+**Ambient is not a nicety here, it is the binding variable.** Record the room temperature at the
+start and at the end, in the same place each time. Gate 2 is a question about how far the TEC can
+pull from ambient, and a session whose ambient went unrecorded cannot say why it passed or failed.
 
 ## What lands where
 

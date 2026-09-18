@@ -72,6 +72,81 @@ RECOVER_S = 10.0
 TREND_S = 60.0            # falling after a minute is the only cooler test that works
 TREND_MIN_FALL_C = 1.0    # ~3 C/min from ambient, so a minute is a wide margin
 
+# --- judging a cold setpoint before an arm is spent on it --------------------
+# Settling is not holding, and session 07 paid an evening for the difference.
+# Its gate let an unloaded settle through on a 90% duty bar; the trace it left,
+# `data/session07/cooldown_gate2_probe.csv`, shows the cooler had stopped at
+# -19.5 C on 86% duty *still climbing*, never reaching -20.0 at all.  The gate
+# passed.  Twenty-five minutes into the cold arm the sensor drifted to -18.0 C
+# and never came back, and the session ended with two of its three arms unshot.
+#
+# Two things were wrong with judging it that way.  It judged an *idle* cooler,
+# and what runs out over an arm is not the TEC's instantaneous pull but the
+# camera body's ability to shed the heat the TEC moves into it -- which only
+# appears once the body has soaked, so no instantaneous reading can predict it.
+# And it accepted the warm edge of `BAND_C`.  That band is the right tolerance
+# for *accepting a frame*, where the sensor's 0.5 C quantiser is the whole
+# story; it is the wrong one for *judging a cooler*, because a TEC that cannot
+# reach the setpoint at all has already reported its limit.
+#
+# So a cold setpoint is judged under the load its arm will run, on three things
+# at once.  None of these three is a measured constant -- they are where the
+# gate is set, and this reasoning is their provenance.
+SOAK_S = 600.0            # loaded hold before the gate will believe a setpoint
+SOAK_DUTY_MAX_PCT = 75    # duty at the soak's end; 86 cleared the old bar and lost the arm
+# The camera reports duty as an integer percent, so three points is the
+# smallest climb that cannot be read as quantiser noise.  A cooler in
+# equilibrium shows none at all.
+SOAK_DUTY_RISE_MAX = 3
+
+
+def judge_cold_soak(trace, setpoint, *, duty_max=SOAK_DUTY_MAX_PCT,
+                    rise_max=SOAK_DUTY_RISE_MAX):
+    """Verdict on a loaded soak at `setpoint`: `(ok, reason)`, reason empty when ok.
+
+    `trace` is `cool_to`'s shape -- `[(elapsed_s, temp_C, duty_pct), ...]` --
+    but taken *while frames are being shot*, because an idle soak tests the
+    wrong thing (see above).  Three questions, and the first is the one the
+    duty bar on its own could not ask:
+
+    1. Did the sensor ever sit warmer than the setpoint?  Not warmer than the
+       band -- warmer than the *setpoint*.  On a sensor quantised to 0.5 C that
+       is exactly "every reading was -20.0 or colder", and a cooler with real
+       headroom passes it flat.
+    2. Is the duty at the end of the soak under `duty_max`?
+    3. Is the duty flat?  Judged across the soak's own second half, so a cooler
+       still finishing its approach is not mistaken for one losing ground.
+
+    Readings the camera did not report are dropped (L03), and a trace with
+    nothing left of it fails rather than passes: a gate that cannot see is not
+    a gate that has been cleared.
+    """
+    seen = [(e, t, d) for e, t, d in trace if t is not None and d is not None]
+    if not seen:
+        return False, ("the soak reported no temperature at all -- the cooler is off, and a "
+                       "blind gate does not pass (L03)")
+
+    warmest = max(t for _, t, _ in seen)
+    if warmest > setpoint:
+        return False, (f"the soak sat at {warmest:.1f} C, warmer than the {setpoint:.1f} C "
+                       f"asked for: the TEC is at its limit, and the warm edge of the "
+                       f"+/-{BAND_C} C band is not the setpoint")
+
+    duty_end = seen[-1][2]
+    if duty_end > duty_max:
+        return False, (f"the soak ended at {duty_end}% duty, over the {duty_max}% bar -- "
+                       "there is no headroom left for the body to go on soaking")
+
+    half = seen[len(seen) // 2:]
+    duty_floor = min(d for _, _, d in half)
+    rise = half[-1][2] - duty_floor
+    if rise > rise_max:
+        return False, (f"duty climbed {rise} points across the soak's second half "
+                       f"({duty_floor} -> {half[-1][2]}%), over the {rise_max}-point bar: "
+                       "the cooler is still losing ground, not holding")
+
+    return True, ""
+
 NEUTRAL_WB = 50           # the camera ships WB_R=55, WB_B=75, applied to RAW16 (L01)
 
 # How long past the requested exposure a frame is allowed to take before the

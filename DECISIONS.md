@@ -2435,3 +2435,55 @@ is supposed to prevent.
 **What changed.** `CLAUDE.md`'s *Library budget* section, one figure and a paragraph saying why
 2000 is 1000 corrected rather than 1000 doubled. No code, no notebook and no published number
 moved.
+
+---
+
+## 2026-09-18 - Session 07's cold arm is lost to a gate that judged an idle cooler
+
+### D82. Gate 2 becomes a loaded soak, and the duty bar comes down from 90% to 75%
+Session 07's first attempt ended with a `TimeoutError` twenty-five minutes into the -20 C arm:
+the sensor had drifted to -18.0 C and could not get back inside the band in 300 s. 168 of 408
+frames were taken. Arm 1 is complete, arm 2 is eight rungs of twelve at one gain, arm 3 never ran.
+
+**The gate saw it and let it through.** `data/session07/cooldown_gate2_probe.csv` ends at
+**-19.5 C on 86% duty, still climbing** - 85 -> 86 in its last readings, and -20.0 never reached
+at all. The bar was `DUTY_HEADROOM_MAX = 90`, in the notebook, applied to a settled *idle* cooler.
+So the failure was legible ninety minutes before it bit, in the trace of the gate that passed it.
+
+**Two mistakes, and they are different mistakes.** The gate judged an idle cooler, when what runs
+out over an arm is not the TEC's instantaneous pull but the camera body's ability to shed the heat
+the TEC moves into it - which only appears once the body has soaked, so no instantaneous reading
+could have predicted it. And it accepted the warm edge of `BAND_C`. That band is correct for
+*accepting a frame*, where the sensor's 0.5 C quantiser is the whole story; it is wrong for
+*judging a cooler*, because a TEC that cannot reach the setpoint has already reported its limit.
+
+**What changed.** `asi.judge_cold_soak` takes a soak trace and answers three questions at once: no
+reading warmer than the setpoint itself, duty at the end under `SOAK_DUTY_MAX_PCT = 75`, and duty
+flat across the soak's second half (`SOAK_DUTY_RISE_MAX = 3` points, the smallest climb that cannot
+be integer-percent quantiser noise). `SOAK_S = 600` is the loaded hold. Notebook 15's gate 2 cools,
+then shoots and discards ten minutes of frames at the shortest exposure the session uses anywhere -
+the heaviest readout load any arm will ask for, since most of a ladder is spent integrating on long
+rungs. Ten minutes at the gate buys what the first attempt took ninety minutes to learn.
+
+**The thresholds moved into `asi.py`.** `DUTY_HEADROOM_MAX` lived in the notebook, and a bar that
+decides whether a cooler is fit to measure with is a threshold, which CLAUDE.md puts beside the
+code. The three new bars sit with `BAND_C`, `SETTLE_S` and `RECOVER_S`, with the reasoning above as
+their provenance. The library goes 1027 -> 1102 lines, inside D81's 2000.
+
+**`BAND_C` is untouched, deliberately.** Tightening it globally would change which frames every
+session accepts, on the strength of one cooler's bad evening. The stricter test belongs to the
+gate, not to the band.
+
+**What was rejected.** Widening the band or lowering the setpoint to -15 C and interpolating -
+protocol 07 forbids both by name, and the second would put an interpolation inside the one
+comparison the session exists to make. Also rejected: resuming session 07 from its 168 frames. The
+arms are -10, -20, -10 **in one sitting**, and the error bar on every temperature coefficient is
+half the gap between arms 1 and 3. Pairing arm 1 from one evening with arm 2 from another measures
+drift across a week and calls it drift across an evening. The retry is a fresh session and arm 1's
+frames become a pilot run.
+
+**What is not fixed by any of this.** The gate is now honest about the room; it does not change the
+room. Ambient sets how far the TEC can pull, and the first attempt asked for 33 C from a 13.0 C
+idle sensor. If the retry runs into the same room it will fail the new gate in ten minutes instead
+of failing the old one in ninety - which is the improvement, and is not a pass. Protocol 07 now
+requires ambient recorded at the start and end of the session, which it did not before.
