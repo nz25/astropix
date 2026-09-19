@@ -2487,3 +2487,53 @@ room. Ambient sets how far the TEC can pull, and the first attempt asked for 33 
 idle sensor. If the retry runs into the same room it will fail the new gate in ten minutes instead
 of failing the old one in ninety - which is the improvement, and is not a pass. Protocol 07 now
 requires ambient recorded at the start and end of the session, which it did not before.
+
+---
+
+## 2026-09-19 — The sky session publishes, and L32 leaves the queue
+
+### D83. `F_sky` is measured, and L32's verdict is that there is no such constant
+Notebook `17` ran on `data/session06` against session 07's −20 C constants and published
+`results/sky_constants.json`, `sky_frames.csv` and `sky_pairs.csv` — 20 constants, 16 measured and
+4 published null with a reason. The three it was written to deliver:
+
+| constant | value | what it settles |
+|---|---|---|
+| `F_sky` per plane | R 1.8171, G1 1.9333, G2 1.9328, B 1.1098 e⁻/px/s | MISSION's third assumption — the dimmest and brightest planes differ by **74.2%**, so the per-plane Pareto framing buys something |
+| `t_dead` | **31.46 s** ± 10.41 | at 30 s subs, **51% of the night collects no photons**; at 120 s, 21% |
+| `eta_comb` on registered lights | null, with a reason | needs registration and integration — build step 5 |
+
+**The estimator validated itself and nothing was arranged for it to.** The four cells are two
+gains differing by a factor of six in `g` and two sub lengths differing by four, and they agree on
+one sky to **2.8%**. That agreement has no route to happen unless the pedestal, the gain and the
+modal sky level are all right at once, and it is the strongest evidence in the session precisely
+because no cell was fitted to any other.
+
+**`t_dead` is the session's surprise, and it is not a small one.** Protocol 06 bracketed it at
+0.7–19 s from the archive's own cadence. The measured 31.5 s is above the top of that bracket,
+because this night dithered after *every* frame where the archive dithered after every second one.
+The consequence is the argument for long subs on this rig, and it is not the read-noise argument:
+at 30 s, half the night is overhead before a single photon is counted.
+
+### D84. L32 leaves the queue; `LEGACY` goes 3 → 2
+| entry | verdict | where it landed |
+|---|---|---|
+| L32 the suburban sky rate, to be re-derived from our own frames | **checked, and the answer is that it is not a constant**. Measured green **1.9330 e⁻/px/s** against L32's 1.594 — 21.3% high, with R and B high by 21.1% and 22.0%, the same fraction on all three planes | `sky_constants.json` → `F_sky`, `F_sky_trend`, `L32_comparison` |
+
+**The three planes being wrong by the same fraction is what makes the disagreement readable.** A
+21% error in the estimator would have no reason to land identically on planes whose rates differ
+by 74%. A different night would. So the magnitude is right and the estimator works, which is what
+L32 was worth; the number itself is weather.
+
+**And it moves inside the session too.** `F_sky` rose **+0.143 e⁻/px/s per hour** over 4.8 hours
+— +20.7% from the first half of the night to the second — where L32 reported about −5% across two
+hours as its target rose. Sky brightness is moon, cloud and town lighting, and MISSION already
+extracts `F_sky` per frame from the lights themselves for that reason. This session confirms the
+reason rather than supplying a constant that would have contradicted it.
+
+**What the number is not.** It is an **upper bound on true sky**. The box is the darkest of four
+corners in a field of NGC 7000 and unresolved nebulosity inside it cannot be separated — the
+brightest corner sits 5.0 counts above the darkest. That is the right bound for the model, which
+wants the level sitting under the faint signal rather than the zodiacal sky in the abstract.
+
+**Two entries remain in the queue**, L23 and L31, and `LEGACY.md` stays.

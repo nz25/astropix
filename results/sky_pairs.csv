@@ -1,0 +1,9 @@
+pair,why,plane,t_dead_s,predicted_pct,measured_pct,repeatability_pct,verdict
+A->B,t-pair at gain 50,green,31.46283717361111,43.08789029872284,,,pending registration
+A->B,t-pair at gain 50,B,31.46283717361111,52.380909966867684,,,pending registration
+C->D,t-pair at gain 200,green,31.46283717361111,27.261936191958135,,,pending registration
+C->D,t-pair at gain 200,B,31.46283717361111,27.68185516678301,,,pending registration
+A->C,"straddles HCG, t = 30 s",green,31.46283717361111,18.471141130426293,,,pending registration
+A->C,"straddles HCG, t = 30 s",B,31.46283717361111,30.224050756778297,,,pending registration
+B->D,"straddles HCG, t = 120 s",green,31.46283717361111,5.367874050368537,,,pending registration
+B->D,"straddles HCG, t = 120 s",B,31.46283717361111,9.116347917688916,,,pending registration

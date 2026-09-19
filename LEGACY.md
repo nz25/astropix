@@ -82,16 +82,3 @@ light, not of the camera.
 *(Session 05 resolved the repeatability half of this entry; see DECISIONS D79. The 5.5%
 single-rung outlier the retired project saw did not recur either, and its most likely cause —
 the screen briefly sleeping — is now caught during capture rather than after it, per D78.)*
-
-### L32. The suburban sky rate, to be re-derived from our own frames
-**Claim.** Sky **1.594 e⁻/px/s** green (R 1.500, B 0.910) at f/4.8, 2.27″/px, unfiltered, near
-zenith, suburban Bortle 5–6 — implying ≈19.1 mag/arcsec². The figure is explicitly "a rate for
-that night, at that altitude" and fell about 5% across a two-hour session as the target rose.
-**Consumed by.** MISSION lists `F_sky` as extracted per frame from the lights themselves, so this
-is a sanity check rather than a constant.
-**How to check.** Extract sky per frame from our indexed archive and compare. The NGC 7000 set
-gives eight nights at two gains to do it across.
-**Lands in.** `results/` as the working suburban sky rate, with its variability stated.
-
-**Its PRNU half left in D54**, measured at 1.02% and published as `prnu`. The sky rate is what
-is left.

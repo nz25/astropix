@@ -1,0 +1,305 @@
+{
+  "F_sky": {
+    "value": {
+      "R": 1.817134,
+      "G1": 1.93326,
+      "G2": 1.9328,
+      "B": 1.109833
+    },
+    "unit": "e-/px/s",
+    "uncertainty": {
+      "R": 0.065199,
+      "G1": 0.064858,
+      "G2": 0.064738,
+      "B": 0.065237
+    },
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 3 of protocols/06-sky-pair.md: the modal level of the sky ROI, pedestal subtracted, x g(gain), per frame, averaged over the night.  Sky ROI is the bottom-right corner, 512x512 at (3264, 1584, 512, 512), chosen once as the darkest of the four corners and then never moved.  An UPPER BOUND on true sky: unresolved nebulosity is inside the box and cannot be separated -- and it is the right bound for the model, which needs the level sitting under the faint signal.  The uncertainty is the pedestal's alone, at one count, because no bias bracket was shot on the night and the pedestal comes from notebook 15's bench block at the same setpoint and gain"
+  },
+  "F_sky_green": {
+    "value": 1.93303,
+    "unit": "e-/px/s",
+    "uncertainty": 0.22789,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the mean of G1 and G2, which is the number L32 is quoted in and the one a single-figure sky rate means.  The uncertainty here is the frame-to-frame scatter across the night, not the pedestal error -- it is the variability, which is the thing L32 says matters"
+  },
+  "F_sky_per_cell": {
+    "value": {
+      "A": {
+        "R": 1.818022,
+        "G1": 1.933312,
+        "G2": 1.931432,
+        "B": 1.11241
+      },
+      "B": {
+        "R": 1.841694,
+        "G1": 1.960839,
+        "G2": 1.95821,
+        "B": 1.131261
+      },
+      "C": {
+        "R": 1.790012,
+        "G1": 1.905306,
+        "G2": 1.906508,
+        "B": 1.088272
+      },
+      "D": {
+        "R": 1.818831,
+        "G1": 1.933585,
+        "G2": 1.935013,
+        "B": 1.107459
+      }
+    },
+    "unit": "e-/px/s",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the same rate measured independently in each of the four cells.  They share a sky, so this is a consistency check on the estimator across two gains and two sub lengths rather than four measurements of four things"
+  },
+  "F_sky_trend": {
+    "value": 0.143339,
+    "unit": "e-/px/s per hour, green",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "how the sky rate moved across 4.8 h as the target transited: +20.7% from the first half of the night to the second.  L32 reported about -5% across two hours as its target rose, and reproducing that shape is as much the test as reproducing the number"
+  },
+  "L32_comparison": {
+    "value": {
+      "B": {
+        "measured": 1.109833,
+        "L32": 0.91,
+        "pct": 21.959659
+      },
+      "R": {
+        "measured": 1.817134,
+        "L32": 1.5,
+        "pct": 21.142248
+      },
+      "green": {
+        "measured": 1.93303,
+        "L32": 1.594,
+        "pct": 21.269134
+      }
+    },
+    "unit": "e-/px/s and % against L32",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "LEGACY L32, reproduced or refuted on our own frames.  Sky brightness is weather, moon and town lighting, so a disagreement of tens of percent is a different night and not a wrong measurement; what would refute the claim is a disagreement in shape.  L32's figure came from a codebase with no provenance discipline and cannot be re-read at its origin, so this is the only check it will ever get"
+  },
+  "planes_differ": {
+    "value": 74.193798,
+    "unit": "% between the brightest and dimmest CFA plane",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "MISSION's third assumption: the exposure floor is set by the dimmest plane and the clipping ceiling by the brightest, so if R, G and B agree the per-plane Pareto framing buys nothing.  Measured on F_sky above"
+  },
+  "t_dead": {
+    "value": 31.462837,
+    "unit": "s",
+    "uncertainty": 10.41007,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 4: the mean frame-to-frame DATE-OBS gap minus exposure, in steady state, over 144 intervals.  A MEAN and never a median -- the median is 32.00 s here and the model consumes the mean, so a median would understate the overhead.  Measured under this night's dither cadence, which was every frame; the archive dithered every second frame and measured 17-20 s"
+  },
+  "t_dead_decomposition": {
+    "value": {
+      "download_and_save_bound": 7.991868,
+      "download_and_save_archive": 0.68,
+      "dither_settle_inferred": 30.782837
+    },
+    "unit": "s",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 4's decomposition, and it is INFERRED rather than measured -- read the three numbers as what they each are.  This night dithered after every frame, deliberately, so that no cell pays an overhead the others do not; the price is that no gap here shows a download without a settle on top of it.  download_and_save_bound is the shortest gap seen all night, which is the only upper bound this night can prove. download_and_save_archive is the 0.68 s the archive measured, flat across every gain and exposure, on the frames that skipped a dither -- an independent number from the historic corpus and not ours.  dither_settle_inferred is t_dead minus that.  The model consumes t_dead, which is measured directly and needs none of this"
+  },
+  "t_dead_including_interruptions": {
+    "value": 33.153313,
+    "unit": "s",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the same mean with the 2 interruptions left in -- the meridian flip and any autofocus.  Separated because they are not per-sub costs: they happen once or a few times, and averaging them into a per-sub constant would inflate it for every sub the model ever considers.  The cut is a gap over 3.0x the night's median, fixed before the numbers were read"
+  },
+  "t_dead_per_cell": {
+    "value": {
+      "A": 30.888948,
+      "B": 28.57615,
+      "C": 33.198439,
+      "D": 33.059415
+    },
+    "unit": "s",
+    "uncertainty": 4.622288,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the interleave is only fair if these agree: a cell that systematically sits after a dither pays an overhead the others do not, and that overhead lands inside t_dead where it cannot be separated from the setting.  The spread across the four is 4.62 s, against a within-cell scatter of 10.41 s -- read the two together before using the single t_dead for a cell-to-cell ratio"
+  },
+  "dither_cadence": {
+    "value": "every frame",
+    "unit": "frames per dither",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the one place this protocol departs from the archive, and the reason is a confound rather than a preference.  eta_comb's registration half is measured against the number of distinct dither positions, so this is part of that constant's provenance"
+  },
+  "eta_comb_registered": {
+    "value": null,
+    "unit": "measured sd reduction against ideal sqrt(N)",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 5.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  Session 03's dark ladder is in dark_constants.json and is an upper bound by construction -- no registration, no resampling -- so the gap between the two IS the resampling loss, and that gap is what this session was meant to add"
+  },
+  "snr_repeatability": {
+    "value": null,
+    "unit": "% difference between two half-stacks",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 6.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  Until it exists no predicted separation can be called a test: MISSION requires the separation to exceed the estimator's own repeatability, and that bar is currently unknown"
+  },
+  "ranked_pairs": {
+    "value": null,
+    "unit": "the ranking verdict on four pairs",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "MISSION's definition of done.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  The predicted separations from this session's own measured constants are in sky_pairs.csv, with the measured column empty"
+  },
+  "guide_rms": {
+    "value": null,
+    "unit": "arcsec",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "gate 3 of the protocol wants guide RMS logged per frame and a rejection threshold fixed in advance.  The ASIAIR does not write guide RMS into the FITS header and no separate per-frame guiding log was kept, so this half of the gate could not be run.  What was run instead is the cloud test in sky_frames.csv, on the sky level itself"
+  },
+  "rejection": {
+    "value": {
+      "A": {
+        "frames": 36,
+        "rejected": 0
+      },
+      "B": {
+        "frames": 37,
+        "rejected": 0
+      },
+      "C": {
+        "frames": 37,
+        "rejected": 0
+      },
+      "D": {
+        "frames": 37,
+        "rejected": 0
+      }
+    },
+    "unit": "frames per cell",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "a frame is rejected when its sky mode departs from its own cell's median by more than 4.0 times that cell's MAD -- a cloud test, applied identically to all four cells, with the rule fixed before the numbers were seen.  The spread in rejection rate across cells is 0.0 points; materially different losses would mean the interleave had been broken by the rule itself"
+  },
+  "frames_dropped_to_flip": {
+    "value": 13,
+    "unit": "frames",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the field rotated from [np.float64(2.0), np.float64(181.0)] degrees about 22 minutes in -- a meridian flip.  Gate 4 fixes both ROIs for the night and a flip moves them, so the pre-flip frames are dropped rather than given a second pair of ROIs.  Every cell still clears the protocol's floor of 24"
+  },
+  "setpoint_deviation": {
+    "value": {
+      "protocol_c": -10.0,
+      "actual_c": -20.0,
+      "frames_outside_band": 0
+    },
+    "unit": "C",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "the night ran at a -20 C setpoint against the protocol's -10 C, on every frame.  No per-frame gate can see that -- the cooler held its own setpoint perfectly.  It is why every constant above is computed from cold_constants.json and not from ptc_constants.json, and why notebook 15 exists at all"
+  },
+  "clipped_fraction": {
+    "value": {
+      "A": {
+        "R": 6.6e-05,
+        "G1": 6.2e-05,
+        "G2": 6.4e-05,
+        "B": 4.3e-05
+      },
+      "B": {
+        "R": 0.0002,
+        "G1": 0.00019,
+        "G2": 0.00019,
+        "B": 0.000133
+      },
+      "C": {
+        "R": 0.000281,
+        "G1": 0.000259,
+        "G2": 0.000262,
+        "B": 0.000179
+      },
+      "D": {
+        "R": 0.001053,
+        "G1": 0.00096,
+        "G2": 0.000954,
+        "B": 0.00062
+      }
+    },
+    "unit": "fraction of pixels at the top code, signal ROI",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "rule 7, in the form this repo can currently support.  The rule asks for the fraction of STARS with a clipped core against the same detection list; the same physical star sits on a different pixel in every frame because the night dithered after each one, so matching a list across frames is registration and registration is build step 5.  This is the pixel-level count instead: a real measurement, and one that understates the star-level number in a knowable direction, since a clipped core occupies only a handful of pixels"
+  },
+  "sky_roi": {
+    "value": {
+      "corner": "bottom-right",
+      "roi": [
+        3264,
+        1584,
+        512,
+        512
+      ],
+      "signal_roi": [
+        1408,
+        568,
+        1024,
+        1024
+      ],
+      "corner_range_counts": 5.023321,
+      "margin_over_second_counts": 0.176858,
+      "margin_standard_error_counts": 1.157667
+    },
+    "unit": "x, y, w, h in mosaic pixels",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "17_sky_pair.ipynb",
+    "note": "gate 4.  The signal ROI is the box sessions 01, 02, 03 and 05 used, so a number from it is comparable with the bench.  The sky ROI was chosen once, as the darkest of the four inset corner boxes judged on the green modal level relative to each frame's own four-corner mean -- relative, because the sky moved by tens of counts across the night and a raw mean would rank on that instead -- and then never moved.  The margin over the runner-up is 0.18 counts against a standard error of 1.16, so the two darkest corners are NOT separable and which of them won is arbitrary: the rule picked the box, not the data.  Either measures the same sky.  Darkest to brightest is 5.02 counts"
+  }
+}
