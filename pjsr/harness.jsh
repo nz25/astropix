@@ -67,9 +67,45 @@ function writeResult( obj )
  * bisect the script. Written down, it arrives as {"ok": false, "error": ...}
  * in the file the caller is already reading.
  */
+/*
+ * The console we cannot see, retrieved anyway.
+ *
+ * `console.writeln` goes nowhere the calling process can read, which is the
+ * premise the whole folder is built on -- but `console.endLog()` returns the
+ * log as a **string** in this build, and a process that refuses to run writes
+ * its reason there and nowhere else. `ImageIntegration.executeGlobal()`
+ * returning a bare `false` with "Zero or insignificant PSF Signal Weight
+ * estimate" sitting in the log is exactly the case: without this the failure
+ * has no reason attached at all.
+ *
+ * Wrapped in its own try because logging must never be the thing that breaks
+ * a run, and truncated because a long integration's log is tens of kilobytes
+ * of per-file chatter and only its tail says what went wrong.
+ */
+#define LOG_TAIL 8000
+
+function beginLog()
+{
+   try { console.beginLog(); return true; } catch ( e ) { return false; }
+}
+
+function endLog()
+{
+   try
+   {
+      var L = console.endLog();
+      if ( L === undefined || L === null )
+         return null;
+      L = String( L );
+      return (L.length > LOG_TAIL) ? L.substring( L.length - LOG_TAIL ) : L;
+   }
+   catch ( e ) { return null; }
+}
+
 function report( body )
 {
    var out;
+   var logging = beginLog();
    try
    {
       out = body( readJob() );
@@ -79,6 +115,14 @@ function report( body )
    {
       out = { ok: false, error: e.toString(), stack: (e.stack || "").toString() };
    }
+   /*
+    * On both paths, and on the failure path it is the only diagnosis there
+    * is. A caller reading `{"ok": false}` with no log has to guess; with one
+    * it has the core's own words.
+    */
+   var log = logging ? endLog() : null;
+   if ( log )
+      out.log = log;
    try
    {
       writeResult( out );

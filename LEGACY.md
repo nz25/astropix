@@ -34,23 +34,6 @@ Treat every number as a prediction to falsify — there is no longer anywhere to
 
 ---
 
-## PixInsight — build step 5
-
-### L23. Subtracting two 16-bit unsigned images clips every negative difference
-**Claim.** For a bias pair this **halves the apparent read noise**, and it fails quietly — the
-number is plausible, just wrong. Do the subtraction in **32-bit float with a +0.5 pedestal**
-(`A - B + 0.5`, `rescale = false`, `truncate = false`): the pedestal moves the mean without
-touching the standard deviation and keeps the distribution inside [0,1].
-**Consumed by.** Build step 5, **contract 2** — the first thing it must verify, before any number
-it produces is believed. Contract 1 subtracts nothing, which is why this entry outlived its eight
-neighbours.
-**How to check.** Inject a known sigma into a synthetic pair and assert recovery. Not by
-inspecting a real bias pair: a halved read noise there looks exactly like a good camera.
-**Lands in.** `pjsr/NOTES.md`, whose *Still unchecked* section already states the claim, with the
-test alongside.
-
----
-
 ## Open questions inherited
 
 ### L31. The panel drifts while it warms, and nobody has watched it from cold

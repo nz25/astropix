@@ -2537,3 +2537,96 @@ brightest corner sits 5.0 counts above the darkest. That is the right bound for 
 wants the level sitting under the faint signal rather than the zodiacal sky in the abstract.
 
 **Two entries remain in the queue**, L23 and L31, and `LEGACY.md` stays.
+
+---
+
+## 2026-09-19 — Contract 2 is built, and L23 turns out to be two claims
+
+### D85. The pedestal is the fix; the 32-bit float is the belt
+L23 said a difference of two 16-bit unsigned images clips every negative value,
+halving the apparent read noise, and prescribed subtracting in 32-bit float about a
+`+0.5` pedestal with `rescale` and `truncate` off. It was checked the way the entry
+demanded — a known sigma injected into a synthetic pair, not a real bias inspected —
+and it **splits into two claims that are not equally load-bearing**.
+
+At a realistic bias-pair spread (sigma 20 ADC counts per frame, 28.3 in the
+difference, 0.7% of PixInsight's range), all eight combinations of format and
+truncation recover the injected sigma **exactly, provided the pedestal is there**.
+Every failure is a difference left centred on zero:
+
+| pedestal | format | truncate | result |
+|---|---|---|---|
+| 0.5 | any of four | any | exact |
+| 0.0 | f32 | false | exact — negatives survive in float |
+| 0.0 | f32 | **true** | **−41.6%** |
+| 0.0 | i16 | false | **+7063%** |
+| 0.0 | i16 | **true** | **−41.6%** |
+
+**−41.6% is the half-normal, and "halves" was an approximation.** Clipping a
+zero-centred normal at zero leaves `sqrt(1/2 − 1/(2π))` = 0.5838 of the spread.
+The engine and numpy agree to two decimals, and `tests/test_pixinsight.py` asserts
+the factor in pure numpy so the claim survives without a PixInsight to run.
+
+**The failure mode L23 did not name is the safe one.** Storing a negative in an
+unsigned 16-bit container with truncation off gives a sigma seventy times too large
+— unmistakable garbage. So `truncate = false` is safe twice: it prevents the quiet
+failure, and where it fails it fails loudly. `truncate = true` is dangerous
+precisely because it is quiet, **and it is the default**, alongside a sample format
+of `SameAsTarget`. A fresh `PixelMath` doing `a - b` lands exactly on the −41.6%.
+
+**Where the float does earn its place is a wide difference.** At sigma 600 counts
+per frame, 3 sigma exceeds the 0.5 pedestal and 0.8% of pixels go below zero
+anyway; only f32 with truncation off stays exact, against −1.4% and −2.5% for the
+others. No bias pair is ever that wide, so the prescribed configuration is kept in
+full — but the reasoning is now recorded rather than inherited.
+
+**What was rejected.** Publishing a read-noise constant from this. Contract 2
+measures the *arithmetic*, not the sensor; every read noise in this repo already
+comes from a pair difference computed in numpy, and none of it moved.
+
+### D86. The console is retrievable after all, and it is what found the rest
+`pjsr/NOTES.md` has opened since contract 1 with "PixInsight has no console, and
+everything follows from that". That premise stands — console output still reaches
+no caller — but **`console.endLog()` returns the log as a string in this build**,
+so `harness.jsh` now wraps every run in `beginLog()`/`endLog()` and attaches the
+tail to the result on both paths.
+
+**It was not a refinement; it was the only way to diagnose the failure that had
+stopped the work.** `ImageIntegration.executeGlobal()` returned a bare `false`
+under every combination of rejection, normalization and stack size, across three
+launches, with no message anywhere. The reason was in the console: `weightMode`
+defaults to **PSF Signal Weight**, which weights each frame by its detected stars,
+and a synthetic frame has none — "Zero or insignificant PSF Signal Weight
+estimate". So `integrate.js` states its weighting and never inherits it.
+
+Two smaller findings came the same way and are in `NOTES.md`: **three source
+images is a hard floor** for `ImageIntegration`, so the N=2 rung of a doubling
+ladder cannot be measured through this engine at all — which matters, because
+session 03's `eta_comb` ladder on darks has one. And **`for...in` over a process
+prototype is an access violation** that takes the core down; probe by name.
+
+### D87. Averaging loses nothing, so `eta_comb` is a measurement of the rejection
+Thirty-two synthetic frames, sigma 20 ADC counts injected, ten integrations in one
+launch. With rejection off the engine reaches the ideal `sqrt(N)` to within **0.2%
+at every rung** from 3 to 32 — scatter on the estimate, not a loss. With Winsorized
+sigma clipping at 4.0/3.0 it costs **7.3% at N=3, falling to 1.5% at N=32**.
+
+**That settles what `eta_comb` is a number about.** It is not the arithmetic, which
+is exact. It is the combination — the rejection algorithm, its thresholds, the
+weighting, and, once frames are registered, the resampling kernel. MISSION already
+required its provenance to record the stack size and the rejection settings; this
+is the measurement that shows why, since the same setting costs five times more at
+N=3 than at N=32.
+
+These frames have no structure, no registration and no outliers, so the rejection
+column is the **pure cost of rejecting when there is nothing to reject**. On real
+frames it buys something back, and that difference is contract 3's to measure.
+
+### D88. L23 leaves the queue; `LEGACY` goes 2 → 1
+| entry | verdict | where it landed |
+|---|---|---|
+| L23 subtracting two 16-bit unsigned images clips every negative difference | **confirmed, and decomposed**: the clipping is real and costs 0.584 rather than 0.5, but the pedestal alone prevents it at any spread a bias pair has; the float is for a wide difference. A fourth failure mode, unsigned wrap, was not in the claim | `pjsr/NOTES.md` §11, D85; the factor asserted in `tests/test_pixinsight.py` |
+
+`pjsr/NOTES.md` has no *Still unchecked* section any more: L23 was the last
+inherited claim about that folder. **One entry remains in `LEGACY.md`**, L31, and it
+belongs to the bench light rather than to anything in build step 5.

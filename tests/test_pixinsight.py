@@ -336,3 +336,78 @@ def test_the_harness_writes_on_the_failure_path():
     source = (pi.scripts_dir() / "harness.jsh").read_text(encoding="utf-8")
     assert "catch" in source and "writeResult" in source
     assert '"ok": false' in source or "ok: false" in source
+
+
+# --------------------------------------------------------------------------
+# contract 2: the difference, and what clipping does to it (L23)
+# --------------------------------------------------------------------------
+
+def test_sigma_from_pair_undoes_the_root_two():
+    """Two independent frames differenced have twice the variance of one."""
+    rng = np.random.default_rng(20260919)
+    a = rng.normal(100.0, 7.0, 400_000)
+    b = rng.normal(100.0, 7.0, 400_000)
+    got = pi.sigma_from_pair((a - b).std(ddof=1))
+    assert abs(got / 7.0 - 1.0) < 0.01
+
+
+def test_a_clipped_difference_reads_low_by_a_known_factor():
+    """L23's trap, priced -- and this is the test the claim asked for.
+
+    Inject a known sigma, clip the difference at zero the way an unsigned
+    container does, and assert what comes back.  A difference of two frames
+    from one distribution is centred on zero, so clipping keeps a half-normal:
+    its second moment is half the original variance and its mean is no longer
+    zero, which leaves a standard deviation of `sqrt(1/2 - 1/(2*pi))` -- about
+    **0.58** of the truth.  L23 said "halves" and 0.58 is what "halves" turns
+    out to mean.
+
+    The number matters more than the direction.  0.58 is not an absurd value
+    for a read noise, which is precisely why this cannot be caught downstream:
+    on a real bias pair a result 42% low looks like a better camera, not like
+    a broken subtraction.
+    """
+    rng = np.random.default_rng(20260919)
+    sigma = 20.0
+    d = rng.normal(0.0, sigma * np.sqrt(2.0), 2_000_000)
+
+    honest = pi.sigma_from_pair(d.std(ddof=1))
+    clipped = pi.sigma_from_pair(np.clip(d, 0.0, None).std(ddof=1))
+
+    assert abs(honest / sigma - 1.0) < 0.01
+    expected = np.sqrt(0.5 - 1.0 / (2.0 * np.pi))
+    assert abs(clipped / sigma - expected) < 0.01
+    assert 0.55 < clipped / sigma < 0.62        # "halves", measured
+
+
+def test_the_diff_pedestal_is_the_middle_of_the_container():
+    """Half of [0, 1], so a difference of any sigma the pair can have runs off
+    neither end.  Any other value spends headroom on one side for nothing."""
+    assert pi.DIFF_PEDESTAL == 0.5
+
+
+# --------------------------------------------------------------------------
+# contract 2: combination efficiency
+# --------------------------------------------------------------------------
+
+def test_eta_comb_is_one_for_an_ideal_stack():
+    assert abs(pi.eta_comb(10.0, 10.0 / math.sqrt(16), 16) - 1.0) < 1e-12
+
+
+def test_eta_comb_is_below_one_for_a_real_stack():
+    """A stack that only reached sqrt(12) of noise reduction where sqrt(16) was
+    available has an efficiency of sqrt(12/16)."""
+    got = pi.eta_comb(10.0, 10.0 / math.sqrt(12), 16)
+    assert abs(got - math.sqrt(12.0 / 16.0)) < 1e-12
+    assert got < 1.0
+
+
+def test_eta_comb_refuses_a_stack_of_one():
+    """`sqrt(1)` is 1 and the arithmetic would return something, which is worse
+    than raising: a stack of one frame has no combination to be efficient at."""
+    for n in (1, 0, -3):
+        try:
+            pi.eta_comb(10.0, 10.0, n)
+        except ValueError:
+            continue
+        raise AssertionError(f"eta_comb accepted a stack of {n}")

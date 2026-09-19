@@ -215,3 +215,66 @@ def pi_path(p):
     right.
     """
     return str(Path(p).resolve()).replace(os.sep, "/")
+
+
+# --------------------------------------------------------------------------
+# contract 2: what a difference and a stack are worth
+# --------------------------------------------------------------------------
+
+# The pedestal PixelMath adds to a difference so that the negative half of it
+# survives.  Half of [0, 1] is the only value that is safe for *any* sigma the
+# difference can have without running off either end, and it is subtracted back
+# out by nothing: it moves the mean and leaves the standard deviation alone,
+# which is the whole trick (L23).
+DIFF_PEDESTAL = 0.5
+
+
+def sigma_from_pair(sigma_diff):
+    """Per-frame sigma from the sigma of a difference of two frames.
+
+    Two frames drawn from the same distribution and subtracted give a
+    difference whose variance is the *sum* of theirs, so `sigma_diff` is
+    `sigma * sqrt(2)` and the frame's own sigma is this.  It is the estimator
+    every bias pair in this project uses, and it is the reason a pair
+    difference is blind to anything fixed: whatever is common to both frames
+    cancels before the variance is taken.
+
+    **It is also the number L23's trap halves.**  A difference of two unsigned
+    16-bit images clips every negative value at zero, and a difference centred
+    on zero is negative half the time -- so the surviving distribution is a
+    half-normal, whose standard deviation is smaller by a factor that looks
+    entirely plausible on a real bias.  Nothing in the arithmetic here can
+    detect that; it has to be prevented upstream, by subtracting in 32-bit
+    float about `DIFF_PEDESTAL` with truncation off.
+    """
+    return float(sigma_diff) / np.sqrt(2.0)
+
+
+def eta_comb(sigma_single, sigma_stack, n):
+    """Combination efficiency: what a real stack achieved against the ideal.
+
+    Averaging `n` independent frames divides the noise by `sqrt(n)`, and no
+    stack reaches that.  `eta_comb` is the ratio of the ideal to the achieved
+    -- 1.0 for a perfect stack, below 1.0 for every real one -- and MISSION's
+    model carries it as the factor between `sqrt(N) * SNR_sub` and the SNR the
+    integrated image actually has.
+
+    What it is *not* is a property of the camera.  It is a property of the
+    combination: the rejection algorithm and its thresholds, the normalisation,
+    the weighting, and -- once frames are registered -- the resampling kernel.
+    Two of those change it by more than the sensor ever could, which is why
+    MISSION requires its provenance to record the stack size and the rejection
+    settings it was measured under.  A number quoted without them is not a
+    measurement of anything.
+
+    Measured on unregistered frames it is an **upper bound**, because the one
+    term that is guaranteed to cost something -- resampling a rotated, dithered
+    frame onto a common grid -- has been left out by construction.  The gap
+    between that bound and the same measurement on registered lights *is* the
+    resampling loss, and there is no other way to get at it.
+    """
+    n = int(n)
+    if n < 2:
+        raise ValueError(f"a stack of {n} frames has nothing to combine")
+    ideal = float(sigma_single) / np.sqrt(n)
+    return ideal / float(sigma_stack)

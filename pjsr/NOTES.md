@@ -27,6 +27,16 @@ on a `DataType_ByteArray` error that could have arrived as one line of JSON.
 
 `.jsh` headers are outside that rule and outside the glob. They are included, not run.
 
+**But the console can be retrieved from inside the script, and it is.**
+`console.endLog()` returns the log as a **string** in this build, so
+`harness.jsh` wraps every run in `beginLog()`/`endLog()` and attaches the tail to
+the result on both paths. That is not a refinement: a process can refuse to run
+and return a bare `false`, writing its reason to the console and nowhere else —
+`ImageIntegration` does exactly this — and without the log such a failure has no
+diagnosis attached at all. Truncated to the last 8 kB, because a long
+integration's log is tens of kilobytes of per-file chatter and only the tail says
+what went wrong.
+
 ## 2. The command line
 
 ```
@@ -160,6 +170,157 @@ character. `pixinsight.pi_path` does the conversion once, so no script has to ge
 
 ---
 
+## 10. `for...in` over a process prototype takes the core down
+
+Enumerating the properties of a process instance or its prototype with a
+`for ( var k in P )` loop is an **access violation** in 1.9.2 — `C0000005`,
+invalid memory read, with a fifty-frame backtrace through `mozjs-24.dll`. It is
+not a thrown exception that a `try` can catch; it kills the process.
+
+Probe by *name* instead: `("truncate" in P)`, or read `P[name]` inside a `try`
+for a list of names you already have. That is what the API probe did in the end,
+and it costs nothing.
+
+This is also the best evidence so far that `report()` earns its place. The crash
+arrived as `{"ok": false, "error": "Access violation…"}` in the result file, with
+the PJSR line number of the offending loop — not as a process that vanished.
+
+## 11. PixelMath's defaults are exactly the trap, and the pedestal is the fix
+
+**A fresh `PixelMath` has `truncate = true` and `newImageSampleFormat =
+SameAsTarget`.** So the obvious way to subtract two 16-bit frames — new instance,
+`a - b`, execute — is the failing configuration, with nothing to warn you.
+
+L23 said to subtract in 32-bit float with a `+0.5` pedestal, `rescale` and
+`truncate` off. That was checked here the way the entry asked, by injecting a
+known sigma into a synthetic pair rather than by inspecting a real bias, and it
+**splits into two claims that are not equally load-bearing**.
+
+At a realistic bias-pair spread — sigma 20 ADC counts per frame, so 28.3 counts
+in the difference, which is 0.7% of PI's range:
+
+| pedestal | format | truncate | sigma of the difference | |
+|---|---|---|---|---|
+| 0.5 | f32 | false | **exact** | the prescribed fix |
+| 0.5 | f32 | true | **exact** | |
+| 0.5 | i16 | false | **exact** | |
+| 0.5 | i16 | true | **exact** | |
+| 0.0 | f32 | false | **exact** | negatives survive in float |
+| 0.0 | f32 | true | **−41.6%** | the trap |
+| 0.0 | i16 | false | **+7063%** | unsigned wrap |
+| 0.0 | i16 | true | **−41.6%** | the trap |
+
+**The pedestal is doing all the work; the 32-bit float is doing none of it.** At
+this spread every format and both truncation settings agree exactly once the
+difference is moved off zero, and every failure is a difference that was left
+centred on zero.
+
+**−41.6% is the half-normal, and it is not "half".** Clipping a zero-centred
+normal at zero leaves a distribution of standard deviation
+`sqrt(1/2 − 1/(2π))` = **0.5838** of the original. L23 said "halves"; 0.584 is
+what that turns out to mean, and the engine and numpy agree on it to two
+decimals. The reason it cannot be caught downstream is that a read noise 42% low
+looks like a better camera.
+
+**The wrap is the failure mode L23 did not name, and it is the safe one.**
+Storing a negative in an unsigned 16-bit container with truncation off gives a
+sigma seventy times too large — unmistakable garbage. That makes
+`truncate = false` safe in a second sense: where it fails, it fails loudly.
+`truncate = true` is the dangerous setting precisely because it is the quiet one,
+and it is the default.
+
+**Where 32-bit float does earn its place is a wide difference.** At sigma 600
+counts per frame — 846 in the difference, 21% of PI's range — 3 sigma exceeds the
+0.5 pedestal and 0.8% of pixels go below zero anyway. Only `f32` with truncation
+off stays exact there; `i16` costs 2.5% and truncation costs 1.4%. No bias pair
+is ever that wide, so this is the belt rather than the braces — but it is why the
+prescribed configuration is the one to use, rather than the pedestal alone.
+
+**Rescale is off in every arm and is a separate hazard.** It maps the result's
+own range onto [0, 1], which changes the standard deviation by a factor nobody
+asked for and which depends on the data.
+
+## 12. ImageIntegration: the cache is off, and the settings are read back
+
+`useCache` defaults to **true**, and a ladder is exactly the shape a cache keyed
+on inputs gets wrong: the same file paths, run after run, under different
+settings. `integrate.js` sets it false.
+
+Every setting in the result is read back **off the process instance after
+execution**, never echoed from the job. What a process was asked to do and what
+it did are the same thing right up until they are not, and `eta_comb`'s
+provenance — which MISSION requires to record the stack size and the rejection
+settings — cannot rest on the request.
+
+Defaults worth knowing: `rejection = NoRejection` (0), `normalization =
+AdditiveWithScaling` (3), `combination = Average` (0), `weightMode = 7`,
+`sigmaLow = 4`, `sigmaHigh = 3`. The rejection enum has no `ESD` in this build.
+
+**Three source images is a hard floor.** Fewer and `executeGlobal` refuses with
+"This instance of ImageIntegration defines less than three source images",
+whatever the rejection setting. So the **N=2 rung of a doubling ladder cannot be
+measured through this engine at all** — which matters, because session 03's
+`eta_comb` ladder on darks has one. A ladder through PixInsight starts at 3.
+
+**A run that fails reports itself instead of throwing the batch away.** Each
+entry in `runs` carries its own `ok`, and a caller wanting a clean ladder checks
+every one. The three-image floor was found exactly this way, and losing eight
+good rungs to it would have cost another launch to learn the same thing.
+
+## 13. `weightMode` defaults to PSF Signal Weight, and that refuses a starless frame
+
+This is the one that cost the most, and it arrives as a bare `false`.
+
+`weightMode` defaults to **7, PSF Signal Weight**: each frame weighted by the
+signal of the stars detected in it. On a star field that is the right
+instrument. On anything **without** stars — a bias, a dark, a flat, or a
+synthetic frame — there are no valid PSF samples, and `executeGlobal()` returns
+`false` having logged:
+
+```
+** Warning: No valid PSF signal samples (channel 0).
+*** Error: <file> (channel #0): Zero or insignificant PSF Signal Weight estimate.
+```
+
+Nothing reaches the caller but the `false`. It is what section 1's log capture
+was added for, and it stayed undiagnosed across three launches without it.
+
+**So `integrate.js` always states the weighting and never inherits it.**
+`dont_care` weights every frame equally, which is what an efficiency measurement
+wants regardless: `eta_comb` against the ideal `sqrt(N)` is *defined* on equally
+weighted frames, and unequal weighting is one of the costs it exists to measure
+rather than something it should have applied to itself. `evaluateSNR` is off for
+the same reason — it runs even when nothing weights by it, and warns per file.
+
+## 14. The engine itself is exact, and rejection is what `eta_comb` measures
+
+Thirty-two synthetic frames, sigma 20 ADC counts injected, integrated in one
+launch. The single frame measures 20.0042 counts, and `eta_comb` is the ideal
+`sigma/sqrt(N)` over what the stack achieved:
+
+| N | no rejection | Winsorized sigma clip (4.0 / 3.0) |
+|---|---|---|
+| 3 | 0.9995 | 0.9269 |
+| 4 | 0.9999 | 0.9679 |
+| 8 | 0.9983 | 0.9624 |
+| 16 | 0.9994 | 0.9753 |
+| 32 | 1.0003 | 0.9851 |
+
+**Averaging loses nothing.** With rejection off, the engine hits `sqrt(N)` to
+within 0.2% at every rung — noise on the estimate rather than a loss. Anything
+below 1.0 in a real `eta_comb` is therefore the *combination*, never the
+arithmetic.
+
+**Rejection costs 1.5% to 7.3%, and the cost shrinks as the stack grows.**
+Winsorized clipping at 4.0/3.0 discards real pixels, and at N=3 there are too few
+left for the survivors to average well. That is the whole reason MISSION requires
+`eta_comb`'s provenance to record the stack size and the rejection settings: the
+number is a strong function of both, and quoting it without them says nothing.
+
+These are synthetic frames with no structure, no registration and no outliers to
+reject, so the rejection column is the *pure cost* of rejecting when there is
+nothing to reject. On real frames it buys something back.
+
 ## The scripts
 
 | script | what it does |
@@ -167,11 +328,10 @@ character. `pixinsight.pi_path` does the conversion once, so no script has to ge
 | `harness.jsh` | job in, result out, report on both paths. Included by every script. |
 | `probe.js` | measures nothing. Core version, instance slot, working directory, job round-trip with types, and whether a real frame opens. Run it after every upgrade. |
 | `frame_stats.js` | contract 1. Opens one CFA frame, splits it with `SplitCFA`, reports min/max/mean/median/std/MAD for the mosaic and each plane, plus both noise estimators. Compares nothing — the comparison is the notebook's, because a referee that knew the answer we wanted would not be one. |
+| `pair_diff.js` | contract 2. `a - b + pedestal` through PixelMath, under settings the job states rather than the script chooses — which is what lets it demonstrate the unsafe ones. Reports the difference's statistics and a census of where its pixels sit relative to 0 and 1. Many arms per launch. |
+| `integrate.js` | contract 2. Integrates a list of frames with `ImageIntegration` and reports the result, its noise, and every setting read back off the instance. Computes no efficiency: `eta_comb` is the notebook's arithmetic. Many runs per launch. |
 
 ## Still unchecked
 
-**Pair subtraction in 16-bit clips every negative difference, and it fails quietly** — for a bias
-pair it halves the apparent read noise, and the number stays plausible. The fix is to subtract in
-32-bit float with a `+0.5` pedestal (`A - B + 0.5`, `rescale = false`, `truncate = false`), which
-moves the mean without touching the standard deviation and keeps the distribution inside [0, 1].
-Not checked here, because nothing in contract 1 subtracts. **Due with contract 2** (L23).
+Nothing. L23 was the last inherited claim about this folder and section 11 is its
+verdict.
