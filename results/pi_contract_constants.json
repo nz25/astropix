@@ -1,0 +1,147 @@
+{
+  "referee": {
+    "value": {
+      "application": "PixInsight",
+      "version": "1.9.2",
+      "build": 1632,
+      "command": "PixInsight.exe -n --automation-mode --run=<abs path> --force-exit"
+    },
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "the build every number in this file was measured against, and the command line that reached it.  A different build is a different referee; re-run pjsr/probe.js after any upgrade.  The flags are not decoration -- without -n PixInsight yields to an already running instance and the run is handed to whatever GUI session is open.  See pjsr/NOTES.md"
+  },
+  "unit_scale": {
+    "value": 4095.9375,
+    "unit": "ADC counts per unit PixInsight value",
+    "uncertainty": 0.0,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "PixInsight normalises by the CONTAINER maximum 65535, not by full scale 4095 and not by the sensor's saturation level 65520.  This project's unit is stored/16, so the composed factor is 65535/16 = 4095.9375.  Verified on both frames: PI's reported median times 65535 is our reader's stored median, exactly.  Using 4095 is wrong by 0.023%, which is small enough to pass for rounding -- which is why it is published as a constant rather than left as a remark"
+  },
+  "cfa_order": {
+    "value": [
+      "R",
+      "G2",
+      "G1",
+      "B"
+    ],
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "the plane each SplitCFA output holds, in output order CFA0..CFA3.  PI enumerates the 2x2 tile in (x, y) with y fastest and its first coordinate is the column, so in numpy (row, col) terms THE TWO GREENS ARE TRANSPOSED against a naive RGGB reading; R and B sit on the diagonal and are unmoved.  Verified on the minimum, which is one pixel and cannot hide a displacement.  The medians agree under BOTH mappings on both frames, so a median comparison would have passed the wrong mapping"
+  },
+  "split_agreement": {
+    "value": {
+      "max_abs_min_diff": 0.0,
+      "max_abs_mad_diff": 2.01e-07,
+      "max_abs_std_diff_ppm": 8.78e-07
+    },
+    "unit": "ADC counts; ppm for the last",
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "contract 1's precondition: astropix.spatial.split and PixInsight's SplitCFA return the same pixels.  Minima and MADs agree exactly; the standard deviations agree to float noise once ddof=1 is carried on our side, because pcl::Variance divides by n-1 where numpy divides by n.  At 2,073,600 px per plane that correction is 0.24 ppm and could not have been established here -- it is proved at small n in tests/test_pixinsight.py and carried in pixinsight.matching_stats"
+  },
+  "noise_estimators": {
+    "value": {
+      "bias": {
+        "R": {
+          "mrs": 0.994114305,
+          "ksigma": 0.984079935,
+          "ours": 1.4826,
+          "pi_std": 1.089739776
+        },
+        "G2": {
+          "mrs": 0.995945691,
+          "ksigma": 0.986264653,
+          "ours": 1.4826,
+          "pi_std": 1.093876688
+        },
+        "G1": {
+          "mrs": 0.996014607,
+          "ksigma": 0.987424427,
+          "ours": 1.4826,
+          "pi_std": 1.099125414
+        },
+        "B": {
+          "mrs": 0.993583145,
+          "ksigma": 0.983956777,
+          "ours": 1.4826,
+          "pi_std": 1.097126623
+        }
+      },
+      "light": {
+        "R": {
+          "mrs": 3.001818513,
+          "ksigma": 3.301206248,
+          "ours": 4.4478,
+          "pi_std": 75.622915981
+        },
+        "G2": {
+          "mrs": 3.043318457,
+          "ksigma": 3.276837148,
+          "ours": 4.4478,
+          "pi_std": 72.190297123
+        },
+        "G1": {
+          "mrs": 3.051477281,
+          "ksigma": 3.277469168,
+          "ours": 4.4478,
+          "pi_std": 72.224537538
+        },
+        "B": {
+          "mrs": 2.44755869,
+          "ksigma": 2.551701953,
+          "ours": 2.9652,
+          "pi_std": 60.626504523
+        }
+      }
+    },
+    "unit": "ADC counts",
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "contract 1's result: PI's multiresolution-support and k-sigma noise estimates, our 1.4826 x MAD, and PI's plain standard deviation, per CFA plane, on one bias (session 02, gain 200, -10 C) and one light (session 06, 120 s, -20 C).  Measured on the frames in hand and not extrapolated: two frames say what two frames can say"
+  },
+  "noise_ordering": {
+    "value": {
+      "measured": {
+        "bias": [
+          "ksigma < MRS < ours"
+        ],
+        "light": [
+          "MRS < ksigma < ours"
+        ]
+      },
+      "ours_over_mrs": {
+        "min": 1.21149291,
+        "max": 1.49217507
+      },
+      "predicted": "MRS < ours < ksigma",
+      "verdict": "refuted"
+    },
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "the inherited prediction was MRS < ours < ksigma, with ours sitting between PI's two estimators.  REFUTED on both frames and all eight planes: ours is above BOTH, by 1.21 to 1.49x, and PI's two land within 10% of each other.  The mechanism is not rejection -- our MAD and PI's MAD agree to 2e-7 counts -- it is the quantisation grid below.  The estimators can only disagree where there is structure to reject, so the ORDER of PI's two is a statement about these two frames; the position of ours above them is not"
+  },
+  "our_sigma_quantisation": {
+    "value": 1.4826,
+    "unit": "ADC counts",
+    "uncertainty": null,
+    "source_frames": 2,
+    "measured_on": "2026-09-19",
+    "notebook": "19_pi_contract.ipynb",
+    "note": "the step our estimator can land on.  A MAD over integer data is an integer or a half integer, so 1.4826 x MAD is quantised -- and read noise on this sensor is about one count at gain 0 and one at gain 200, so the grid is coarse where it matters most.  Not a disagreement with PixInsight: PI's MAD and ours agree to 2e-7 counts.  Independently visible in results/bias_sweep.csv, where R_mad takes a handful of values across 77 gains while R_sd moves smoothly -- there on a grid of 1.0483, smaller by sqrt(2) because it is a pair-difference MAD.  NO PUBLISHED CONSTANT IN THIS REPO IS AFFECTED: read noise is published from pair differences and from the temporal spread across a bias block, both of which sidestep the grid.  What is affected is the frame index's `sigma` column, which describes a frame and is not evidence about the sensor, and which reads high wherever the spread is a few counts.  PI's MRS is not quantised this way, which is what makes it useful as a referee"
+  }
+}
