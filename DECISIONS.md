@@ -2630,3 +2630,171 @@ frames it buys something back, and that difference is contract 3's to measure.
 `pjsr/NOTES.md` has no *Still unchecked* section any more: L23 was the last
 inherited claim about that folder. **One entry remains in `LEGACY.md`**, L31, and it
 belongs to the bench light rather than to anything in build step 5.
+
+---
+
+## 2026-09-19 — The model lands, and the line budget goes
+
+### D89. `model.py` is written, and it has no `optimal_t`
+The module MISSION exists to produce. Three parts: a **provenance gate** that loads
+`results/*.json` and refuses a constant missing any of the six fields, a published null (raising
+*with its note*, which is nearly always the instruction for what to use instead), or a name two
+files disagree about — `setpoint` is the real case, −10 C from the bench sessions and −20 C from
+the cold one, both correct. Then the two gain-dependent terms, and then the model itself.
+`tests/test_model.py` loads every committed JSON file through the gate, so a notebook that
+publishes without provenance is caught by the suite rather than by a wrong answer later.
+
+**There is no interior optimum in `t`, and the module is shaped around that.** Differentiating
+the SNR at fixed wall clock, the stationary condition reduces to `t(R² + A·t_dead) + 2R²·t_dead
+= 0`, whose left side is strictly positive for every positive `t`. SNR climbs monotonically with
+sub length and flattens toward an asymptote; it never turns over. `eta_comb` pushes the same way,
+since a longer sub means fewer subs and this rig's combination efficiency falls with stack size.
+
+So a function called `optimal_t` would have had to invent a stopping rule to return anything at
+all. What the model owes the decision instead is **how much of the asymptote a given `t` reaches**
+(`efficiency`) and **where the star-colour ceiling bites** (`t_max_colour`); the gap between them
+is MISSION's Pareto curve. A test fails if the SNR ever turns over.
+
+**`efficiency` factors into two fractions, and the decomposition is the finding.**
+`eff(t) = sqrt( t/(t+t_dead) · A·t/(A·t+R²) )` — the fraction of the night that is exposing,
+times the fraction of the noise that is sky and thermal rather than read. Run on the ladder's own
+gain of 252 with this project's published constants, the second factor is **0.974 at 15 s**:
+
+| t (s) | exposing | sky-dominated | efficiency |
+|---|---|---|---|
+| 15 | 0.3228 | 0.9739 | 0.5607 |
+| 30 | 0.4881 | 0.9868 | 0.6940 |
+| 60 | 0.6560 | 0.9934 | 0.8072 |
+| 120 | 0.7923 | 0.9967 | 0.8886 |
+| 240 | 0.8841 | 0.9983 | 0.9395 |
+| 480 | 0.9385 | 0.9992 | 0.9683 |
+
+**Read noise is already beaten at the shortest rung on the ladder.** The whole sub-length
+question on this rig at this gain is `t_dead`, not `R²/t` — which is not what MISSION's own text
+expects ("the whole sub-exposure question lives in `R²/t`"), and is a direct consequence of D83's
+31.5 s of overhead. 90% of the asymptote needs 136 s, 95% needs 295 s, 99% needs 1570 s.
+The prediction is provisional until the constants it eats are published properly — see D90.
+
+**`eta_comb` refused to extrapolate and that is the gate working.** A 15 s sub over a six-hour
+night is N=464, and session 03's ladder stops at 128. The short rungs cannot be scored until
+`eta_comb` is measured on registered lights, which is contract 3's job.
+
+**No FPN term was added**, though `fpn_term_present` is True and `prnu` is 1.02% of signal. A term
+earns its place by changing a decision (MISSION) and nothing has yet shown this one does. Where it
+will show up if it does is `eta_comb`, which is where noise that fails to average away is counted.
+
+### D90. Two constants the model needs are not published, and one notebook will fix it
+`R(gain)` lives in `bias_sweep.csv` and `ptc_gain.csv` — sweeps, not provenanced JSON — so the
+model cannot legally consume it, and the table above was produced by reaching into the CSV by
+hand. `linear_to_at_least` stops at gain 200 while the validation ladder sits at 252, so the
+star-colour ceiling has no number there.
+
+**Rejected: letting `model.py` read the sweep CSVs directly.** Cheap, and it would put a hole in
+the provenance rule on the first day that rule had teeth.
+
+**Chosen:** a numbered notebook assembles `results/model_constants.json` from the published
+sweeps, citing the notebook that measured each. It is the first `results/` file derived from
+other `results/` files rather than from frames, and its provenance stanzas name the originating
+notebook rather than itself.
+
+### D91. The library line budget is removed
+It was 1000, then 2000, and both figures were set before the modules they were meant to bind
+existed — a tripwire that fired hardest on code nobody had seen yet. With `model.py` written the
+package stands at 1850 lines, and the remaining work is contract 3, which lands in
+`pixinsight.py`. Re-raising the number a third time would be admitting it was never measuring
+anything.
+
+**What it was trying to buy is bought by the rule next door**: a measurement, a threshold or a
+correction never moves into a notebook, so the reasoning sits beside the code. Counting lines
+while most of them are docstring was measuring the wrong thing. `CLAUDE.md`'s *Library budget*
+section is now *Library shape*, and what replaces the count is taste stated so it can be checked:
+concise, idiomatic Python — the shortest version a fluent reader would write, not the shortest
+possible. Long docstrings welcome, long functions not. The six-module ceiling and the two
+invariants that keep the modules apart are untouched.
+
+---
+
+## 2026-09-19 — The constants assemble, and the sub-length question turns out to be about dithering
+
+### D92. `model_constants.json` is published, and the assembler signs only its own work
+Notebook `23` wrote `results/model_constants.json`: **11 stanzas, 10 measured and 1 published null
+with a reason.** Eight are moved whole from the notebooks that measured them, provenance intact,
+with a bracketed prefix added to each note saying which term of the model it feeds. Two the
+notebook wrote itself and signed. One is assembled:
+
+**`read_noise_counts` is the point of the exercise.** `R(gain)` existed only in `bias_sweep.csv`,
+and a sweep row carries no provenance, so the model could not legally eat it. It is now 62 gains
+from 0 to 450 at offset 15, **and its `notebook` field says `03_bias_sweep.ipynb`, not the
+assembler.** The chain of custody runs back to the frames; an assembler that signed its own work
+would have broken it at the last step. 1,240 frames, per-gain standard error carried as the
+uncertainty.
+
+**The gain-domain rule was applied at the boundary, not to the source.** Session 01's rows above
+450 stay in `bias_sweep.csv` where it left them — descoping decides what is characterised, never
+what is deleted — they simply do not become a constant.
+
+**One record decision was declined rather than made by default.** `g` is published twice: session
+02's PTC fit and session 04's restatement after it found offset-state contamination in session
+02's bias groups. Session 04's own note says it does not supersede and calls it a record decision.
+So `23` moved the PTC table and published `system_gain_restated_move_pct` beside it — the size of
+the disagreement, visible in the file the model reads, in a form nothing can eat by accident. The
+two agree to better than 0.2% everywhere except **gain 300 (−1.16%) and gain 450 (+1.36%)**.
+**The decision is still open.**
+
+**The gap at the validation gain is a null, not an omission.** `linear_to_at_least` was measured at
+gains 50, 100 and 200; the NGC 7000 ladder was shot at 252. Deliberately not interpolated: that
+constant is the last rung a ladder *proved* straight, at a resolution of one rung, and a value
+between two gains would be a guarantee no frame supports. `linear_to_at_ladder_gain` is published
+null with that reason, so the consumer raises and quotes it rather than returning a wrong answer.
+
+### D93. Above the HCG threshold, dead time is the whole sub-length question
+Notebook `24` reads the file back through `model.py` and runs the model on published constants
+alone for the first time. Three things fall out, and none of them is the received framing.
+
+**Read noise in electrons is a step function, and the step is at gain 200.** It falls 3.448 →
+0.992 e⁻ across ten gain units, a factor of 3.47, and then only 0.992 → 0.666 over the remaining
+two hundred and fifty. That step is why `model.g_at` interpolates between measured rungs instead
+of using the fitted gain law, which would smear a discontinuity the sensor really has.
+
+**At a 60 s sub, dead time costs 19.01% of the asymptotic SNR at every gain. Read noise adds:**
+
+| gain | 0 | 50 | 100 | 190 | 200 | 300 | 450 |
+|---|---|---|---|---|---|---|---|
+| read-noise cost | 13.34% | 9.10% | 7.00% | 4.76% | **0.42%** | 0.28% | 0.19% |
+
+Above the threshold the read term is gone and **`t_dead` is the only thing left**. MISSION's own
+text says the whole sub-exposure question lives in `R²/t`; on this rig, at this sky, above HCG, it
+does not. That sentence in MISSION is now a hypothesis this project has tested and found
+conditional — true below the threshold, false above it.
+
+**And `t_dead` is an observing choice, not a sensor property.** D83's 31.5 s is what dithering
+after *every* frame costs. Dithering every second frame instead lifts a 60 s sub from 0.807 to
+0.887 of the asymptote — **worth more than every gain change above HCG put together**, and it is a
+setting in the ASIAIR rather than a purchase or a bench night.
+
+### D94. Gain 200 dominates everything above it, and that is not a trade
+The star-colour constraint makes the longest unclipped sub proportional to `g`. Above the
+threshold, efficiency at 60 s moves 0.8065 → 0.8084 from gain 200 to 450 — **0.24%** — while `g`
+falls by a **factor of 19**. So there is no point between 200 and 450 that is better at anything:
+it is Pareto *dominance*, not a Pareto curve.
+
+MISSION's second assumption said "gain nearly cancels" and expected that to make gain a dull axis.
+It does, but only above the threshold, and the reason it matters is the opposite of dull: it means
+the gain choice is settled by the *other* constraint, and the answer is the lowest gain above HCG.
+Below 200 a real trade remains — read noise still costs 4.8% at gain 190 and 13.3% at gain 0,
+against longer unclipped subs to pay for it — but nothing recommends observing there.
+
+**What this is not.** It is not a ranking of the exposure ladder, and `24` says so in its own
+purpose. `eta_comb` in this file was measured on **bias stacks** and stalls against a fixed-pattern
+floor, falling to 0.536 by N=128; its own note calls it an upper bound on the real loss. A
+six-hour night of 15 s subs is N=464, past the end of that ladder, and `model.eta_at` refused to
+extrapolate at four of the six rungs — the gate working, not a gap in it. Contract 3 is the
+blocker, and it is now the only one for the SNR half of the model.
+
+### D95. `pedestal_counts` joins `model.py`
+`pedestal_fit` is published as `A + B·10**(gain/200)` per conversion branch, and the exponent is
+not a fitted shape: the control is in units of 0.1 dB, so the amplifier's voltage gain is
+`10**(dB/20)` and the analogue part of the pedestal rides on it exactly. Two branches because `B`
+falls from 2.67 to 0.97 across the threshold — one fit over the whole domain would be a curve
+through two different sensors. Asserted in `tests/test_model.py`, including that the branch change
+is a step *down*, since a continuous pedestal there would mean the split was an artefact.

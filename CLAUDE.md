@@ -184,23 +184,25 @@ to make.
   stay slow, instead of one notebook doing both badly. The statistics they lean on are explained
   once, in `00`, and cited from there rather than re-derived per session.
 
-## Library budget
+## Library shape
 
-Six modules — `fits.py`, `spatial.py`, `stats.py`, `model.py`, `asi.py`, `pixinsight.py` — and
-roughly 2000 lines total until the model passes its validation gate. A seventh module, or
-crossing the budget, is a conversation, not a commit. Notebooks are the workspace and the
-narrative; the library is only the distilled residue; `results/` is the record of truth.
+Six modules — `fits.py`, `spatial.py`, `stats.py`, `model.py`, `asi.py`, `pixinsight.py`.
+A seventh is a conversation, not a commit. Notebooks are the workspace and the narrative; the
+library is only the distilled residue; `results/` is the record of truth.
 
-**2000 is not 1000 doubled because the work grew; it is 1000 corrected.** The original figure was
-set before any module existed, and four modules covering only the bench half of the project had
-already reached it — with `model.py` and `pixinsight.py`, the two the validation gate actually
-needs, still unwritten. A budget that binds hardest on the modules it has never seen is not
-measuring what it meant to. **What it meant to measure is the cost of holding the physics in your
-head, and that cost is mostly docstring here**: the rule that a measurement, a threshold or a
-correction never moves into a notebook is what puts the reasoning beside the code, and it is worth
-more than the line count that was supposed to enforce it. The line count stays as a tripwire, set
-where it will fire when a module is doing a notebook's job rather than every time the library
-explains itself.
+**There was a line budget here and it is gone.** It was 1000, then 2000, and both figures were
+set before the modules they were meant to bind existed — a tripwire that fired hardest on code
+nobody had seen yet. What it was trying to buy was *the cost of holding the physics in your
+head*, and the rule that actually buys that is the one next door: a measurement, a threshold or
+a correction never moves into a notebook, so the reasoning sits beside the code. That rule is
+worth more than any line count, and counting lines while most of them are docstring was
+measuring the wrong thing.
+
+**What replaces it is taste, stated so it can be checked.** Library code is **concise and
+idiomatic Python** — the shortest version a fluent reader would write, not the shortest
+possible. Long docstrings are welcome and long functions are not; a module that grows because
+it is explaining itself is healthy, and one that grows because it has started orchestrating is
+the thing the budget was ever for.
 
 **Two invariants keep the first three apart.** *Only `spatial.py` and `stats.py` touch pixel
 arrays* — `fits.py` moves bytes and never interprets a value. And *nothing in the package
@@ -208,16 +210,17 @@ loops over frames*: every function here takes one frame, or one array, and retur
 asks *where* things are: the Bayer lattice today, vignetting and source detection when something
 needs them. `stats.py` asks *how much* they vary, and carries the frame verdict those
 numbers support. The dependency chain is one-way: `fits.py` → `stats.py` → `spatial.py`.
+`model.py` sits at the end of it and touches no pixels at all: it reads published constants,
+refuses the ones without provenance, and does arithmetic.
 
-`tests/` does not count against either limit — it carries no physics, nothing imports it, and a
-budget that discourages tests is a budget working against itself. It mirrors the package: one
+`tests/` carries no physics and nothing imports it. It mirrors the package: one
 `test_<module>.py` per library module.
 
 ## Layout
 
 ```
 astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how much)
-tests/        one test_<module>.py per library module; outside the budget
+tests/        one test_<module>.py per library module
 notebooks/    numbered, narrative, markdown + code
 data/         gitignored; frames captured *for* this project (bench and tests)
 protocols/    numbered capture protocols, `light-source.md`, and the panel itself
