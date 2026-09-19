@@ -1,0 +1,122 @@
+{
+  "referee": {
+    "value": {
+      "application": "PixInsight",
+      "version": "1.9.2",
+      "build": 1632
+    },
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 0,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "the build every number in this file was measured against.  A different build is a different engine; re-run pjsr/probe.js after any upgrade.  See pjsr/NOTES.md"
+  },
+  "difference_settings": {
+    "value": {
+      "pedestal": 0.5,
+      "sample_format": "f32",
+      "truncate": false,
+      "rescale": false,
+      "expression": "a - b + 0.5"
+    },
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 4,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "the PixelMath configuration every pair difference in this project must use.  The PEDESTAL is what matters at any spread a bias pair can have -- with it, all four combinations of format and truncation recover the injected sigma exactly.  The 32-bit float covers only the case where the difference is wide enough to leave [0, 1] anyway, which no bias pair is.  Both are kept because the second costs nothing.  NOTE that truncate defaults to TRUE and the format to SameAsTarget, so the default configuration is the failing one"
+  },
+  "clip_factor": {
+    "value": 0.583296062,
+    "unit": "fraction of the true sigma",
+    "uncertainty": 0.000807621,
+    "source_frames": 4,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "what a difference clipped at zero reports, as a fraction of the truth.  Predicted sqrt(1/2 - 1/(2*pi)) = 0.583819 from the half-normal and measured here on two pairs whose spreads differ by a factor of thirty.  L23 called it 'halves'.  It is a CONSTANT, independent of the sigma and of the frame, so a clipped difference cannot be recognised from its value -- which is why the pixel census rather than the sigma is the evidence that clipping happened"
+  },
+  "wrap_on_unsigned": {
+    "value": 7062.661260466,
+    "unit": "percent error",
+    "uncertainty": null,
+    "source_frames": 4,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "a negative difference stored in an unsigned 16-bit container with truncation OFF wraps rather than clips.  The failure mode L23 did not name, and the safe one: an error this size cannot be mistaken for a measurement, where the 42% of the clip can"
+  },
+  "integration_minimum_frames": {
+    "value": 3,
+    "unit": "frames",
+    "uncertainty": 0,
+    "source_frames": 0,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "ImageIntegration refuses executeGlobal with fewer -- 'This instance of ImageIntegration defines less than three source images' -- whatever the rejection setting.  So the N=2 rung of a doubling ladder cannot be measured through this engine at all, which matters because session 03's eta_comb ladder on darks has one"
+  },
+  "integration_weight_mode": {
+    "value": "dont_care",
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 32,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "weightMode MUST be stated.  It defaults to PSF Signal Weight, which weights each frame by its detected stars, and on a frame without any -- a bias, a dark, a flat, a synthetic frame -- the weight is zero and executeGlobal returns a bare false with its reason only in the console.  dont_care is also the right choice on merit: eta_comb against the ideal sqrt(N) is defined on equally weighted frames"
+  },
+  "eta_comb_engine": {
+    "value": {
+      "3": 1.000191312,
+      "4": 1.000594799,
+      "8": 1.002931299,
+      "16": 1.003829665,
+      "32": 1.003745312
+    },
+    "unit": "dimensionless",
+    "uncertainty": 0.003829665,
+    "source_frames": 32,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "combination efficiency of the ENGINE ALONE: average combination, no rejection, equal weights, no normalisation, unregistered synthetic frames with no structure.  It is 1.0 to within a fraction of a percent at every rung, which is the result -- averaging loses nothing, so any shortfall in a real eta_comb is the combination and never the arithmetic.  NOT a value to use as eta_comb anywhere: it is a calibration of the tool"
+  },
+  "eta_comb_rejection_cost": {
+    "value": {
+      "3": 0.927226165,
+      "4": 0.968801785,
+      "8": 0.968218357,
+      "16": 0.980228993,
+      "32": 0.988810251
+    },
+    "unit": "dimensionless",
+    "uncertainty": null,
+    "source_frames": 32,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "the same ladder with Winsorized sigma clipping at sigma_low=4.0, sigma_high=3.0.  The cost is a strong function of the stack size -- worst at N=3, shrinking as N grows -- which is why MISSION requires eta_comb's provenance to record both.  These frames contain NO outliers, so this is the pure cost of rejecting when there is nothing to reject: a floor, not an estimate.  On real frames rejection buys something back, and that is contract 3's measurement"
+  },
+  "synthetic_frames": {
+    "value": {
+      "shape": [
+        512,
+        512
+      ],
+      "pedestal_adc": 77.0,
+      "seed": 20260919,
+      "sigma_narrow_adc": 20.0,
+      "sigma_wide_adc": 600.0,
+      "n_stack": 32,
+      "rungs": [
+        3,
+        4,
+        8,
+        16,
+        32
+      ]
+    },
+    "unit": null,
+    "uncertainty": null,
+    "source_frames": 36,
+    "measured_on": "2026-09-19",
+    "notebook": "21_pi_arithmetic.ipynb",
+    "note": "how the frames were made.  Gaussian noise about a pedestal, quantised onto the ADC grid and written in STORED units so that the reader has the same work to do as on a real frame.  Synthetic on purpose: L23 forbade checking its claim on a real bias pair, because a subtraction that reads 42% low there looks like a better camera"
+  }
+}
