@@ -1,0 +1,229 @@
+{
+  "setpoint": {
+    "value": -20.0,
+    "unit": "C",
+    "uncertainty": 0.5,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "the setpoint session 06 was actually shot at.  MISSION fixes the project at -10 C and this session does not change that: it characterises a temperature the camera was run at by accident, so that those frames can be published without a silent substitution"
+  },
+  "system_gain_cold": {
+    "value": {
+      "50": 5.398794,
+      "200": 0.916538
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": {
+      "50": 0.020746,
+      "200": 0.003383
+    },
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "rule 4 of protocols/07-cold-constants.md: the slope of pair-difference variance against signal at -20 C, per CFA plane, with the intercept fixed at this session's own measured R and never taken from the fit (L10).  Uncertainty is the spread across the four planes; the formal fit error is system_gain_cold_fit_err.  Per-plane values are in system_gain_cold_per_plane and every rung is in cold_rungs.csv"
+  },
+  "system_gain_cold_per_plane": {
+    "value": {
+      "50": {
+        "B": 5.417714,
+        "G1": 5.387026,
+        "G2": 5.375607,
+        "R": 5.414828
+      },
+      "200": {
+        "B": 0.919833,
+        "G1": 0.913756,
+        "G2": 0.913489,
+        "R": 0.919076
+      }
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "system_gain_cold, per CFA plane.  MISSION's per-plane framing needs g per plane wherever a plane's own electrons are being counted, which is every F_sky number session 06 publishes"
+  },
+  "system_gain_cold_fit_err": {
+    "value": {
+      "50": 0.013083,
+      "200": 0.003224
+    },
+    "unit": "e- per ADC count",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "the weighted-fit standard error on the slope, averaged over the four planes -- the precision of one fit, as against the plane-to-plane spread published as the uncertainty"
+  },
+  "read_noise_cold": {
+    "value": {
+      "50": 0.900526,
+      "200": 1.070343
+    },
+    "unit": "ADC counts",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "rule 5: the temporal standard deviation across this arm's 20-frame bias block, per plane, on the frames in the near offset state only.  A state hop is a black-level move of about one count, not read noise, and including one inflates R by the step.  This is measured here rather than passed in from session 01, because read noise at -20 C is one of the three quantities this session exists to publish"
+  },
+  "read_noise_cold_e": {
+    "value": {
+      "50": 4.86175,
+      "200": 0.981009
+    },
+    "unit": "e-",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "read_noise_cold x system_gain_cold, per plane, then averaged.  This is the R the model's R^2/t term consumes for session 06"
+  },
+  "pedestal_cold": {
+    "value": {
+      "50": 64.854988,
+      "200": 69.646971
+    },
+    "unit": "ADC counts at offset 15",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "rule 1: the plane mean of this arm's own bias block, near offset state only.  It is the number F_sky is most exposed to -- at gain 50, 120 s of L32's green sky is about 35 counts, so a one-count pedestal error is a 3% error in the sky rate"
+  },
+  "temperature_coefficient": {
+    "value": {
+      "g": {
+        "50": -0.024336,
+        "200": -0.006834
+      },
+      "R_counts": {
+        "50": -0.019029,
+        "200": -0.010532
+      },
+      "R_e": {
+        "50": -0.125105,
+        "200": -0.01704
+      },
+      "pedestal": {
+        "50": 0.159381,
+        "200": 0.43938
+      }
+    },
+    "unit": "value at -20 C minus value at -10 C, in each quantity's own unit",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "rule 6.  The -10 C figure is the mean of arms 1 and 3, which bracket the -20 C arm, and the uncertainty on the comparison is arm_disagreement -- half their difference -- not the scatter within either.  A coefficient smaller than that disagreement is published as unresolved, because the two are not distinguishable by this session"
+  },
+  "temperature_coefficient_resolved": {
+    "value": {
+      "g": {
+        "50": true,
+        "200": true
+      },
+      "R_counts": {
+        "50": true,
+        "200": true
+      },
+      "R_e": {
+        "50": true,
+        "200": true
+      },
+      "pedestal": {
+        "50": true,
+        "200": true
+      }
+    },
+    "unit": "boolean per quantity per gain",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "whether the -20 C to -10 C change exceeds the two warm arms' own disagreement.  False does not mean 'no change' -- it means this session cannot tell the change from its own drift, which is the honest statement and the one that bounds the substitution session 06 would otherwise have made"
+  },
+  "arm_disagreement": {
+    "value": {
+      "g": {
+        "50": 0.000563,
+        "200": 0.00076
+      },
+      "R_counts": {
+        "50": 0.011836,
+        "200": 0.000525
+      },
+      "R_e": {
+        "50": 0.063671,
+        "200": 0.000337
+      },
+      "pedestal": {
+        "50": 0.140127,
+        "200": 0.005337
+      }
+    },
+    "unit": "absolute difference between the two -10 C arms, each quantity's own unit",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "the bench's own stability across the evening, measured rather than assumed.  Arms 1 and 3 sit either side of the whole -20 C leg, so anything that drifted is inside this number and nothing inside a single arm can see it.  It is the error bar on every coefficient above"
+  },
+  "vs_session02": {
+    "value": {
+      "50": {
+        "g_this": 5.42313,
+        "g_session02": 5.38903,
+        "agreement_pct": 0.632759,
+        "R_this": 0.919555,
+        "R_session02": 0.916254
+      },
+      "200": {
+        "g_this": 0.923372,
+        "g_session02": 0.92163,
+        "agreement_pct": 0.189023,
+        "R_this": 1.080875,
+        "R_session02": 1.076834
+      }
+    },
+    "unit": "e- per ADC count, and % against session 02",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "rule 7: this session's own -10 C arms against ptc_constants.json, five weeks and one panel reconfiguration later.  Recorded beside the new numbers and never averaged into them.  Agreement vouches for the bench and anchors the -20 C arm; disagreement is a finding about the bench, and the -20 C numbers are not publishable until it is explained"
+  },
+  "cooler_duty_at_cold": {
+    "value": 58.0,
+    "unit": "%",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "gate 2: the worst TEC duty cycle at the end of a -20 C gain block.  The gate's bar is 90%, and the reason is self-heating: a TEC that settles near its limit holds the band until an hour of readout arrives.  This is the number that says whether -20 C is a setpoint this rig can actually work at, as opposed to reach"
+  },
+  "t_sat_per_arm": {
+    "value": {
+      "a1": {
+        "50": 36.657749,
+        "200": 11.886779
+      },
+      "a2": {
+        "50": 36.450721,
+        "200": 11.834901
+      },
+      "a3": {
+        "50": 36.058383,
+        "200": 11.700236
+      }
+    },
+    "unit": "s",
+    "uncertainty": null,
+    "source_frames": 408,
+    "measured_on": "2026-09-19",
+    "notebook": "15_cold_constants.ipynb",
+    "note": "gate 3: t_sat measured cold inside each arm at session 05's published patch colour, never carried across an arm.  Three readings at one colour are also a free check on the backlight -- a drift in these is a drift in the panel, and it shows up here rather than inside a gain"
+  }
+}
