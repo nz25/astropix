@@ -101,7 +101,9 @@ is the thing that stops the model ever being finished.
   1. **`data/` — frames captured for this project.** Bench runs and deliberate on-sky tests, shot
      to a protocol in `protocols/` at -10 C. Gitignored. **Headers are trusted in full, type
      label included**, because the protocol is what set them. Every published constant comes from
-     here.
+     here. **Most of it no longer sits on C:** — only `data/session06`, the on-sky set, is local;
+     the retired bench sessions are on `Z:`. The working-drive rule under *Environment* gives the
+     paths and the reason for the split.
   2. **`Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — the historic archive.** Frames
      from a year of ordinary imaging, shot before this project or any of its conventions existed.
      It is a **test corpus** — real pixels to exercise code against, and the route into the
@@ -222,7 +224,8 @@ refuses the ones without provenance, and does arithmetic.
 astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how much)
 tests/        one test_<module>.py per library module
 notebooks/    numbered, narrative, markdown + code
-data/         gitignored; frames captured *for* this project (bench and tests)
+data/         gitignored; frames captured *for* this project (bench and tests).
+              Only session06 is on C:; the retired bench sessions are on Z: -- see Environment
 protocols/    numbered capture protocols, `light-source.md`, and the panel itself
               (grey-patch.html + patch-server.py); these are *run*, not just read
 pjsr/         headless PixInsight scripts
@@ -240,10 +243,24 @@ vendor/       third-party binaries and vendor documents; licence or source besid
 - PixInsight: `C:\Program Files\PixInsight\bin\PixInsight.exe`, driven headless via PJSR.
 - ZWO SDK: vendored at `vendor/zwo-asi-sdk/ASICamera2.dll` (MIT), loaded with
   `zwoasi.init(...)` from `asi.py`.
-- **C: is the working drive and it is tight.** Everything this project writes lives there —
-  `data/`, caches, intermediates — inside a budget of a few tens of GB, so intermediates are
-  disposable and a run cleans up after itself. **The archive stays on `Z:` and is never copied
-  to C:.**
+- **C: is the working drive and it is tight, so bulk frames live on `Z:`.** The repo, `results/`,
+  caches and anything small stay local. Frames do not, with one deliberate exception.
+  - **`Z:` is a NAS over the wire** (`\\ds1513\red`), not a disk. Every read of it crosses the
+    network, which is the only reason the exception below exists.
+  - **`data/session06` stays on C:.** It is the only on-sky set this project shot, and contract 3
+    re-reads its 160 frames many times per PixInsight run. Nothing else in `data/` is local.
+  - **The retired bench sessions live at `Z:\pix\_astro\astropix\data\`** — sessions 01-05 and 07,
+    moved there on 2026-09-19 once their constants were published. Their notebooks still say
+    `data/sessionNN`, so **re-running one means pointing it at the remote path by hand.** Windows
+    refuses both a junction and a symlink to a mapped network drive without admin, so no link
+    papers over this; the alternative was editing thirteen finished notebooks to chase a path,
+    which writes a drive letter into the record of how a constant was measured. The affected
+    notebooks are `00`, `03`-`07`, `09`-`11`, `13`, `15`, `16` and `19`, all of them done.
+    `tests/test_record.py` never read the frames and is unaffected.
+  - **PixInsight intermediates go to `Z:\pix\_astro\astropix\temp\contract3\`** — calibrated and
+    registered copies, several GB per run, disposable, and a run cleans up after itself. They are
+    the one thing that may be slow on purpose: written once, read by the engine, then deleted.
+  - **The historic archive stays on `Z:` and is never copied to C:.**
 
 ## The rig
 

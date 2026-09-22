@@ -2798,3 +2798,50 @@ not a fitted shape: the control is in units of 0.1 dB, so the amplifier's voltag
 falls from 2.67 to 0.97 across the threshold — one fit over the whole domain would be a curve
 through two different sensors. Asserted in `tests/test_model.py`, including that the branch change
 is a step *down*, since a continuous pedestal there would mean the split was an artefact.
+
+---
+
+## 2026-09-19 - The frames move off C:, and the link that would have hidden it does not exist
+
+### D96. `data/` splits across two drives, and `session06` is the half that stays
+C: had 11 GB free against a 13 GB `data/` and a contract 3 that wants several GB of PixInsight
+intermediates. The six retired bench sessions - 01-05 and 07, 10.5 GB - moved to
+`Z:\pix\_astro\astropix\data\`. Their constants are published, their notebooks are finished, and
+nothing re-reads their frames.
+
+**`data/session06` did not move.** It is the 160 NGC 7000 lights of the sky-pair night, and it is
+the input contract 3 exists to consume: `results/sky_constants.json` publishes
+`eta_comb_registered`, `snr_repeatability` and `ranked_pairs` as nulls whose note reads *"The
+frames are on disk and sufficient - only the engine is missing."* Registration and integration
+re-read that set many times per run, and `Z:` is `\\ds1513\red` - a NAS over the wire, not a disk.
+Moving it would have bought 2.5 GB and paid for it in every PixInsight pass.
+
+**Rejected: moving all of `data/`**, which is what was proposed, for the reason above.
+
+The one other frame a PixInsight contract has wanted from a moved session is notebook `19`'s
+single bias, `session02/frames/bias_g200_000.fits`. That is 16 MB read once; it does not argue for
+keeping 932 MB local.
+
+### D97. There is no link back, and the notebooks keep their paths
+The intent was a junction at each old `data/sessionNN`, so the finished notebooks would still
+resolve after the move. Windows refuses. A junction requires a local volume target (*"Zum
+Abschliessen dieses Vorgangs sind lokale Volumes erforderlich"*), and a directory symlink, which
+does support remote targets, needs admin or Developer Mode - neither available here, and
+Developer Mode is unset.
+
+**Chosen: leave the notebooks alone and write the cost down.** Re-running `00`, `03`, `04`, `05`,
+`06`, `07`, `09`, `10`, `11`, `13`, `15`, `16` or `19` now means pointing its `DATA` at
+`Z:\pix\_astro\astropix\data\sessionNN` by hand. The cost is real and small: every one of those
+produced constants that are already published, and `CLAUDE.md`'s bar is *a cell writes it*, not
+*it byte-reproduces*. `tests/test_record.py` reads notebook JSON and never touched a frame.
+
+**Rejected: editing thirteen finished notebooks to chase the path.** Changing a completed analysis
+for a housekeeping move writes a drive letter into the record of how a constant was measured.
+**Also rejected: an elevated shell to create the symlinks.** It is available for the asking, and a
+per-machine admin change bought back a path nobody is re-running.
+
+### D98. Contract 3's intermediates have an address
+`Z:\pix\_astro\astropix\temp\contract3\`. Calibrated and registered copies of 160 frames are
+roughly 5 GB in 32-bit float, and they are disposable by construction - written once, read by
+`ImageIntegration`, deleted. They are remote, and that is the right thing to make remote: the
+engine streams them, while `session06` is what gets hammered and stays local.
