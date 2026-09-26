@@ -485,3 +485,46 @@ def rank(snr_a, snr_b, repeatability_pct):
             "winner": "a" if snr_a > snr_b else "b",
             "apart": abs(sep) > repeatability_pct,
             "repeatability_pct": repeatability_pct}
+
+
+# MISSION: "correctly predict the SNR ranking of two settings to within 10%".
+# Read as: the winner is the one predicted, and the measured ratio between the
+# two lies within 10% of the predicted ratio.
+RANK_TOLERANCE = 0.10
+
+
+def snr_per_root_night(snr, n_subs, t, t_dead):
+    """A stack's SNR, per square root of the wall clock it cost.
+
+    The model predicts at fixed *night*, and a real stack of `n_subs` subs of
+    `t` seconds took `n_subs * (t + t_dead)` of it.  Dividing by the root of
+    that puts two cells that shot different numbers of different subs on the
+    footing the prediction was made on.  `t_dead` must be the one the
+    prediction used, or the comparison measures the difference between two
+    overheads.
+    """
+    if n_subs < 1 or t <= 0 or t_dead < 0:
+        raise ValueError("a stack has subs, of positive length, and non-negative overhead")
+    return snr / math.sqrt(n_subs * (t + t_dead))
+
+
+def verdict(predicted_pct, measured_pct, repeatability_pct):
+    """MISSION's definition of done, for one pair.
+
+    Percentages are `100 * (second / first - 1)`, the form `sky_pairs.csv`
+    uses.  Three answers:
+
+    - **tie** when the predicted separation is no larger than the measured
+      repeatability of the SNR estimator.  Not a pass: every model passes a
+      tie, and MISSION says a pair the model cannot call apart is no test.
+    - **pass** when the measured winner is the predicted one and the measured
+      ratio is within `RANK_TOLERANCE` of the predicted ratio.
+    - **fail** otherwise.
+    """
+    if repeatability_pct is None or not repeatability_pct > 0:
+        raise ValueError("repeatability must be measured and positive")
+    if abs(predicted_pct) <= repeatability_pct:
+        return "tie"
+    same_winner = (predicted_pct > 0) == (measured_pct > 0)
+    ratio_err = abs((1 + measured_pct / 100) / (1 + predicted_pct / 100) - 1)
+    return "pass" if same_winner and ratio_err <= RANK_TOLERANCE else "fail"

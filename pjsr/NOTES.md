@@ -321,6 +321,31 @@ These are synthetic frames with no structure, no registration and no outliers to
 reject, so the rejection column is the *pure cost* of rejecting when there is
 nothing to reject. On real frames it buys something back.
 
+## 15. Registration: the split approach, and what StarAlignment will not do
+
+Contract 3 registers each Bayer plane on its own: `SplitCFA`, then `StarAlignment` per plane
+against the same plane of one shared reference. Nothing is debayered. Checked on session 06
+lights on 2026-09-26: every plane solves, blue included - at gain 200 and 30 s the blue plane
+still finds about 1 100 stars and matches over a thousand, with an RMS error of 0.2-0.6 plane
+pixels. Four things were found on the way:
+
+- **StarAlignment writes XISF whatever `outputExtension` says.** Asked for `.fits`, it wrote
+  `_r.xisf`. `register.js` no longer asks. `astropix.fits.read_xisf` reads the result; it was
+  checked against the XISF 1.0 specification and, pixel for pixel, against PixInsight's own FITS
+  export of the same files.
+- **`File.createDirectory` fails on a UNC path** - Win32 error 161, walking up to `//ds1513`.
+  The caller creates the directories; the script only checks they exist.
+- **The core's error text is in the system code page**, so a German Windows message puts a
+  non-UTF-8 byte in `result.json`. `pixinsight.run` reads it with `errors="replace"`: one umlaut in
+  the only diagnosis there is must not be what makes it unreadable.
+- **`outputData` is a positional array.** Output path, mask path, match count, inliers,
+  overlapping, regularity, quality, RMS error and its deviation, peak errors in x and y, then the
+  3x3 homography row by row, then star coordinates. `register.js` names the first twenty and drops
+  the rest, which would make a result file megabytes long.
+
+StarAlignment also does not stop on a frame it cannot solve - it skips it and the batch still
+returns - so success is read per frame, from whether its output file exists.
+
 ## The scripts
 
 | script | what it does |
@@ -329,7 +354,8 @@ nothing to reject. On real frames it buys something back.
 | `probe.js` | measures nothing. Core version, instance slot, working directory, job round-trip with types, and whether a real frame opens. Run it after every upgrade. |
 | `frame_stats.js` | contract 1. Opens one CFA frame, splits it with `SplitCFA`, reports min/max/mean/median/std/MAD for the mosaic and each plane, plus both noise estimators. Compares nothing — the comparison is the notebook's, because a referee that knew the answer we wanted would not be one. |
 | `pair_diff.js` | contract 2. `a - b + pedestal` through PixelMath, under settings the job states rather than the script chooses — which is what lets it demonstrate the unsafe ones. Reports the difference's statistics and a census of where its pixels sit relative to 0 and 1. Many arms per launch. |
-| `integrate.js` | contract 2. Integrates a list of frames with `ImageIntegration` and reports the result, its noise, and every setting read back off the instance. Computes no efficiency: `eta_comb` is the notebook's arithmetic. Many runs per launch. |
+| `integrate.js` | contract 2. Integrates a list of frames with `ImageIntegration` and reports the result, its noise, and every setting read back off the instance. Computes no efficiency: `eta_comb` is the notebook's arithmetic. Many runs per launch. Contract 3 added `output`, which saves the stack as 32-bit float FITS. |
+| `register.js` | contract 3. Splits each CFA frame with `SplitCFA` and registers each plane against the same plane of one reference, with `StarAlignment`. Reports the match and the transform per frame and plane. The split planes are deleted; the registered ones are kept as 16-bit XISF. |
 
 ## Still unchecked
 

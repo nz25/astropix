@@ -41,3 +41,39 @@ def test_split_rejects_what_it_cannot_handle():
         except ValueError:
             continue
         raise AssertionError("expected ValueError")
+
+
+def test_plane_roi_halves_a_mosaic_box_and_refuses_an_odd_one():
+    """The sky-pair signal ROI, which every contract 3 number is measured in."""
+    assert spatial.plane_roi((1408, 568, 1024, 1024)) == (704, 284, 512, 512)
+    try:
+        spatial.plane_roi((1, 0, 2, 2))
+    except ValueError:
+        return
+    raise AssertionError("an odd corner starts the box on the other colour")
+
+
+def test_integer_offset_finds_a_dither_in_both_directions():
+    """A star field moved by a known whole-pixel dither, with fresh noise on
+    each copy, as two subs of one field are."""
+    rng = np.random.default_rng(7)
+    field = np.zeros((300, 400))
+    field[rng.integers(0, 300, 200), rng.integers(0, 400, 200)] = 500
+    for dx, dy in [(17, -9), (-23, 4)]:
+        b = np.roll(field, (dy, dx), axis=(0, 1)) + rng.normal(0, 3, field.shape)
+        a = field + rng.normal(0, 3, field.shape)
+        assert spatial.integer_offset(a, b) == (dx, dy)
+        x, y = 100, 100
+        assert np.array_equal(spatial.cut(field, (x, y, 50, 50)),
+                              spatial.cut(np.roll(field, (dy, dx), axis=(0, 1)),
+                                          (x + dx, y + dy, 50, 50)))
+
+
+def test_cut_is_x_y_w_h_and_refuses_to_run_off_the_edge():
+    a = np.arange(20).reshape(4, 5)
+    assert np.array_equal(spatial.cut(a, (1, 2, 3, 2)), a[2:4, 1:4])
+    try:
+        spatial.cut(a, (3, 0, 3, 1))
+    except ValueError:
+        return
+    raise AssertionError("a box that runs off the array must not shrink quietly")

@@ -238,3 +238,26 @@ def test_repeatability_has_no_default_and_no_zero():
         M.rank(100.0, 103.0)
     with pytest.raises(ValueError, match="measured and positive"):
         M.rank(100.0, 103.0, 0.0)
+
+
+
+def test_verdict_ties_before_it_ranks():
+    """A predicted 3% inside a 5% repeatability is a tie whatever was measured:
+    the estimator cannot tell the two apart, so neither can the test."""
+    assert M.verdict(3.0, 40.0, 5.0) == "tie"
+    assert M.verdict(-3.0, -3.0, 5.0) == "tie"
+
+
+def test_verdict_needs_the_winner_and_the_ratio():
+    assert M.verdict(20.0, 25.0, 2.0) == "pass", "1.25 / 1.20 is 4% off"
+    assert M.verdict(20.0, 35.0, 2.0) == "fail", "right winner, 12.5% off"
+    assert M.verdict(20.0, -5.0, 2.0) == "fail", "wrong winner"
+    with pytest.raises(ValueError):
+        M.verdict(20.0, 20.0, None)
+
+
+def test_snr_per_root_night_puts_two_cells_on_one_night():
+    """Four 120 s subs and sixteen 30 s subs, at zero overhead, took the same
+    night; with 30 s of overhead the short ones took nearly twice as long."""
+    assert M.snr_per_root_night(10.0, 4, 120, 0) == M.snr_per_root_night(10.0, 16, 30, 0)
+    assert M.snr_per_root_night(10.0, 16, 30, 30) < M.snr_per_root_night(10.0, 4, 120, 30)

@@ -1,0 +1,91 @@
+{
+  "eta_comb_registered": {
+    "value": {
+      "3": 0.977928,
+      "4": 1.016239,
+      "8": 1.013855,
+      "16": 0.976376,
+      "18": 0.955734
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N) of a registered sub",
+    "uncertainty": {
+      "3": 0.023804,
+      "4": 0.024289,
+      "8": 0.015821,
+      "16": 0.009123,
+      "18": 0.01725
+    },
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "25_contract3_stacks.ipynb",
+    "note": "rule 5, keyed by stack size N.  Winsorized sigma clip 4.0/3.0, average, additive normalisation, equal weights, Lanczos-3 registration of each Bayer plane separately (SplitCFA, no debayer), dither every frame, 4x4 binning, signal ROI (704, 284, 512, 512) in plane pixels.  The ideal is the registered single sub, so resampling cancels and this is the combination: rejection and whatever fails to average away.  Resampling is treated as a wash at 4x4 -- see resampling_factor.  Uncertainty is the spread over 4 cells x 4 planes.  N stops at the half-stack of this night; nothing here says what happens at N of hundreds"
+  },
+  "eta_comb_registered_no_rejection": {
+    "value": {
+      "3": 1.048399,
+      "4": 1.046244,
+      "8": 1.051009,
+      "16": 1.017475,
+      "18": 0.993042
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N) of a registered sub",
+    "uncertainty": {
+      "3": 0.034207,
+      "4": 0.026898,
+      "8": 0.018505,
+      "16": 0.00669,
+      "18": 0.020101
+    },
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "25_contract3_stacks.ipynb",
+    "note": "the same ladder with rejection off, so the gap to eta_comb_registered is what Winsorized clipping costs or buys on real registered lights"
+  },
+  "resampling_factor": {
+    "value": {
+      "1": 0.902523,
+      "4": 0.954018
+    },
+    "unit": "registered / raw single-frame noise, keyed by bin size",
+    "uncertainty": {
+      "1": 0.0091,
+      "4": 0.013272
+    },
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "25_contract3_stacks.ipynb",
+    "note": "context, not a correction: nothing divides by it.  Measured in the signal ROI, registered pairs against raw pairs lined up by a whole-pixel shift, which moves no noise between pixels.  Below 1 means registration smoothed the noise; the per-pixel figure is how far a per-pixel spread would have been fooled.  The raw 4x4 / 1x1 ratio was 0.2758 against 0.25 for white noise, so the raw binned noise carries about 10.3% extra -- sky that did not cancel within half a pixel, or correlated noise the raw frames really have, which this night cannot separate.  That extra inflates the raw side, so the binned factor reads LOW by up to that much, and dividing the efficiency by it would read HIGH: tried, it gave 1.00-1.07, above sqrt(N).  That is why eta_comb_registered uses the registered sub as its ideal"
+  },
+  "snr_repeatability": {
+    "value": {
+      "A": 1.454356,
+      "B": 2.220035,
+      "C": 1.316237,
+      "D": 1.979404
+    },
+    "unit": "% relative error of a cell's full-stack SNR, mean over planes",
+    "uncertainty": null,
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "25_contract3_stacks.ipynb",
+    "note": "rule 6.  The larger of the half-split and the quarter scatter, chosen in advance because a half-split is one draw.  Per plane in stack_pairs.csv via each pair's repeatability"
+  },
+  "ranked_pairs": {
+    "value": {
+      "A->B green": "pass",
+      "A->B B": "pass",
+      "C->D green": "pass",
+      "C->D B": "pass",
+      "A->C green": "pass",
+      "A->C B": "pass",
+      "B->D green": "fail",
+      "B->D B": "pass"
+    },
+    "unit": "verdict per pair and plane: pass, fail or tie",
+    "uncertainty": null,
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "25_contract3_stacks.ipynb",
+    "note": "MISSION's definition of done, applied by model.verdict: a tie when the predicted separation is inside the repeatability; a pass when the winner is right and the measured ratio is within 10% of the predicted one.  Predictions are 17's, unchanged"
+  }
+}

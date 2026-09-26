@@ -158,33 +158,6 @@
     "notebook": "17_sky_pair.ipynb",
     "note": "the one place this protocol departs from the archive, and the reason is a confound rather than a preference.  eta_comb's registration half is measured against the number of distinct dither positions, so this is part of that constant's provenance"
   },
-  "eta_comb_registered": {
-    "value": null,
-    "unit": "measured sd reduction against ideal sqrt(N)",
-    "uncertainty": null,
-    "source_frames": 147,
-    "measured_on": "2026-09-05",
-    "notebook": "17_sky_pair.ipynb",
-    "note": "rule 5.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  Session 03's dark ladder is in dark_constants.json and is an upper bound by construction -- no registration, no resampling -- so the gap between the two IS the resampling loss, and that gap is what this session was meant to add"
-  },
-  "snr_repeatability": {
-    "value": null,
-    "unit": "% difference between two half-stacks",
-    "uncertainty": null,
-    "source_frames": 147,
-    "measured_on": "2026-09-05",
-    "notebook": "17_sky_pair.ipynb",
-    "note": "rule 6.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  Until it exists no predicted separation can be called a test: MISSION requires the separation to exceed the estimator's own repeatability, and that bar is currently unknown"
-  },
-  "ranked_pairs": {
-    "value": null,
-    "unit": "the ranking verdict on four pairs",
-    "uncertainty": null,
-    "source_frames": 147,
-    "measured_on": "2026-09-05",
-    "notebook": "17_sky_pair.ipynb",
-    "note": "MISSION's definition of done.  not measured.  This quantity requires the frames to be registered and integrated, and this repo has no engine for that: astropix/pixinsight.py does not exist and neither does pjsr/ (build step 5, LEGACY L16-L24).  The frames are on disk and sufficient -- only the engine is missing.  The predicted separations from this session's own measured constants are in sky_pairs.csv, with the measured column empty"
-  },
   "guide_rms": {
     "value": null,
     "unit": "arcsec",

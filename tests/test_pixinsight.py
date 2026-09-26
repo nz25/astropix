@@ -35,6 +35,8 @@ import numpy as np
 from astropix import pixinsight as pi
 from astropix import spatial, stats
 
+from . import synthetic
+
 
 # --------------------------------------------------------------------------
 # the stand-in
@@ -411,3 +413,22 @@ def test_eta_comb_refuses_a_stack_of_one():
         except ValueError:
             continue
         raise AssertionError(f"eta_comb accepted a stack of {n}")
+
+
+
+# --------------------------------------------------------------------------
+# contract 3: reading what PixInsight wrote, in ADC counts
+# --------------------------------------------------------------------------
+
+def test_read_adc_converts_both_shapes_pi_writes():
+    """A registered plane is 16-bit stored units, interpolated off the grid of
+    16; a stack is float in [0, 1].  Both must arrive in ADC counts, and the
+    stored one by the PI route -- which is exact, 1712 stored is 107 counts."""
+    d = pathlib.Path(tempfile.mkdtemp())
+    stored = np.array([[1712, 1713], [0, 65535]], np.uint16)
+    got = pi.read_adc(synthetic.write_xisf(d / "reg.xisf", np.tile(stored, (1, 3))))
+    assert abs(got[0, 0] - 107.0) < 1e-9 and abs(got[0, 1] - 1713 / 16) < 1e-9
+    assert abs(got[1, 1] - stats.STORED_FULL_SCALE / 16) < 1e-9
+    flt = np.full((2, 6), 1712 / 65535, np.float32)
+    got = pi.read_adc(synthetic.write_xisf(d / "stack.xisf", flt))
+    assert np.allclose(got, 107.0, atol=1e-3)

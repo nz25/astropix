@@ -1,0 +1,9 @@
+pair,why,plane,t_dead_s,predicted_pct,measured_pct,repeatability_pct,verdict
+A->B,t-pair at gain 50,green,31.462837,43.08789,37.711461,2.961189,pass
+A->B,t-pair at gain 50,B,31.462837,52.38091,55.440321,1.684138,pass
+C->D,t-pair at gain 200,green,31.462837,27.261936,17.605839,2.301779,pass
+C->D,t-pair at gain 200,B,31.462837,27.681855,23.172567,2.490621,pass
+A->C,"straddles HCG, t = 30 s",green,31.462837,18.471141,11.705422,2.168915,pass
+A->C,"straddles HCG, t = 30 s",B,31.462837,30.224051,28.531209,2.271691,pass
+B->D,"straddles HCG, t = 120 s",green,31.462837,5.367874,-4.603366,3.059843,fail
+B->D,"straddles HCG, t = 120 s",B,31.462837,9.116348,1.8495,1.9695,pass

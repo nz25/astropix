@@ -7,7 +7,7 @@ from astropy.io import fits as _afits
 
 from astropix import fits as F
 
-from .synthetic import PEDESTAL, tmp_frame, tmpdir, write_frame
+from .synthetic import PEDESTAL, tmp_frame, tmpdir, write_frame, write_xisf
 
 
 # --------------------------------------------------------------------------
@@ -167,3 +167,49 @@ def test_write_refuses_to_overwrite_by_default():
     except OSError:
         return
     raise AssertionError("expected the second write to be refused")
+
+
+# --------------------------------------------------------------------------
+# XISF: what StarAlignment writes (contract 3)
+# --------------------------------------------------------------------------
+
+def _xisf(name, a, **kw):
+    return write_xisf(os.path.join(tmpdir(), name), a, **kw)
+
+
+def test_read_xisf_returns_the_bytes_in_the_right_orientation():
+    """Non-square and asymmetric, so a transposed or flipped reshape cannot
+    pass.  The spec stores rows top to bottom with x fastest (8.5.3), and
+    `geometry` is width first (11.5)."""
+    a = np.arange(6 * 10, dtype=np.uint16).reshape(6, 10) * 7
+    got = F.read_xisf(_xisf("orient.xisf", a))
+    assert got.dtype == np.uint16 and got.shape == (6, 10)
+    assert np.array_equal(got, a)
+
+
+def test_read_xisf_ignores_a_thumbnail_and_reads_floats_with_bounds():
+    a = np.linspace(0, 1, 24, dtype=np.float32).reshape(4, 6)
+    assert np.array_equal(F.read_xisf(_xisf("float.xisf", a)), a)
+
+
+def test_read_xisf_refuses_what_it_does_not_handle():
+    """Each of these is a legal XISF file, or a damaged one, that would come
+    back as a plausible array of the wrong numbers if the reader guessed."""
+    a = np.zeros((4, 6), np.uint16)
+    f = np.zeros((4, 6), np.float32)
+    bad = [("compressed", a, {"compression": "zlib:48"}),
+           ("bigend", a, {"byteOrder": "big"}),
+           ("two", a, {"extra_images": 1}),
+           ("rgb", a, {"geometry": "6:4:3"}),
+           ("cube", a, {"geometry": "6:4:2:1"}),
+           ("inline", a, {"location": "inline:base64"}),
+           ("short", a, {"location": "attachment:4096:40"}),
+           ("u32", a, {"sampleFormat": "UInt32"}),
+           ("bounds", f, {"bounds": "0:65535"}),
+           ("reserved", a, {"reserved": bytes([1, 0, 0, 0])})]
+    for name, arr, kw in bad:
+        try:
+            F.read_xisf(_xisf(name + ".xisf", arr, **kw))
+        except ValueError:
+            continue
+        raise AssertionError(f"read_xisf accepted the {name} case")

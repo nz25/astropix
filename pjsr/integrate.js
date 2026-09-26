@@ -25,7 +25,8 @@
  *           "rejection": "none" | "sigma" | "winsorized" | "percentile",
  *           "normalization": "none" | "additive" | "additive_scaling",
  *           "weight_mode": "dont_care" | "psf_signal" | "noise",
- *           "sigma_low", "sigma_high": numbers }
+ *           "sigma_low", "sigma_high": numbers,
+ *           "output": optional path to save the integrated image to }
  * Result: { core, frames, settings, integrated, noise }
  */
 
@@ -238,6 +239,18 @@ function runOne( spec )
       run.integrated.bits_per_sample = img.bitsPerSample;
       run.integrated.is_real = img.isReal;
       run.noise = noise( img );
+      /*
+       * Saved only when asked. Contract 2 read everything it needed off the
+       * window; contract 3 differences two stacks pixel by pixel in numpy,
+       * and that needs the pixels. 32-bit float, in PixInsight's [0, 1] --
+       * convert with astropix.pixinsight, never by hand.
+       */
+      if ( spec.output )
+      {
+         if ( !w.saveAs( spec.output, false, false, false, false ) )
+            throw new Error( "could not write " + spec.output );
+         run.output = spec.output;
+      }
    }
    finally
    {

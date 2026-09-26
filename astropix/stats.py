@@ -375,3 +375,92 @@ def offset_state(levels):
             "far": np.abs(departure) > threshold, "state": state,
             "worst_steps": (float(np.max(np.abs(departure)) / separation)
                             if separation else None)}
+
+
+# --- noise and signal on registered stacks (contract 3) -----------------------
+# The scale at which contract 3 measures noise, in plane pixels.  Resampling
+# a dithered frame onto a common grid mixes each output pixel from several
+# input pixels, so neighbouring pixels share noise and the per-pixel spread
+# reads *low* -- a stack can then appear to beat sqrt(N), which no stack can.
+# Averaged over 4x4 blocks most of that comes back, because a kernel that sums
+# to one moves noise between neighbours rather than removing it: only what
+# leaks across a block edge is lost.  Most, not all -- linear interpolation at
+# a half-pixel shift still reads 0.81 of the truth at 4x4, against 0.375 per
+# pixel (tests/test_stats.py) -- so a binned spread on registered frames is
+# still compared against raw frames measured the same way, never trusted
+# alone.  4x4 is also the right scale for the thing MISSION optimises: faint
+# *extended* signal, not single pixels.
+NOISE_BIN = 4
+DIFF_CLIP_SIGMAS = 5.0
+
+
+def bin_mean(a, k):
+    """Average `a` over non-overlapping k x k blocks.
+
+    Trailing rows and columns that do not fill a block are dropped, so the
+    result is (h//k, w//k).  k=1 returns a float copy, so a caller can pass
+    either scale through the same code.
+    """
+    a = np.asarray(a, dtype=np.float64)
+    if k < 1:
+        raise ValueError(f"a bin of {k} pixels is not a bin")
+    h, w = a.shape[0] // k * k, a.shape[1] // k * k
+    return a[:h, :w].reshape(h // k, k, w // k, k).mean(axis=(1, 3))
+
+
+def diff_sigma(a, b, k=1):
+    """The noise of one of two equivalent images, from their difference.
+
+    `a` and `b` are the same patch of sky on the same grid: two registered
+    frames, or two stacks of the same size drawn from disjoint frames.
+    Everything they share -- stars, nebula, the fixed pattern -- cancels in
+    `a - b`, and what is left is their two noises added in quadrature, so one
+    image's noise is the spread of the difference over sqrt(2).  It is the
+    same estimator every bias pair in this project uses (`pixinsight.
+    sigma_from_pair`), moved onto light frames, where it is the only way to
+    separate noise from a signal that is everywhere.
+
+    Measured at `k` x k binning (see `NOISE_BIN`).  A least-squares plane is
+    taken off the binned difference first, because two stacks built at
+    different hours of the night see a sky that moved: a gradient in the
+    difference is sky, not noise, and binning makes it relatively larger.
+
+    The spread is a standard deviation after a 5-sigma clip, and MAD only
+    sets the clip.  Not MAD itself: the module docstring's warning applies,
+    because a difference of two *raw* frames is whole counts and its MAD can
+    only land on multiples of 1.4826.  The clip is there for the star cores
+    that seeing changes, or an unregistered dither, leave in the difference;
+    at 5 sigma it removes 6e-7 of a Gaussian, so it costs nothing where there
+    are none.  The caller passes a region that lies inside every frame's
+    footprint; a dither border of zeros inside it would be read as signal.
+    """
+    d = bin_mean(np.asarray(a, np.float64) - np.asarray(b, np.float64), k)
+    if not np.all(np.isfinite(d)):
+        raise ValueError("the difference has non-finite values")
+    if d.size < 1000:
+        raise ValueError(f"{d.size} binned pixels is too few for a spread")
+    yy, xx = np.indices(d.shape)
+    design = np.column_stack([np.ones(d.size), xx.ravel(), yy.ravel()])
+    y = d.ravel()
+    keep = np.ones(y.size, bool)
+    # Twice: the first plane is fitted through the stars as well, and a few
+    # hundred bright residuals scattered at random tilt it by enough to show.
+    for _ in range(2):
+        resid = y - design @ np.linalg.lstsq(design[keep], y[keep], rcond=None)[0]
+        dev = np.abs(resid - np.median(resid[keep]))
+        scale = MAD_TO_SIGMA * float(np.median(dev[keep])) or float(resid[keep].std())
+        keep = dev < DIFF_CLIP_SIGMAS * scale
+    return float(resid[keep].std(ddof=1) / np.sqrt(2.0))
+
+
+def extended_signal(signal, sky):
+    """The faint extended signal in a box: its level above the sky's.
+
+    Both are medians, and the reason is consistency rather than the case rule 3
+    makes for a mode.  `sky_level` bins at one ADC count, which suits a raw
+    sub; a stack's noise is a fraction of a count and that histogram would
+    quantise it.  What a ranking needs is the *same* estimator in every cell,
+    and the median is robust to the stars in both boxes.  The pedestal cancels
+    in the difference, which is what lets two gains be compared at all.
+    """
+    return float(np.median(signal) - np.median(sky))

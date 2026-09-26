@@ -38,6 +38,7 @@ from pathlib import Path
 
 import numpy as np
 
+from . import fits
 from .stats import ADC_SHIFT, STORED_FULL_SCALE
 
 EXE = Path(r"C:\Program Files\PixInsight\bin\PixInsight.exe")
@@ -138,7 +139,12 @@ def run(script, job=None, timeout=DEFAULT_TIMEOUT, workdir=None, keep=False):
                 f"{script.name} wrote no {RESULT_NAME}. PixInsight returned "
                 f"{completed.returncode}, which proves nothing either way.\n"
                 f"stderr: {completed.stderr[-2000:] if completed.stderr else '(none)'}")
-        result = json.loads(result_path.read_text(encoding="utf-8"))
+        # `errors="replace"`: the file is UTF-8 until the core puts its own
+        # words in it, and those come in the system code page -- a Windows
+        # error on this machine is German, and one umlaut in the only
+        # diagnosis there is must not be what makes it unreadable.
+        result = json.loads(result_path.read_text(encoding="utf-8",
+                                                  errors="replace"))
         result["stderr"] = completed.stderr
         result["returncode"] = completed.returncode
         result["workdir"] = str(cwd)
@@ -278,3 +284,26 @@ def eta_comb(sigma_single, sigma_stack, n):
         raise ValueError(f"a stack of {n} frames has nothing to combine")
     ideal = float(sigma_single) / np.sqrt(n)
     return ideal / float(sigma_stack)
+
+
+# --------------------------------------------------------------------------
+# contract 3: registered planes and stacks, read back
+# --------------------------------------------------------------------------
+
+def read_adc(path):
+    """A file PixInsight wrote, in ADC counts.
+
+    Two shapes arrive, and both cross the unit boundary here and nowhere
+    else.  StarAlignment writes 16-bit XISF in **stored** units, and its
+    values are interpolated, so they are no longer multiples of 16 and
+    `stats.to_adc` would rightly refuse them; stored over 65535 is exactly
+    PixInsight's own normalised value (L20), so they go through `to_adc` like
+    any other PI value.  ImageIntegration writes 32-bit float already in
+    [0, 1].
+    """
+    p = Path(path)
+    a = fits.read_xisf(p) if p.suffix.lower() == ".xisf" else fits.read(p)[0]
+    a = np.asarray(a)
+    if np.issubdtype(a.dtype, np.integer):
+        return to_adc(a.astype(np.float64) / STORED_FULL_SCALE)
+    return to_adc(a)

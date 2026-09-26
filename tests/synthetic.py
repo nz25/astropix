@@ -115,3 +115,31 @@ def write_frame(path, kind, shape=(128, 128), gain=252, ccd_temp=-10.0):
     hdu.writeto(path, overwrite=True)
     return path
 
+
+def write_xisf(path, a, reserved=bytes(4), extra_images=0, **attrs):
+    """A monolithic XISF file built from the specification, not from PixInsight.
+
+    Section 9.2's layout: signature, little-endian header length, four
+    reserved bytes, the XML header from byte 16, then the pixels attached at
+    the offset the header names.  `attrs` override or add `Image` attributes,
+    which is how a test makes the file a reader must refuse.
+    """
+    a = np.ascontiguousarray(a)
+    fmt = {"uint16": "UInt16", "float32": "Float32", "float64": "Float64"}[a.dtype.name]
+    offset = 4096
+    image = {"geometry": f"{a.shape[1]}:{a.shape[0]}:1", "sampleFormat": fmt,
+             "colorSpace": "Gray", "location": f"attachment:{offset}:{a.nbytes}"}
+    if fmt.startswith("Float"):
+        image["bounds"] = "0:1"
+    image.update(attrs)
+    tag = "<Image " + " ".join(f'{k}="{v}"' for k, v in image.items()) + "/>"
+    xml = ('<?xml version="1.0" encoding="UTF-8"?>'
+           '<xisf version="1.0" xmlns="http://www.pixinsight.com/xisf">'
+           + tag * (1 + extra_images) + "<Thumbnail/></xisf>").encode()
+    head = b"XISF0100" + len(xml).to_bytes(4, "little") + reserved
+    with open(path, "wb") as f:
+        f.write(head + xml)
+        f.write(bytes(offset - len(head) - len(xml)))
+        f.write(a.astype(a.dtype.newbyteorder("<")).tobytes())
+    return path
+

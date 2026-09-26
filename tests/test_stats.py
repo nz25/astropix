@@ -378,3 +378,78 @@ def test_a_peer_group_too_small_to_have_a_median_refuses():
     except ValueError:
         return
     raise AssertionError("two frames are not a peer group")
+
+
+
+# --------------------------------------------------------------------------
+# contract 3: noise from a difference, at a scale
+# --------------------------------------------------------------------------
+
+def test_bin_mean_averages_blocks_and_drops_the_ragged_edge():
+    a = np.arange(5 * 9, dtype=float).reshape(5, 9)
+    got = stats.bin_mean(a, 4)
+    assert got.shape == (1, 2)
+    assert got[0, 0] == a[:4, :4].mean() and got[0, 1] == a[:4, 4:8].mean()
+
+
+def test_diff_sigma_recovers_injected_noise_under_any_shared_signal():
+    """The signal is everywhere in a light, so the estimator must not see it:
+    a star field and a gradient shared by both images, plus a sky offset and
+    a tilt that differ between them, and still the injected sigma back."""
+    rng = np.random.default_rng(3)
+    yy, xx = np.indices((512, 512))
+    scene = 50 * np.exp(-((xx - 200) ** 2 + (yy - 300) ** 2) / 50.0) + 0.1 * xx
+    a = scene + rng.normal(0, 5.0, scene.shape)
+    b = scene + 3.0 + 0.002 * yy + rng.normal(0, 5.0, scene.shape)
+    assert abs(stats.diff_sigma(a, b, 1) / 5.0 - 1) < 0.02
+    assert abs(stats.diff_sigma(a, b, 4) / (5.0 / 4) - 1) < 0.05, (
+        "white noise averages over 16 pixels to a quarter")
+
+
+def test_diff_sigma_sees_correlated_noise_that_a_pixel_spread_hides():
+    """Why contract 3 bins, and why binning alone is not enough.  Smooth white
+    noise with [1/4, 1/2, 1/4] each way -- linear interpolation at a half-pixel
+    shift, the worst case -- and the per-pixel spread falls to sqrt(3/8)^2 =
+    0.375 of the truth.  A 4x4 block recovers most of it, because a kernel
+    that sums to one moves noise between neighbours rather than removing it;
+    only what leaks across the block edges is lost, and in 1-D that leaves a
+    variance of 3.25 of 4.  So the binned spread reads 0.8125, not 1."""
+    rng = np.random.default_rng(4)
+    raw = [rng.normal(0, 5.0, (512, 512)) for _ in range(2)]
+    k = np.array([0.25, 0.5, 0.25])
+    smooth = [np.apply_along_axis(np.convolve, 0,
+                                  np.apply_along_axis(np.convolve, 1, r, k, "same"),
+                                  k, "same") for r in raw]
+    pix = stats.diff_sigma(*smooth, 1) / stats.diff_sigma(*raw, 1)
+    binned = stats.diff_sigma(*smooth, 4) / stats.diff_sigma(*raw, 4)
+    assert abs(pix - 0.375) < 0.02, "the per-pixel spread is fooled"
+    assert abs(binned - 0.8125) < 0.03, "the binned spread much less so"
+
+
+def test_diff_sigma_is_not_fooled_by_whole_counts_or_stars():
+    """Two raw frames: integers, a sigma of 1.2 counts -- well under the MAD's
+    1.4826-count grid -- and a scatter of bright stars that did not line up,
+    as in an unregistered pair.  The quantisation noise is real and stays in
+    (sqrt(1.2^2 + 1/12)); the stars are clipped out."""
+    rng = np.random.default_rng(6)
+    a = np.rint(100 + rng.normal(0, 1.2, (256, 256)))
+    b = np.rint(100 + rng.normal(0, 1.2, (256, 256)))
+    a[rng.integers(0, 256, 300), rng.integers(0, 256, 300)] += 500
+    b[rng.integers(0, 256, 300), rng.integers(0, 256, 300)] += 500
+    assert abs(stats.diff_sigma(a, b, 1) / np.hypot(1.2, np.sqrt(1 / 12)) - 1) < 0.02
+
+
+def test_diff_sigma_refuses_too_few_pixels():
+    try:
+        stats.diff_sigma(np.zeros((40, 40)), np.zeros((40, 40)), 4)
+    except ValueError:
+        return
+    raise AssertionError("100 binned pixels is not a spread")
+
+
+def test_extended_signal_is_level_above_sky_and_ignores_stars():
+    rng = np.random.default_rng(5)
+    sky = 100 + rng.normal(0, 2, (64, 64))
+    sig = 112 + rng.normal(0, 2, (64, 64))
+    sig[::8, ::8] = 4000
+    assert abs(stats.extended_signal(sig, sky) - 12) < 0.3

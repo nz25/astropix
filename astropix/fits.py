@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import hashlib
 import os
+import xml.etree.ElementTree as ET
 
 import numpy as np
 from astropy.io import fits as _afits
@@ -56,6 +57,79 @@ def read(path):
     the camera wrote, BZERO-shifted back by astropy, never silently floated."""
     with _afits.open(path) as hdul:
         return np.asarray(hdul[0].data), hdul[0].header
+
+
+# XISF sample formats this project meets, and nothing else.  PixInsight writes
+# StarAlignment's output in XISF whatever extension it is asked for, so the
+# registered planes of contract 3 arrive in this format and no other.
+_XISF_DTYPES = {"UInt16": "<u2", "Float32": "<f4", "Float64": "<f8"}
+
+
+def read_xisf(path):
+    """Return the pixels of a monolithic, uncompressed, one-image XISF file.
+
+    Bytes only, like `read`: the values come back exactly as PixInsight stored
+    them -- a UInt16 image in stored units, a float one in PI's [0, 1] -- and
+    turning either into ADC counts is `pixinsight`'s job, not this one's.
+
+    Checked against the XISF 1.0 specification (pixinsight.com, section
+    numbers below), not only against the files PixInsight happens to write:
+
+    - 9.2: eight bytes `XISF0100`, a little-endian uint32 header length, four
+      reserved bytes that must be zero, and the XML header from byte 16.
+    - 11.5: `geometry` is `width:height:channels` -- X first -- and the
+      `Image` elements are the root's children of that name.  A `Thumbnail`
+      is a different element and is not counted.
+    - 8.5.3: samples run row by row from the top, x fastest, so one channel
+      reshapes to `(height, width)`.  With one channel the planar and normal
+      storage models are the same bytes, so `pixelStorage` does not matter.
+    - 10.3: `attachment:position:size`, position counted from the start of
+      the file; the size must match the geometry or the block is not this
+      image.
+    - 10.4: `byteOrder` is `little` or `big`, little when absent.
+    - 11.5: a float image must declare `bounds`.  Only `0:1` is accepted,
+      because that is what `pixinsight.to_adc` assumes.
+
+    Everything this reader does not handle -- compression, big-endian data,
+    more than one image, more than one channel, pixels stored anywhere but an
+    attachment, a sample format outside `_XISF_DTYPES` -- raises, because a
+    reader that guessed would hand back a plausible array of the wrong
+    numbers.  An optional `checksum` is not verified.
+    """
+    with open(path, "rb") as f:
+        head = f.read(16)
+        if head[:8] != b"XISF0100" or head[12:16] != bytes(4):
+            raise ValueError(f"{path} is not a monolithic XISF 1.0 file")
+        root = ET.fromstring(f.read(int.from_bytes(head[8:12], "little")))
+        images = [e for e in root if e.tag.rsplit("}", 1)[-1] == "Image"]
+        if len(images) != 1:
+            raise ValueError(f"{path} holds {len(images)} images; expected one")
+        attr = images[0].attrib
+        if "compression" in attr or attr.get("byteOrder", "little") != "little":
+            raise ValueError(f"{path}: compressed or big-endian XISF is not read here")
+        fmt = attr.get("sampleFormat")
+        if fmt not in _XISF_DTYPES:
+            raise ValueError(f"{path}: sample format {fmt!r} is not read here")
+        if fmt.startswith("Float") and attr.get("bounds") not in ("0:1", "0.0:1.0"):
+            raise ValueError(f"{path}: float bounds {attr.get('bounds')!r}, not 0:1")
+        dims = [int(v) for v in attr["geometry"].split(":")]
+        if len(dims) != 3 or dims[2] != 1:
+            raise ValueError(f"{path} has geometry {attr['geometry']}; "
+                             "expected one two-dimensional plane")
+        w, h = dims[:2]
+        where = attr["location"].split(":")
+        if where[0] != "attachment" or len(where) != 3:
+            raise ValueError(f"{path}: pixels are {attr['location']}, not an attachment")
+        dtype = np.dtype(_XISF_DTYPES[fmt])
+        size = int(where[2])
+        if size != w * h * dtype.itemsize:
+            raise ValueError(f"{path}: block of {size} bytes does not hold a "
+                             f"{w}x{h} {fmt} image")
+        f.seek(int(where[1]))
+        raw = f.read(size)
+    if len(raw) != size:
+        raise ValueError(f"{path} is truncated")
+    return np.frombuffer(raw, dtype=dtype).reshape(h, w)
 
 
 def write(path, mosaic, header=None, overwrite=False):

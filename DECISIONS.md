@@ -2845,3 +2845,90 @@ per-machine admin change bought back a path nobody is re-running.
 roughly 5 GB in 32-bit float, and they are disposable by construction - written once, read by
 `ImageIntegration`, deleted. They are remote, and that is the right thing to make remote: the
 engine streams them, while `session06` is what gets hammered and stays local.
+
+---
+
+## 2026-09-26 - Contract 3 stacks the night, and the model passes while missing in one direction
+
+### D99. The split approach: register each Bayer plane on its own
+Contract 3 needed the 147 sky-pair lights on one grid without breaking the rule that every noise
+statistic is taken on the CFA sub-planes. `pjsr/register.js` cuts each frame with `SplitCFA` and
+registers each plane with `StarAlignment` against the same plane of **one reference for all four
+cells** - the cell D frame nearest the middle of the post-flip night, chosen by rule and left out
+of every stack, since it is the one frame never resampled. All 584 frame-planes solved, blue
+included, at 0.6 px RMS or better.
+
+**Rejected: debayer a copy to find the transforms, then apply them to the mosaic.** It needs a
+CFA-aware resampler this build does not expose, and it interpolates across colours, which is the
+thing the rule forbids.
+
+Found on the way and recorded in `pjsr/NOTES.md` section 15: StarAlignment writes XISF whatever
+extension it is asked for (so `fits.read_xisf` exists, checked against the XISF 1.0 specification
+and pixel for pixel against PixInsight's own FITS export); `File.createDirectory` fails on a UNC
+path; and the core's error text arrives in the system code page, so `pixinsight.run` reads the
+result with `errors="replace"`.
+
+### D100. Noise is measured at 4x4, from differences, and resampling is a wash
+Resampling spreads each pixel's noise into its neighbours, so a per-pixel spread on registered
+frames reads low. **Chosen: 4x4 binning** (`stats.NOISE_BIN`), which is also the scale of the faint
+extended signal MISSION optimises. Binning recovers most of the smear, not all of it: linear
+interpolation at a half-pixel shift still reads 0.81 at 4x4 against 0.375 per pixel, asserted in
+`tests/test_stats.py`. Noise comes from differences (`stats.diff_sigma`), so no model of the signal
+is needed: two registered frames, or two stacks of disjoint frames, differ only by noise.
+
+**`eta_comb_registered` uses the registered single frame as its ideal, not the raw one.** The
+principled version - divide by the measured resampling factor, so the ideal is the raw sub the
+model's `SNR_sub` describes - was run and read 1.00-1.07, above `sqrt(N)`. Raw frames, lined up by a
+whole-pixel shift, carry about 10% more 4x4 noise than white noise would (0.276 against 0.25), and
+this night cannot say whether that is sky that did not cancel or correlated noise the sensor has.
+Either way it inflates the raw ideal. The resampling factor is published beside the efficiency as
+context (0.90 per pixel, 0.95 at 4x4) and nothing divides by it. Denis's call, 2026-09-26.
+
+**A first run got this badly wrong and is recorded so it is not repeated.** It differenced raw
+frames *unaligned*, in the sky corner; at 4x4 the dithered stars and nebula outweighed the noise
+and the resampling factor came out at 0.42, which no resampling kernel can produce.
+`spatial.integer_offset` (phase correlation, whole pixels only, so no noise is moved) replaced it.
+
+**The published efficiency is still high by up to about 5%**, and the no-rejection arm is what
+shows it: it reaches 1.05. A single registered pair keeps a little residue that a stack averages
+away - seeing differences, half-pixel registration misfit - which inflates the ideal. Said in the
+explainer rather than hidden; not corrected, because the size of it is known only to within the
+same few percent.
+
+### D101. Contract 3's numbers, and the placeholders they replace
+Notebook `25` publishes `results/stack_constants.json`, `stack_ladder.csv` and `stack_pairs.csv`.
+`eta_comb_registered` (Winsorized 4.0/3.0, 4x4) is 0.978 / 1.016 / 1.014 / 0.976 / 0.956 at
+N = 3 / 4 / 8 / 16 / 18, against session 03's bias ladder at 0.976 / 0.944 / 0.883 for N = 4 / 8 /
+16. **Dithered lights do not stall the way the bias stack did**: the fixed pattern that capped the
+bias ladder lands on a different sky pixel in every registered frame and averages like noise. N
+stops at 18, so nothing here reaches a night of hundreds of short subs.
+
+The SNR estimator repeats to 0.7-3.0% per cell and plane. The repeatability used is the larger of
+the protocol's half-split and the scatter of four quarter-stacks, a rule fixed before any number
+was seen, because a half-split is a single draw.
+
+**Notebook `17` no longer publishes `eta_comb_registered`, `snr_repeatability` or `ranked_pairs`
+as nulls.** They were placeholders for exactly this work, and with the real values in
+`stack_constants.json` the same names in two files were a `model.Conflict` waiting for the first
+caller. Rerun from local frames; the diff to `results/` is those three stanzas and nothing else.
+`sky_pairs.csv` keeps its empty measured columns: its predictions are what `25` reads.
+
+### D102. The definition of done is met, and the model misses in one direction
+Three of the four green pairs pass MISSION's test, one of them straddling HCG, and none is a tie:
+the closest predicted separation clears its repeatability by 1.75x. `model.verdict` applies the
+rule - a tie when the prediction is inside the repeatability, a pass when the winner is right and
+the measured ratio is within 10% of the predicted one.
+
+| pair | predicted | measured | verdict |
+|---|---|---|---|
+| gain 50, 30 -> 120 s | +43.1% | +37.7% | pass |
+| gain 200, 30 -> 120 s | +27.3% | +17.6% | pass |
+| 30 s, gain 50 -> 200 | +18.5% | +11.7% | pass |
+| 120 s, gain 50 -> 200 | +5.4% | -4.6% | fail |
+
+**The 10% bar is loose against a 2-3% measurement, and the misses show it.** In green every miss
+has the same sign, a mean of -7.9 points and 1.8 to 4.2 times the repeatability; the one failure is
+that shortfall landing on the smallest prediction. Blue misses by -2.6 points on average. Every
+pair moves towards less read noise, so a noise term that does not shrink with `t` - MISSION's last
+untested assumption - is the leading suspect. Two cheaper suspects push the same way and come
+first: the prediction drops `F_obj` from the noise, and uses the -10 C dark bound on a -20 C night.
