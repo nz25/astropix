@@ -3007,3 +3007,75 @@ the cell with the brightest stars.
 - **The masked noise is measured on the darkest 15% of the ROI**, the gaps between stars. The
   mask is the same in every cell, so the ranking is unaffected, but a masked SNR is not an SNR of
   the whole field and should not be quoted as one.
+
+---
+
+## 2026-10-03 - The star-colour constraint meets real stars, and holds
+
+### D106. Star peaks come from raw subs lined up by whole pixels, not from PixInsight
+Notebook `29` tests `model.peak_counts` on the sky-pair night: each star's peak is measured in
+cell A, the model predicts it in B, C and D, and the prediction is set against what was measured.
+Registration resamples, and resampling smooths a peak, which is the one number being measured. So
+nothing is registered. Each raw sub is lined up with `25`'s reference by **whole-pixel shifts, one
+per tile of a 4x4 grid** (`spatial.tile_offsets`, `spatial.realign`). One shift per frame was not
+enough: the field turns over the night, and the corners drift about 2 px against the centre. A
+star's peak is the brightest pixel within 1 px of its listed core (`stats.peaks`), and its peak in
+a cell is the median over that cell's subs. The list is `spatial.stars` on the mean of the cell D
+subs: 5 sigma above a 31-px running median, and **isolated**, with no other star within 5 px, so a
+neighbour's core never sits in the box. 8033 stars.
+
+The two tests and their bars were written into `29`'s purpose cell before any peak was read: the
+median ratio of measured to predicted peak within 10% of 1, and the measured clipped fraction
+inside the band the prediction gives when every peak is scaled by 0.9 and 1.1.
+
+**A tile can fail, and the first run found it.** In eight cell A subs - the faintest frames of the
+night - one tile, nearly always the same starless patch, correlated 50-230 px away. The margin
+that keeps every shift inside the frame grew to 227 px and cut a third off every plane. It was
+found from the spread between a frame's tiles, not from any peak. `tile_offsets` now fits each
+frame's shift and small turn over its tiles, replaces a tile more than 2 px off the fit, and
+raises if fewer than half agree. Re-run from the top under the same rules: margin 58 px, and the
+verdict did not change.
+
+**Rejected: peaks from `25`'s registered planes.** They exist only as a PixInsight run, and their
+peaks are not the camera's.
+
+### D107. All twelve cell-planes pass, and the gain scales exactly while time loses 2%
+| cell | what moved from A | peak scale, green | green clipped, measured | predicted band |
+|---|---|---|---|---|
+| B | t x4 | 0.980, 0.979 | 0.91%, 0.92% | 0.86-1.06%, 0.83-1.10% |
+| C | gain 50 -> 200 | 1.000, 1.000 | 1.52%, 1.43% | 1.31-1.68%, 1.28-1.67% |
+| D | both | 0.966, 0.977 | 5.39%, 5.44% | 5.18-6.11%, 5.12-6.11% |
+
+Red and blue follow the same pattern, and every cell-plane passes both tests.
+
+**The gain ratio is exact at a star core.** C changes only the gain, and its peaks land at
+0.994-1.000 of the prediction, each to about 0.006. `15`'s `g` at 50 and 200, measured on flats,
+holds on star peaks.
+
+**Time loses about 2%, and it is real.** B changes only `t`, and its peaks land at 0.979-0.982,
+three to four standard errors below 1. D, which changes both, lands at 0.966-0.977, about B's loss
+on top of C's none. This is the shape `29`'s purpose named for a star that blurs more in a longer
+sub, through guiding and seeing. It is small against the 10% bar, and its sign makes the model
+slightly *pessimistic* about long subs: they clip a little less than predicted, and the measured
+fractions sit below the centre of the band in seven of the eight B and D cell-planes for that
+reason.
+
+**Near the ceiling the diagnostic is inconclusive, and says why.** Binned by predicted level, the
+ratio dips by 1-3% in the top bins of every cell. But a star predicted just under 4095 that lands just
+over it is read at 4095, which caps its ratio, so the top bins are biased low by construction. A
+bend before 4095 on a star core is neither shown nor ruled out. `linear_to_at_least` stays the
+ceiling, for MISSION's reason.
+
+**What it publishes.** `results/star_peaks.csv`, one row per star, plane and cell, and
+`results/star_constants.json`: `star_peak_scale`, `clipped_star_fraction` measured and predicted,
+`star_clipping_verdict`, and `F_star_peak` as measured in A, per plane - the quantity
+`model.t_max_colour` takes. **`F_star_peak` belongs to NGC 7000, this night's seeing and this
+focus**, and its top is cut off: 8-17 stars per plane clip even in A.
+
+**What this leaves open.**
+- **Time's 2% has no model term.** `F_star_peak` is treated as fixed; on this night it falls
+  slightly with `t`. It errs on the safe side and moves no decision at this size, so no term is
+  added. If a longer sub, or a worse-guided night, made it larger, it would.
+- **The Pareto curve itself.** Both halves of the model have now passed on this night. Putting them
+  together over `t` and gain is the next notebook's job, and it needs its own agreed purpose.
+- **One night, one field.** As for `27`.

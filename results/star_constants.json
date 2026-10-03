@@ -1,0 +1,210 @@
+{
+  "star_peak_scale": {
+    "value": {
+      "B": {
+        "B": 0.982437,
+        "G1": 0.980098,
+        "G2": 0.978582,
+        "R": 0.981073
+      },
+      "C": {
+        "B": 0.996558,
+        "G1": 0.999831,
+        "G2": 0.999793,
+        "R": 0.993692
+      },
+      "D": {
+        "B": 0.97631,
+        "G1": 0.965933,
+        "G2": 0.977362,
+        "R": 0.973965
+      }
+    },
+    "unit": "measured / predicted star peak above the pedestal, median over stars",
+    "uncertainty": {
+      "B": {
+        "B": 0.005758,
+        "G1": 0.004992,
+        "G2": 0.004825,
+        "R": 0.004661
+      },
+      "C": {
+        "B": 0.006402,
+        "G1": 0.00588,
+        "G2": 0.006058,
+        "R": 0.005524
+      },
+      "D": {
+        "B": 0.006367,
+        "G1": 0.005267,
+        "G2": 0.006257,
+        "R": 0.005376
+      }
+    },
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "29_star_clipping.ipynb",
+    "note": "[tests model.peak_counts: t and 1/g scaling at star peaks] stars at least 50.0 counts above the sky in A and predicted below 0.9 x linear_to_at_least.  Passes within 10%.  one list of 8033 isolated stars (spatial.stars {'nsigma': 5.0, 'background': 31, 'isolation': 5}) on the mean of the cell D subs; peaks by stats.peaks, radius 1, on raw subs realigned by whole-pixel shifts per 4x4 tile; a star's peak in a cell is the median over its subs, and it is clipped there if that median is 4095.  Predictions from each star's peak in cell A, through model.peak_counts with 15's cold g and pedestal and 17's F_sky per cell"
+  },
+  "clipped_star_fraction": {
+    "value": {
+      "B": {
+        "B": 0.004357,
+        "G1": 0.009088,
+        "G2": 0.009212,
+        "R": 0.009959
+      },
+      "C": {
+        "B": 0.006722,
+        "G1": 0.015187,
+        "G2": 0.014316,
+        "R": 0.017055
+      },
+      "D": {
+        "B": 0.028258,
+        "G1": 0.053903,
+        "G2": 0.054401,
+        "R": 0.062119
+      }
+    },
+    "unit": "fraction of the star list whose median peak is full scale",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "29_star_clipping.ipynb",
+    "note": "rule 7 of protocols/06-sky-pair.md.  Cell A is the reference, so it is not here.  one list of 8033 isolated stars (spatial.stars {'nsigma': 5.0, 'background': 31, 'isolation': 5}) on the mean of the cell D subs; peaks by stats.peaks, radius 1, on raw subs realigned by whole-pixel shifts per 4x4 tile; a star's peak in a cell is the median over its subs, and it is clipped there if that median is 4095.  Predictions from each star's peak in cell A, through model.peak_counts with 15's cold g and pedestal and 17's F_sky per cell"
+  },
+  "clipped_star_fraction_predicted": {
+    "value": {
+      "B": {
+        "B": 0.004233,
+        "G1": 0.009585,
+        "G2": 0.009461,
+        "R": 0.010581
+      },
+      "C": {
+        "B": 0.00722,
+        "G1": 0.015187,
+        "G2": 0.014191,
+        "R": 0.017304
+      },
+      "D": {
+        "B": 0.029877,
+        "G1": 0.055894,
+        "G2": 0.056143,
+        "R": 0.063862
+      }
+    },
+    "unit": "fraction of the star list the model predicts clipped",
+    "uncertainty": {
+      "low": {
+        "B": {
+          "B": 0.003361,
+          "G1": 0.00859,
+          "G2": 0.008341,
+          "R": 0.009461
+        },
+        "C": {
+          "B": 0.006473,
+          "G1": 0.013071,
+          "G2": 0.012822,
+          "R": 0.015063
+        },
+        "D": {
+          "B": 0.02664,
+          "G1": 0.051786,
+          "G2": 0.051164,
+          "R": 0.057762
+        }
+      },
+      "high": {
+        "B": {
+          "B": 0.004855,
+          "G1": 0.010581,
+          "G2": 0.010955,
+          "R": 0.012075
+        },
+        "C": {
+          "B": 0.007967,
+          "G1": 0.016806,
+          "G2": 0.016681,
+          "R": 0.0183
+        },
+        "D": {
+          "B": 0.033113,
+          "G1": 0.061123,
+          "G2": 0.061123,
+          "R": 0.069339
+        }
+      }
+    },
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "29_star_clipping.ipynb",
+    "note": "the band is every predicted peak scaled by 1 -/+ 0.1.  one list of 8033 isolated stars (spatial.stars {'nsigma': 5.0, 'background': 31, 'isolation': 5}) on the mean of the cell D subs; peaks by stats.peaks, radius 1, on raw subs realigned by whole-pixel shifts per 4x4 tile; a star's peak in a cell is the median over its subs, and it is clipped there if that median is 4095.  Predictions from each star's peak in cell A, through model.peak_counts with 15's cold g and pedestal and 17's F_sky per cell"
+  },
+  "star_clipping_verdict": {
+    "value": {
+      "B B": "pass",
+      "B G1": "pass",
+      "B G2": "pass",
+      "B R": "pass",
+      "C B": "pass",
+      "C G1": "pass",
+      "C G2": "pass",
+      "C R": "pass",
+      "D B": "pass",
+      "D G1": "pass",
+      "D G2": "pass",
+      "D R": "pass"
+    },
+    "unit": "pass or fail per cell and plane",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "29_star_clipping.ipynb",
+    "note": "pass if the peak scale is within the tolerance AND the measured clipped fraction is inside the predicted band, both fixed in the purpose cell before any peak was read"
+  },
+  "F_star_peak": {
+    "value": {
+      "B": {
+        "q0.5": 0.539,
+        "q0.9": 5.685,
+        "q0.99": 79.933,
+        "q0.999": 318.926,
+        "n": 8033,
+        "clipped_in_A": 8
+      },
+      "G1": {
+        "q0.5": 1.145,
+        "q0.9": 12.673,
+        "q0.99": 147.618,
+        "q0.999": 469.208,
+        "n": 8033,
+        "clipped_in_A": 16
+      },
+      "G2": {
+        "q0.5": 1.14,
+        "q0.9": 12.608,
+        "q0.99": 147.221,
+        "q0.999": 473.789,
+        "n": 8033,
+        "clipped_in_A": 15
+      },
+      "R": {
+        "q0.5": 1.457,
+        "q0.9": 15.535,
+        "q0.99": 161.799,
+        "q0.999": 580.585,
+        "n": 8033,
+        "clipped_in_A": 17
+      }
+    },
+    "unit": "e-/px/s at a star's brightest plane pixel, quantiles over the star list",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "29_star_clipping.ipynb",
+    "note": "[feeds model.t_max_colour] measured in cell A for stars not clipped there; the brightest are clipped even in A, so the top of the distribution is cut off and clipped_in_A counts them.  THIS TARGET, THIS NIGHT'S SEEING AND THIS FOCUS: a different field or a softer night moves every number.  one list of 8033 isolated stars (spatial.stars {'nsigma': 5.0, 'background': 31, 'isolation': 5}) on the mean of the cell D subs; peaks by stats.peaks, radius 1, on raw subs realigned by whole-pixel shifts per 4x4 tile; a star's peak in a cell is the median over its subs, and it is clipped there if that median is 4095.  Predictions from each star's peak in cell A, through model.peak_counts with 15's cold g and pedestal and 17's F_sky per cell"
+  }
+}

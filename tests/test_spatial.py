@@ -102,3 +102,59 @@ def test_star_mask_grows_each_detection_into_a_disc():
     got = spatial.star_mask(a, grow=3)
     assert got.sum() == 29 and got[50, 53] and not got[52, 53], "a disc of radius 3"
     assert spatial.star_mask(a, grow=0).sum() == 1
+
+
+def test_tile_offsets_follow_a_field_that_shifts_differently_across_the_frame():
+    """Left and right halves dithered by different amounts, as a slowly turning
+    field moves its corners: one shift for the frame cannot fit both, a shift
+    per tile can, and `realign` then hands back the reference's pixels."""
+    rng = np.random.default_rng(11)
+    field = np.zeros((200, 400))
+    field[rng.integers(0, 200, 400), rng.integers(0, 400, 400)] = 500
+    b = np.empty_like(field)
+    b[:, :200] = np.roll(field, (3, 5), axis=(0, 1))[:, :200]
+    b[:, 200:] = np.roll(field, (4, 7), axis=(0, 1))[:, 200:]
+    off = spatial.tile_offsets(field, b, tiles=(2, 2))
+    assert off.shape == (2, 2, 2)
+    assert (off[:, 0] == (5, 3)).all() and (off[:, 1] == (7, 4)).all()
+    got = spatial.realign(b, off, margin=10)
+    assert got.shape == (180, 380)
+    assert np.array_equal(got[:, 5:185], field[10:190, 15:195])
+    assert np.array_equal(got[:, 195:], field[10:190, 205:390])
+
+
+def test_realign_refuses_a_margin_smaller_than_the_shift():
+    try:
+        spatial.realign(np.zeros((50, 50)), np.full((1, 1, 2), 6), margin=5)
+    except ValueError:
+        return
+    raise AssertionError("a shift past the margin must raise, not wrap")
+
+
+def test_stars_lists_each_isolated_star_on_its_peak_and_drops_close_pairs():
+    a = np.random.default_rng(12).normal(0, 1, (120, 120))
+    for y, x in [(20, 20), (60, 90), (100, 40)]:
+        a[y - 1:y + 2, x - 1:x + 2] += 30
+        a[y, x] += 40
+    a[80, 80] += 100                    # a close pair: neither survives
+    a[80, 83] += 100
+    got = {tuple(p) for p in spatial.stars(a)}
+    assert got == {(20, 20), (60, 90), (100, 40)}
+    assert len(spatial.stars(a, isolation=0)) == 5
+
+
+def test_tile_offsets_replace_a_tile_with_nothing_to_match_and_refuse_a_blank_frame():
+    """A tile of `b` holding only noise correlates to anywhere; the frame's
+    other tiles say where it went.  With every tile blank there is nothing to
+    say it, and the function must not guess."""
+    rng = np.random.default_rng(13)
+    field = np.zeros((400, 400))
+    field[rng.integers(0, 400, 800), rng.integers(0, 400, 800)] = 500
+    b = np.roll(field, (3, 5), axis=(0, 1)) + rng.normal(0, 3, field.shape)
+    b[0:100, 100:200] = rng.normal(0, 3, (100, 100))
+    assert (spatial.tile_offsets(field, b) == (5, 3)).all()
+    try:
+        spatial.tile_offsets(field, rng.normal(0, 3, field.shape))
+    except ValueError:
+        return
+    raise AssertionError("a frame no tile can place must raise")

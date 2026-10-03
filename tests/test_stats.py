@@ -485,3 +485,17 @@ def test_extended_signal_is_level_above_sky_and_ignores_stars():
     sig = 112 + rng.normal(0, 2, (64, 64))
     sig[::8, ::8] = 4000
     assert abs(stats.extended_signal(sig, sky) - 12) < 0.3
+
+
+def test_peaks_is_the_brightest_pixel_in_the_box_and_refuses_the_edge():
+    a = np.zeros((20, 20))
+    a[5, 6] = 9                         # one pixel off the listed position
+    a[12, 12] = 4
+    a[12, 15] = 7                       # outside a radius-1 box around (12, 12)
+    assert list(stats.peaks(a, [(5, 5), (12, 12)])) == [9, 4]
+    assert list(stats.peaks(a, [(12, 13)], radius=2)) == [7]
+    try:
+        stats.peaks(a, [(0, 5)])
+    except ValueError:
+        return
+    raise AssertionError("a box that runs off the image must not shrink quietly")

@@ -479,3 +479,28 @@ def extended_signal(signal, sky):
     in the difference, which is what lets two gains be compared at all.
     """
     return float(np.median(signal) - np.median(sky))
+
+
+def peaks(image, positions, radius=1):
+    """The brightest pixel within `radius` of each `(row, col)`: a star's peak.
+
+    A box rather than the one pixel at the listed position, because a star
+    followed from sub to sub by whole-pixel shifts lands up to a pixel off its
+    listed core (`spatial.tile_offsets`), and because which pixel holds the
+    peak moves with where the star falls inside it.  On a sub-plane a star is
+    only a few pixels across, so that phase is most of why one star's peak
+    scatters from sub to sub -- a caller wanting the star's typical peak takes
+    a median over subs, not one sub.  The max is the right statistic for the
+    star-colour constraint, which is about the one pixel that clips first.
+
+    Raises if any box runs off the image, rather than reading a smaller box.
+    """
+    a = np.asarray(image)
+    pos = np.asarray(positions, int).reshape(-1, 2)
+    if len(pos) and ((pos < radius).any() or (pos[:, 0] >= a.shape[0] - radius).any()
+                     or (pos[:, 1] >= a.shape[1] - radius).any()):
+        raise ValueError(f"a box of radius {radius} runs off an image of shape {a.shape}")
+    off = np.arange(-radius, radius + 1)
+    rows = pos[:, :1, None] + off[None, :, None]
+    cols = pos[:, 1:, None] + off[None, None, :]
+    return a[rows, cols].reshape(len(pos), -1).max(axis=1)
