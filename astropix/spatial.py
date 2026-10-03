@@ -5,12 +5,12 @@ varies; this one asks where they are.  Both work on plain arrays and neither
 opens a file.
 
 `split` is the lattice.  `plane_roi` and `cut` are the boxes contract 3
-measures in: a mosaic ROI carried onto one sub-plane, and the box itself.  It
-briefly also held `bright_pixels`, which counted pixels above a threshold and
-asked whether they touched -- the old dark/light discriminator.  That test was
-retired (D50) and the function went with it rather than sitting here uncalled;
-vignetting and source detection will arrive here when something needs them,
-and will not be this.
+measures in: a mosaic ROI carried onto one sub-plane, and the box itself.
+`star_mask` is source detection, which arrived when a noise measurement needed
+to know where the stars were.  It briefly also held `bright_pixels`, which
+counted pixels above a threshold and asked whether they touched -- the old
+dark/light discriminator.  That test was retired (D50) and the function went
+with it rather than sitting here uncalled.
 
 The rule this module exists to enforce (`CLAUDE.md`): every noise statistic is
 computed on the raw mosaic, split into its four Bayer sub-planes.  Debayering
@@ -25,6 +25,7 @@ handling a mosaic this project has never characterised.
 from __future__ import annotations
 
 import numpy as np
+from scipy import ndimage
 
 # Offsets into the 2x2 tile, for a BAYERPAT of 'RGGB' read with array row 0 as
 # the pattern's first row.  A vertical flip between how the sensor read out and
@@ -102,3 +103,35 @@ def cut(a, roi):
     if x < 0 or y < 0 or y + h > a.shape[0] or x + w > a.shape[1]:
         raise ValueError(f"ROI {roi} does not fit in an array of shape {a.shape}")
     return a[y:y + h, x:x + w]
+
+
+def star_mask(image, nsigma=5.0, grow=3, background=31):
+    """Where the stars are: True on every pixel within `grow` of one.
+
+    Pass a *deep* image -- a stack, not a sub -- so the faint stars stand out
+    of the noise and the mask reaches as far into their wings as the data can
+    see.  A star is anything more than `nsigma` above its local background,
+    and the background is a running median `background` pixels wide.  A median
+    because it steps over a star without rising into it, and a local one
+    because the field this project measures in is nebula: a single level for
+    the whole box would call the bright side of it a star.  The threshold is in
+    units of the noise of what is left, from its MAD -- the same 1.4826 as
+    `stats.MAD_TO_SIGMA`, written out here because `stats` imports this module.
+
+    Then every detection is grown by a disc of radius `grow` pixels.  The
+    threshold finds a star's core; what the mask is *for* is the wings around
+    it, which lie below any threshold and are the part `stats.diff_sigma`'s
+    clip cannot reach.
+    """
+    a = np.asarray(image, np.float64)
+    if a.ndim != 2:
+        raise ValueError(f"expected a 2-D image, got shape {a.shape}")
+    resid = a - ndimage.median_filter(a, size=background, mode="reflect")
+    scale = 1.4826 * float(np.median(np.abs(resid - np.median(resid))))
+    if not scale > 0:
+        raise ValueError("the image has no noise to set a threshold against")
+    found = resid > nsigma * scale
+    if grow > 0:
+        yy, xx = np.indices((2 * grow + 1, 2 * grow + 1)) - grow
+        found = ndimage.binary_dilation(found, structure=xx ** 2 + yy ** 2 <= grow ** 2)
+    return found

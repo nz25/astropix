@@ -143,3 +143,31 @@ def write_xisf(path, a, reserved=bytes(4), extra_images=0, **attrs):
         f.write(a.astype(a.dtype.newbyteorder("<")).tobytes())
     return path
 
+
+
+def seeing_pair(seed=7, shape=(512, 512)):
+    """Two images of one star field on a nebula, the seeing changed between
+    them, plus a deep image of the same field to find the stars on.
+
+    What `diff_sigma`'s mask is for: in `a - b` every star leaves a residue,
+    a sharp centre the clip removes and wings it does not.  Noise is 5.0 in
+    `a` and `b`, 1.0 in `deep`.  Returns `(a, b, deep, (rows, cols))`.
+    """
+    rng = np.random.default_rng(seed)
+    yy, xx = np.indices(shape)
+    cy = rng.uniform(10, shape[0] - 10, 150)
+    cx = rng.uniform(10, shape[1] - 10, 150)
+    flux = rng.uniform(50, 3000, 150)
+
+    def stars(width):                   # each drawn in a box of +-10 px around it
+        out = np.zeros(shape)
+        for y, x, f in zip(cy, cx, flux):
+            box = np.s_[int(y) - 10:int(y) + 11, int(x) - 10:int(x) + 11]
+            out[box] += f * np.exp(-((xx[box] - x) ** 2 + (yy[box] - y) ** 2) / (2 * width ** 2))
+        return out
+
+    nebula = 200 + 0.2 * xx + 80 * np.exp(-((xx - 300) ** 2 + (yy - 200) ** 2) / (2 * 90 ** 2))
+    a = nebula + stars(1.5) + rng.normal(0, 5.0, shape)
+    b = nebula + stars(1.9) + rng.normal(0, 5.0, shape)
+    deep = nebula + stars(1.7) + rng.normal(0, 1.0, shape)
+    return a, b, deep, (cy, cx)

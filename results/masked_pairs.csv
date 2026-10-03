@@ -1,0 +1,41 @@
+pair,why,plane,predicted_pct,measured_pct,repeatability_pct,verdict,mask
+A->B,t-pair at gain 50,green,43.08789,37.497248,2.938236,pass,none
+A->B,t-pair at gain 50,B,52.38091,55.473054,1.685804,pass,none
+C->D,t-pair at gain 200,green,27.261936,17.555221,2.283631,pass,none
+C->D,t-pair at gain 200,B,27.681855,23.134392,2.428179,pass,none
+A->C,"straddles HCG, t = 30 s",green,18.471141,11.810413,2.151619,pass,none
+A->C,"straddles HCG, t = 30 s",B,30.224051,28.600981,2.249313,pass,none
+B->D,"straddles HCG, t = 120 s",green,5.367874,-4.406103,3.036237,fail,none
+B->D,"straddles HCG, t = 120 s",B,9.116348,1.851756,1.917963,pass,none
+A->B,t-pair at gain 50,green,43.08789,46.918071,1.75293,pass,grow0
+A->B,t-pair at gain 50,B,52.38091,60.985756,1.406137,pass,grow0
+C->D,t-pair at gain 200,green,27.261936,29.211517,2.516103,pass,grow0
+C->D,t-pair at gain 200,B,27.681855,27.700385,1.764289,pass,grow0
+A->C,"straddles HCG, t = 30 s",green,18.471141,14.529154,2.704311,pass,grow0
+A->C,"straddles HCG, t = 30 s",B,30.224051,29.47003,1.744865,pass,grow0
+B->D,"straddles HCG, t = 120 s",green,5.367874,0.726109,1.445767,pass,grow0
+B->D,"straddles HCG, t = 120 s",B,9.116348,2.700842,1.430169,pass,grow0
+A->B,t-pair at gain 50,green,43.08789,47.900454,1.727371,pass,grow1
+A->B,t-pair at gain 50,B,52.38091,61.469094,1.468685,pass,grow1
+C->D,t-pair at gain 200,green,27.261936,29.5586,2.446163,pass,grow1
+C->D,t-pair at gain 200,B,27.681855,27.234708,1.732073,pass,grow1
+A->C,"straddles HCG, t = 30 s",green,18.471141,14.766842,2.625772,pass,grow1
+A->C,"straddles HCG, t = 30 s",B,30.224051,30.655532,1.733171,pass,grow1
+B->D,"straddles HCG, t = 120 s",green,5.367874,0.534048,1.439737,pass,grow1
+B->D,"straddles HCG, t = 120 s",B,9.116348,2.954182,1.467389,pass,grow1
+A->B,t-pair at gain 50,green,43.08789,47.182982,1.825741,pass,grow2
+A->B,t-pair at gain 50,B,52.38091,62.916825,1.735971,pass,grow2
+C->D,t-pair at gain 200,green,27.261936,30.259183,3.031094,pass,grow2
+C->D,t-pair at gain 200,B,27.681855,27.119792,1.650166,pass,grow2
+A->C,"straddles HCG, t = 30 s",green,18.471141,14.437645,3.234913,pass,grow2
+A->C,"straddles HCG, t = 30 s",B,30.224051,30.985336,1.826076,pass,grow2
+B->D,"straddles HCG, t = 120 s",green,5.367874,1.279061,1.433946,pass,grow2
+B->D,"straddles HCG, t = 120 s",B,9.116348,2.204475,1.549868,pass,grow2
+A->B,t-pair at gain 50,green,43.08789,47.13527,1.875893,pass,tight
+A->B,t-pair at gain 50,B,52.38091,61.418885,1.897446,pass,tight
+C->D,t-pair at gain 200,green,27.261936,30.811956,3.09015,pass,tight
+C->D,t-pair at gain 200,B,27.681855,25.708247,1.743281,pass,tight
+A->C,"straddles HCG, t = 30 s",green,18.471141,15.185154,3.273427,pass,tight
+A->C,"straddles HCG, t = 30 s",B,30.224051,33.023871,1.69266,pass,tight
+B->D,"straddles HCG, t = 120 s",green,5.367874,2.406414,1.533844,pass,tight
+B->D,"straddles HCG, t = 120 s",B,9.116348,3.595051,1.942738,pass,tight

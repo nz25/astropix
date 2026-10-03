@@ -2932,3 +2932,78 @@ that shortfall landing on the smallest prediction. Blue misses by -2.6 points on
 pair moves towards less read noise, so a noise term that does not shrink with `t` - MISSION's last
 untested assumption - is the leading suspect. Two cheaper suspects push the same way and come
 first: the prediction drops `F_obj` from the noise, and uses the -10 C dark bound on a -20 C night.
+
+---
+
+## 2026-09-26 - The green miss was star wings in the noise, and the model was right
+
+### D103. The cheap suspects are ruled out by arithmetic
+D102 named two suspects to try before anything costly: the prediction leaves out `F_obj`, and it
+uses the -10 C dark bound on a -20 C night. Notebook `27` section 1 puts each one into `17`'s
+prediction. Dropping the dark term moves no pair by more than 0.013 points: it is 0.0005 e-/px/s
+against a sky near 1.9. Adding `F_obj` moves none by more than 1.52: the object is 6-7% of the sky.
+The green misses are 5 to 10 points, so neither suspect comes close.
+
+Chaining the pairs gave a shortfall for each cell, with A as the zero: green B -3.8%, C -5.7%,
+D -12.9%. That is the same order as each cell's clipped-pixel fraction (0.006%, 0.019%, 0.026%,
+0.096%), and blue, whose stars clip less, misses less. `stats.diff_sigma` clipped star cores at
+5 sigma but not the wings of a star whose profile changed between two half-stacks, and those wings
+widen the spread more as the stars get brighter in counts. That became the hypothesis.
+
+### D104. One star mask for every cell, and the check replaced before any noise was seen
+`spatial.star_mask` finds stars on a deep stack: anything more than 5 sigma above a 31-pixel
+running median, grown into a disc. `stats.diff_sigma` gains a `mask`, which leaves out every 4x4
+block that touches a masked pixel. `27` builds **one mask for all four cells**, the union over the
+sixteen full stacks, so every cell is measured on the same patch of sky.
+
+The verdict mask (`tight`, grown by 3) was fixed in advance, and so was a check mask grown by 6.
+**The check was replaced before any noise was measured.** NGC 7000 sits in a Milky Way field, and
+the check covered 90% of the signal ROI, leaving 756 blocks, below `diff_sigma`'s floor of 1000.
+Growths of 0, 1 and 2 replaced it: if star wings are the cause, the noise should fall as the mask
+grows and then level off. `tight` keeps 2427 blocks, 15% of the ROI.
+
+**Rejected: a mask per cell.** That would keep more sky in the cells with fewer visible stars, and
+then the four cells would be measured on different patches, which a ranking cannot allow.
+
+### D105. The miss is gone, and it was the measurement
+With no mask the re-run reproduces `25` to within 0.22 points on every pair, so what moves below
+is the mask. The masked noise falls least in A and most in D, as the stars predicted: green
+A -11.5%, C -14.1%, B -17.3%, D -22.8%. B and C swap against their clipped fractions, which are
+close. It has already levelled off at growth 0: every growth from 0 to 3 gives the same drop to
+within about 2 points. So the excess sat on the star pixels themselves and their
+nearest neighbours, not far out in the wings.
+
+| pair | predicted | measured, `25` | measured, masked | verdict |
+|---|---|---|---|---|
+| gain 50, 30 -> 120 s | +43.1% | +37.5% | +47.1% | pass |
+| gain 200, 30 -> 120 s | +27.3% | +17.6% | +30.8% | pass |
+| 30 s, gain 50 -> 200 | +18.5% | +11.8% | +15.2% | pass |
+| 120 s, gain 50 -> 200 | +5.4% | -4.4% | +2.4% | pass |
+
+**All four green pairs pass, and all four blue ones.** The green mean miss goes from -7.9 points
+to +0.3, and what is left has mixed signs: two pairs over, two under, each within about 1-2 times
+its repeatability. The published rule fired - every green pair moved by more than its
+repeatability - so `27` writes `masked_pairs.csv` and `mask_constants.json`, under new names
+(`ranked_pairs_masked`) that sit beside `25`'s rather than replace them.
+
+**So MISSION's last untested assumption survives this night.** Nothing here asks for a noise term
+that fails to shrink with `t`. The model was right and the SNR estimator was wrong, most of all in
+the cell with the brightest stars.
+
+**What this leaves open, named rather than fixed.**
+- **`25`'s other two constants carry the same residue, and neither is re-measured.** Both come
+  from `diff_sigma` in the signal ROI with no mask. Neither moves anything today, so a re-measure
+  would pin down no model term. `snr_repeatability` decided none of the verdicts above: `27`
+  measured each pair's repeatability again under each mask, and the masked verdicts use that. It
+  is the `repeatability_pct` column of `masked_pairs.csv`. Every pair is predicted apart by at
+  least 3.5 times it, so none is a tie either way. `eta_comb_registered` is not read by the model,
+  whose `eta_comb` is still session 03's bias ladder in `model_constants.json`. It falls due the
+  day someone proposes switching the model to registered lights, and is measured under the mask
+  then.
+- **Blue, gain 50, 30 -> 120 s, now overshoots by 9.0 points, 4.8 times its repeatability.** It
+  passes the 10% bar, and its sign is opposite to the old green miss, so it is not the same
+  problem. It is the largest miss left in units of its own precision, and nothing here explains
+  it.
+- **The masked noise is measured on the darkest 15% of the ROI**, the gaps between stars. The
+  mask is the same in every cell, so the ranking is unaffected, but a masked SNR is not an SNR of
+  the whole field and should not be quoted as one.

@@ -6,7 +6,7 @@ import numpy as np
 from astropy.io import fits as _afits
 
 from astropix import fits as F
-from astropix import stats
+from astropix import spatial, stats
 
 from . import synthetic
 from .synthetic import (PEDESTAL, SENSOR_CEILING, STEP, tmp_frame, tmpdir,
@@ -437,6 +437,38 @@ def test_diff_sigma_is_not_fooled_by_whole_counts_or_stars():
     a[rng.integers(0, 256, 300), rng.integers(0, 256, 300)] += 500
     b[rng.integers(0, 256, 300), rng.integers(0, 256, 300)] += 500
     assert abs(stats.diff_sigma(a, b, 1) / np.hypot(1.2, np.sqrt(1 / 12)) - 1) < 0.02
+
+
+def test_diff_sigma_mask_takes_out_the_star_wings_the_clip_leaves():
+    """Seeing changes between two stacks, so every star leaves a residue in
+    their difference.  The cores are clipped; the wings are not, and the
+    binned noise reads about 10% high.  Masking the stars brings it back."""
+    a, b, deep, _ = synthetic.seeing_pair()
+    mask = spatial.star_mask(deep)
+    unmasked = stats.diff_sigma(a, b, 4) / (5.0 / 4)
+    masked = stats.diff_sigma(a, b, 4, mask=mask) / (5.0 / 4)
+    assert unmasked > 1.05, "the residue must be there for the test to mean anything"
+    assert abs(masked - 1) < 0.03
+
+
+def test_diff_sigma_mask_must_match_the_image():
+    a = np.zeros((256, 256))
+    try:
+        stats.diff_sigma(a, a, 4, mask=np.zeros((128, 128), bool))
+    except ValueError:
+        return
+    raise AssertionError("a mask of another shape masks some other sky")
+
+
+def test_diff_sigma_refuses_a_mask_that_leaves_too_little():
+    a = np.random.default_rng(8).normal(0, 1, (256, 256))
+    mask = np.zeros(a.shape, bool)
+    mask[:, 4:] = True                  # one free column of 64 blocks is left
+    try:
+        stats.diff_sigma(a, a[::-1], 4, mask=mask)
+    except ValueError:
+        return
+    raise AssertionError("a mask that leaves a few hundred blocks leaves no spread")
 
 
 def test_diff_sigma_refuses_too_few_pixels():

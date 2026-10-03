@@ -77,3 +77,28 @@ def test_cut_is_x_y_w_h_and_refuses_to_run_off_the_edge():
     except ValueError:
         return
     raise AssertionError("a box that runs off the array must not shrink quietly")
+
+
+def test_star_mask_finds_every_star_and_not_the_nebula():
+    """Every injected star is covered, and a field of nebula and gradient
+    with no stars in it comes back empty: a local median steps over a star
+    without rising into it, and it follows the nebula instead of calling
+    its bright side a star."""
+    from . import synthetic
+    _, _, deep, (cy, cx) = synthetic.seeing_pair()
+    mask = spatial.star_mask(deep)
+    assert all(mask[int(round(y)), int(round(x))] for y, x in zip(cy, cx))
+    assert mask.mean() < 0.2
+
+    rng = np.random.default_rng(9)
+    yy, xx = np.indices((512, 512))
+    nebula = 200 + 0.2 * xx + 80 * np.exp(-((xx - 300) ** 2 + (yy - 200) ** 2) / (2 * 90 ** 2))
+    assert not spatial.star_mask(nebula + rng.normal(0, 1.0, nebula.shape)).any()
+
+
+def test_star_mask_grows_each_detection_into_a_disc():
+    a = np.random.default_rng(10).normal(0, 1, (101, 101))
+    a[50, 50] += 100
+    got = spatial.star_mask(a, grow=3)
+    assert got.sum() == 29 and got[50, 53] and not got[52, 53], "a disc of radius 3"
+    assert spatial.star_mask(a, grow=0).sum() == 1

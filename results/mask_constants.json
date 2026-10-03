@@ -1,0 +1,54 @@
+{
+  "ranked_pairs_masked": {
+    "value": {
+      "A->B green": "pass",
+      "A->B B": "pass",
+      "C->D green": "pass",
+      "C->D B": "pass",
+      "A->C green": "pass",
+      "A->C B": "pass",
+      "B->D green": "pass",
+      "B->D B": "pass"
+    },
+    "unit": "verdict per pair and plane: pass, fail or tie",
+    "uncertainty": null,
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "27_star_mask.ipynb",
+    "note": "MISSION's definition of done, applied by model.verdict, with the noise measured under the 'tight' star mask.  Predictions are 17's and the signal is 25's, both unchanged; only the noise moved"
+  },
+  "star_mask": {
+    "value": {
+      "grow0": {
+        "nsigma": 5.0,
+        "grow": 0,
+        "pixel_pct": 13.0,
+        "block_pct": 47.174
+      },
+      "grow1": {
+        "nsigma": 5.0,
+        "grow": 1,
+        "pixel_pct": 28.1,
+        "block_pct": 64.38
+      },
+      "grow2": {
+        "nsigma": 5.0,
+        "grow": 2,
+        "pixel_pct": 44.854,
+        "block_pct": 76.276
+      },
+      "tight": {
+        "nsigma": 5.0,
+        "grow": 3,
+        "pixel_pct": 63.389,
+        "block_pct": 85.187
+      }
+    },
+    "unit": "spatial.star_mask settings, and the share of the signal ROI they leave out",
+    "uncertainty": null,
+    "source_frames": 146,
+    "measured_on": "2026-09-05",
+    "notebook": "27_star_mask.ipynb",
+    "note": "one mask for every cell and plane: the union of spatial.star_mask on each cell's full winsorized stack, per plane, in the signal ROI (704, 284, 512, 512).  diff_sigma drops every 4x4 block that touches it"
+  }
+}

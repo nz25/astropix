@@ -408,7 +408,7 @@ def bin_mean(a, k):
     return a[:h, :w].reshape(h // k, k, w // k, k).mean(axis=(1, 3))
 
 
-def diff_sigma(a, b, k=1):
+def diff_sigma(a, b, k=1, mask=None):
     """The noise of one of two equivalent images, from their difference.
 
     `a` and `b` are the same patch of sky on the same grid: two registered
@@ -433,15 +433,30 @@ def diff_sigma(a, b, k=1):
     at 5 sigma it removes 6e-7 of a Gaussian, so it costs nothing where there
     are none.  The caller passes a region that lies inside every frame's
     footprint; a dither border of zeros inside it would be read as signal.
+
+    **`mask` is for what the clip cannot reach.**  A star whose profile
+    differs between the two images -- seeing, a clipped core, a registration
+    misfit -- leaves a residue with a bright centre and faint wings.  The
+    centre lands past 5 sigma and is clipped; the wings do not, and they widen
+    the spread.  Pass a boolean array the shape of `a`, True where a star is
+    (`spatial.star_mask`), and every block that touches a True pixel is left
+    out *before* anything is fitted.  A whole block, not the masked pixels
+    within it, because a part-masked block averages fewer pixels and its
+    noise would not be the block noise being measured.
     """
     d = bin_mean(np.asarray(a, np.float64) - np.asarray(b, np.float64), k)
     if not np.all(np.isfinite(d)):
         raise ValueError("the difference has non-finite values")
-    if d.size < 1000:
-        raise ValueError(f"{d.size} binned pixels is too few for a spread")
+    free = np.ones(d.shape, bool)
+    if mask is not None:
+        if np.shape(mask) != np.shape(a):
+            raise ValueError(f"mask {np.shape(mask)} is not the shape of the image {np.shape(a)}")
+        free = bin_mean(mask, k) == 0
+    if free.sum() < 1000:
+        raise ValueError(f"{free.sum()} binned pixels is too few for a spread")
     yy, xx = np.indices(d.shape)
-    design = np.column_stack([np.ones(d.size), xx.ravel(), yy.ravel()])
-    y = d.ravel()
+    design = np.column_stack([np.ones(free.sum()), xx[free], yy[free]])
+    y = d[free]
     keep = np.ones(y.size, bool)
     # Twice: the first plane is fitted through the stars as well, and a few
     # hundred bright residuals scattered at random tilt it by enough to show.
