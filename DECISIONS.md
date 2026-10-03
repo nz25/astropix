@@ -3079,3 +3079,68 @@ focus**, and its top is cut off: 8-17 stars per plane clip even in A.
 - **The Pareto curve itself.** Both halves of the model have now passed on this night. Putting them
   together over `t` and gain is the next notebook's job, and it needs its own agreed purpose.
 - **One night, one field.** As for `27`.
+
+---
+
+## 2026-10-03 - The trade-off curve, and gain 50 wins it
+
+### D108. The curve, and the two choices it was drawn under
+Notebook `31` draws MISSION's deliverable for NGC 7000 on 2026-09-05. For each setting it computes
+the faint-signal SNR over the whole 4.42 h night, in blue, as a share of the best setting, and the
+share of `29`'s 8033 stars whose core reaches `linear_to_at_least` in any plane. The curve is the
+settings no other setting beats on both. Sub length runs 10-600 s. Gain is **50, 100 and 200
+only**, because those are the rungs where a ceiling was proved and `model` does not interpolate one.
+Each star's light comes from its median peak in cell A through the new `model.f_star_peak`, the
+inverse of `peak_counts`.
+
+Two choices were Denis's, made before it was written:
+- **No stacking loss, `eta_comb = 1`.** The bias ladder falls to 0.54 by N=128 and refuses beyond.
+  Registered dithered lights measured 0.96-1.02 to N=18. Every setting on the curve needs at least
+  25 subs on this night, so **the whole curve sits past N=18**, and `pareto_curve.csv` marks it.
+- **A star has lost its colour if its core clips in any plane.**
+
+**Rejected: the model's bias ladder.** It would have punished short subs for a fixed pattern that
+dithering moves, and refused every setting past N=128.
+
+`31` writes `results/pareto_curve.csv`, all 255 settings, and `results/pareto_constants.json`, the
+63 on the curve. Both are model predictions, nothing measured.
+
+### D109. Gain 50 wins nearly the whole curve, and D94's last paragraph is reversed
+57 of the 63 points on the curve are gain 50. Read at a few budgets:
+
+| stars allowed to clip | best setting | SNR, share of best |
+|---|---|---|
+| 0.5% | gain 50, 50 s | 0.674 |
+| 1% | gain 50, 100 s | 0.815 |
+| 2% | gain 50, 181 s | 0.894 |
+| 5% | gain 50, 477 s | 0.972 |
+
+Gain 100 and 200 appear only at the top, where 10-26% of stars clip, for the last 1-2% of SNR.
+
+**Why: dead time, not read noise.** Gain 200 fills a star's core about six times faster, so for the
+same clipping it needs subs about six times shorter, and every sub costs 31.5 s of overhead. At
+1.9% clipped, gain 200 at 30 s reaches 0.709 and gain 50 at 181 s reaches 0.894. Gain 50's extra
+read noise costs less than the night gain 200 spends not exposing.
+
+**D94 is reversed in part.** Its first claim stands: gain 200 dominates everything from 250 to
+450. Its last paragraph does not: *"nothing recommends observing below 200"* was reasoned without
+real stars, and with them gain 50 is on the curve almost everywhere. `24` carries the same sentence
+and is left as written, a record of what was believed then.
+
+**What the result rests on, and which way each pushes.**
+- **`eta_comb = 1` can only flatter gain 200.** Gain 200 needs the shorter subs and so the bigger
+  stacks; any real stacking loss that grows with N hurts it more. A measured loss would widen gain
+  50's lead, not close it.
+- **`t_dead` decides it, and `t_dead` is a choice.** 31.5 s is dithering after every frame. With
+  no overhead at all, gain 200's near-zero read noise would win at the same clipping. Somewhere in
+  between the answer flips, and dithering less often is a setting in the ASIAIR (D93). Where it
+  flips is not computed here.
+- **The curve starts at 0.24% clipped.** The 19 stars already clipped in A are counted clipped
+  everywhere, so no setting can show less. Below that the curve says nothing.
+
+**What this leaves open.**
+- **Where the gain answer flips with `t_dead`.** The next question this curve raises, and the
+  cheapest to answer: arithmetic on published constants, no bench night.
+- **Whether the mount tracks 181-477 s.** The curve's best points are long subs, and the mount's
+  limit on sub length is unmeasured.
+- **One night, one field**, as for `27` and `29`.

@@ -15,8 +15,9 @@ has broken that chain at the last possible moment.
 
 **Units.**  Fluxes are electrons per pixel per second, times are seconds, read
 noise is electrons, and pixel levels are ADC counts (`CLAUDE.md`).  The two
-meet in exactly two places -- `peak_counts` and `t_max_colour`, the star-colour
-constraint -- and both divide by `g` explicitly so the conversion is visible.
+meet in exactly three places -- `peak_counts`, `f_star_peak` and `t_max_colour`,
+the star-colour constraint -- and each applies `g` explicitly so the conversion
+is visible.
 
 **The result that shapes everything else: there is no interior optimum in t.**
 Differentiate the SNR at fixed wall clock and the stationary condition reduces
@@ -432,6 +433,21 @@ def peak_counts(f_star_peak, t, *, f_sky, dark, pedestal, g):
     if t <= 0:
         raise ValueError("a sub has positive length")
     return pedestal + (f_star_peak + f_sky + dark) * t / g
+
+
+def f_star_peak(peak, t, *, f_sky, dark, pedestal, g):
+    """A star's light on its brightest pixel, e-/s, from where that pixel landed.
+
+    `peak_counts` run backwards, and the way a star measured at one setting is
+    carried to another: counts at one gain mean nothing at the next, electrons
+    per second do.  The sky and the dark are taken off because `peak_counts`
+    adds them back at the new setting, each at its own `t`.  A peak read at the
+    clip gives only a lower bound, and the caller must know which peaks those
+    are -- this function cannot tell.
+    """
+    if t <= 0:
+        raise ValueError("a sub has positive length")
+    return (peak - pedestal) * g / t - f_sky - dark
 
 
 def t_max_colour(f_star_peak, *, f_sky, dark, pedestal, ceiling, g):

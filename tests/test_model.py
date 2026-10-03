@@ -213,6 +213,15 @@ def test_the_colour_ceiling_round_trips_through_peak_counts():
     assert M.peak_counts(400.0, t, **kw) == pytest.approx(3854.0)
 
 
+def test_a_star_measured_at_one_setting_carries_to_another_through_electrons():
+    at_a = {"f_sky": 1.933, "dark": 0.000534, "pedestal": 64.85, "g": 5.387}
+    at_d = {"f_sky": 1.935, "dark": 0.000534, "pedestal": 69.65, "g": 0.9137}
+    f = M.f_star_peak(M.peak_counts(150.0, 30.0, **at_a), 30.0, **at_a)
+    assert f == pytest.approx(150.0)
+    assert M.peak_counts(f, 120.0, **at_d) == pytest.approx(
+        69.65 + (150.0 + 1.935 + 0.000534) * 120.0 / 0.9137)
+
+
 def test_a_ceiling_at_the_pedestal_refuses_rather_than_returning_zero():
     with pytest.raises(ValueError, match="no room for signal"):
         M.t_max_colour(400.0, f_sky=1.0, dark=0.0, pedestal=65.0,
