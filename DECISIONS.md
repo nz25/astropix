@@ -3193,3 +3193,34 @@ for the reason in D110.
 - **Stacking loss at a lower cadence**, which decides whether the 7-10% survives. A night, not
   arithmetic.
 - **Whether the mount tracks long subs**, as in D109.
+
+---
+
+## 2026-10-04 - The archive check was read wrong, and session 08 goes out to settle it
+
+### D112. D111's archive check is withdrawn
+D111 said the archive's 17-20 s, dithering every second frame, "fits the 7.99 s download better",
+and `34` concluded the flip was "probably out of reach". **That was wrong.** The check used our
+night's inferred settle, 30.8 s. The archive's own settle was about 35 s (`protocols/06-sky-pair.md`),
+and with it the archive's 0.68 s download gives 18.2 s, inside its range. Both downloads fit, and
+the archive measured the fast one directly, on frames that skipped a dither.
+
+What stands from D111: the flip at 3.3-3.4 s, the cadences in its table, gain 200's ceiling of under
+8% at zero dead time, and **gain 50 as the setting**. What changes: whether the flip is reachable is
+**open**, not "probably not". `34`'s text is corrected to say so; no number in `results/` moves.
+
+### D113. Session 08: one setting, dithering every fourth frame
+`protocols/08-dither-cadence.md`. NGC 7000 at gain 50, 120 s, −10 °C, dither every 4 frames, one
+moonless evening. One setting, so a dither landing on some frames treats no setting unfairly - the
+reason session 06 dithered every frame does not apply.
+
+Three frames in four have no dither in front of them, which measures the download directly and
+turns `t_dead_decomposition` from inferred to measured. The night also extends `eta_comb` past
+N=18 at the new cadence, and repeats session 06's cell B for star clipping on a second night.
+
+**The decision rule, fixed before the data**: every-4th-frame dithering is kept if
+`eta_comb(4 per position) / eta_comb(every frame)` stays above 0.92-0.94 at matched N, the break-even
+for its predicted +6.4% to +8.6% SNR. 120 s rather than 180 s was Denis's choice, for star colour.
+
+The protocol opens with a checklist, at Denis's request, whose first item is the −10 °C setpoint
+session 06 missed.
