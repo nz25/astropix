@@ -1,0 +1,160 @@
+{
+  "t_dead_flip": {
+    "value": {
+      "0.5": {
+        "200_vs_50": {
+          "null": "no setting at this gain clips this few stars on the 10-600 s grid"
+        },
+        "100_vs_50": {
+          "null": "loses at every dead time, zero included"
+        }
+      },
+      "1": {
+        "200_vs_50": 3.4,
+        "100_vs_50": {
+          "null": "loses at every dead time, zero included"
+        }
+      },
+      "2": {
+        "200_vs_50": 3.3,
+        "100_vs_50": {
+          "null": "loses at every dead time, zero included"
+        }
+      },
+      "5": {
+        "200_vs_50": 3.4,
+        "100_vs_50": {
+          "null": "loses at every dead time, zero included"
+        }
+      },
+      "10": {
+        "200_vs_50": 8.4,
+        "100_vs_50": {
+          "null": "wins at every dead time up to today's 31.46 s: no flip to find below it"
+        }
+      }
+    },
+    "unit": "s: the largest t_dead at which the named gain beats gain 50, per % of stars clipped",
+    "uncertainty": 0.1,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "33_dither_flip.ipynb",
+    "note": "uncertainty is the t_dead grid step only.  Set by the end of the sub-length grid (600 s), not by the physics, at 10%: gain 50's best sub there is the grid's last.  model predictions, nothing measured.  31's curve (pareto_curve.csv) with t_dead swept 0-31.46 s in 0.1 s steps; clipping read from it unchanged, SNR in plane B recomputed with model.snr_sub and model.subs_in over a 4.42 h night and checked against 31's snr_B to 1e-06.  eta_comb = 1.0, as agreed for 31, and never measured at any cadence but every frame: dithering less can only lose more to stacking, so every flip here is the most favourable case for the higher gain.  Gains (50, 100, 200), sub lengths 10-600 s on 31's grid; NGC 7000, 2026-09-05"
+  },
+  "dither_cadence_flip": {
+    "value": {
+      "0.5": {
+        "200_vs_50": {
+          "archive": {
+            "null": "no flip to reach"
+          },
+          "bound": {
+            "null": "no flip to reach"
+          }
+        },
+        "100_vs_50": {
+          "archive": {
+            "null": "no flip to reach"
+          },
+          "bound": {
+            "null": "no flip to reach"
+          }
+        }
+      },
+      "1": {
+        "200_vs_50": {
+          "archive": 12,
+          "bound": {
+            "null": "the flip (3.4 s) is below the download (7.99 s)"
+          }
+        },
+        "100_vs_50": {
+          "archive": {
+            "null": "no flip to reach"
+          },
+          "bound": {
+            "null": "no flip to reach"
+          }
+        }
+      },
+      "2": {
+        "200_vs_50": {
+          "archive": 12,
+          "bound": {
+            "null": "the flip (3.3 s) is below the download (7.99 s)"
+          }
+        },
+        "100_vs_50": {
+          "archive": {
+            "null": "no flip to reach"
+          },
+          "bound": {
+            "null": "no flip to reach"
+          }
+        }
+      },
+      "5": {
+        "200_vs_50": {
+          "archive": 12,
+          "bound": {
+            "null": "the flip (3.4 s) is below the download (7.99 s)"
+          }
+        },
+        "100_vs_50": {
+          "archive": {
+            "null": "no flip to reach"
+          },
+          "bound": {
+            "null": "no flip to reach"
+          }
+        }
+      },
+      "10": {
+        "200_vs_50": {
+          "archive": 4,
+          "bound": 58
+        },
+        "100_vs_50": {
+          "archive": 1,
+          "bound": 1
+        }
+      }
+    },
+    "unit": "frames per dither needed to reach t_dead_flip, per % clipped, per download value",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "33_dither_flip.ipynb",
+    "note": "t_dead(k) = download + (t_dead - download) / k, with t_dead 31.46 s.  The split is t_dead_decomposition's, INFERRED and not measured: 'archive' is the historic corpus's 0.68 s, not ours; 'bound' is 7.99 s, the shortest gap of our night and only an upper bound.  Rounded up: dithering every k-th frame or less often reaches the flip, more often does not.  model predictions, nothing measured.  31's curve (pareto_curve.csv) with t_dead swept 0-31.46 s in 0.1 s steps; clipping read from it unchanged, SNR in plane B recomputed with model.snr_sub and model.subs_in over a 4.42 h night and checked against 31's snr_B to 1e-06.  eta_comb = 1.0, as agreed for 31, and never measured at any cadence but every frame: dithering less can only lose more to stacking, so every flip here is the most favourable case for the higher gain.  Gains (50, 100, 200), sub lengths 10-600 s on 31's grid; NGC 7000, 2026-09-05"
+  },
+  "ratio_at_zero_dead_time": {
+    "value": {
+      "0.5": {
+        "200_vs_50": null,
+        "100_vs_50": 0.9402
+      },
+      "1": {
+        "200_vs_50": 1.0757,
+        "100_vs_50": 0.9699
+      },
+      "2": {
+        "200_vs_50": 1.0482,
+        "100_vs_50": 0.9867
+      },
+      "5": {
+        "200_vs_50": 1.0213,
+        "100_vs_50": 0.9913
+      },
+      "10": {
+        "200_vs_50": 1.0167,
+        "100_vs_50": 1.0049
+      }
+    },
+    "unit": "best SNR at the named gain over best at gain 50, same budget, t_dead = 0",
+    "uncertainty": null,
+    "source_frames": 147,
+    "measured_on": "2026-09-05",
+    "notebook": "33_dither_flip.ipynb",
+    "note": "the most the higher gain can ever win by, on this night: no download, no dithering, no stacking loss.  None where the gain has no setting under the budget.  model predictions, nothing measured.  31's curve (pareto_curve.csv) with t_dead swept 0-31.46 s in 0.1 s steps; clipping read from it unchanged, SNR in plane B recomputed with model.snr_sub and model.subs_in over a 4.42 h night and checked against 31's snr_B to 1e-06.  eta_comb = 1.0, as agreed for 31, and never measured at any cadence but every frame: dithering less can only lose more to stacking, so every flip here is the most favourable case for the higher gain.  Gains (50, 100, 200), sub lengths 10-600 s on 31's grid; NGC 7000, 2026-09-05"
+  }
+}

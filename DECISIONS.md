@@ -3144,3 +3144,52 @@ and is left as written, a record of what was believed then.
 - **Whether the mount tracks 181-477 s.** The curve's best points are long subs, and the mount's
   limit on sub length is unmeasured.
 - **One night, one field**, as for `27` and `29`.
+
+---
+
+## 2026-10-04 - Where dead time flips the gain, and it is out of reach
+
+### D110. The flip is computed from the published curve, not redrawn
+Notebook `33` answers D109's first open question. It takes `31`'s curve and sweeps `t_dead` from
+0 to the measured 31.46 s in 0.1 s steps. **Clipping is read from `pareto_curve.csv` unchanged**,
+because it is a property of one sub and does not depend on dead time. Only the sub count moves, so
+only the SNR is recomputed, with `model.snr_sub` and `model.subs_in`, and checked against `31`'s
+`snr_B` at 31.46 s to 1e-6. Same night, same plane, same gains, same 10-600 s grid,
+`eta_comb = 1` as agreed for `31`.
+
+Dead time becomes a cadence through `t_dead(k) = download + settle / k`. The split is
+`t_dead_decomposition`'s, inferred and not measured, so both downloads in the record are carried:
+the archive's 0.68 s (not ours) and our night's 7.99 s upper bound.
+
+**Not priced: what dithering less does to stacking.** `eta_comb` was measured only at every frame
+and only to N=18. Fewer dither positions can only lose more, so every flip and every gain in `33` is
+the most favourable case for dithering less, and for gain 200 most of all.
+
+`33` writes `results/dither_flip.csv` and `results/dither_flip_constants.json`, model predictions.
+`34` reads them back.
+
+### D111. Gain 200 needs under 3.4 s, and the download alone may be 8 s
+| stars allowed to clip | gain 200 beats gain 50 below | dithering needed, download 0.68 s | download 7.99 s |
+|---|---|---|---|
+| 1% | 3.4 s | every 12th frame or rarer | never |
+| 2% | 3.3 s | every 12th frame or rarer | never |
+| 5% | 3.4 s | every 12th frame or rarer | never |
+
+At 0.5% gain 200 has no sub short enough on the grid. Gain 100 never beats gain 50 from 0.5% to 5%.
+**The 10% row is the grid's edge, not physics**: gain 50's best sub there is the grid's last, 600 s,
+clipping 5.8%, and `33`'s note says so.
+
+**Even at zero dead time gain 200 wins by under 8%**, against the 27% it loses today. The one check
+the record allows, the archive's 17-20 s when dithering every second frame, fits the 7.99 s download
+(19.7 s) better than the 0.68 s one (16.1 s). **Gain 50 stays the setting.**
+
+**Dead time is the lever, not gain.** At gain 50, dithering every 4th frame instead of every frame
+buys 7-10% SNR at 1% clipped and about 2% at 5%, under either download. That is the upper bound,
+for the reason in D110.
+
+**What this leaves open.**
+- **The download alone.** A few frames with dithering off, timestamps read, decides whether the
+  flip is reachable at all.
+- **Stacking loss at a lower cadence**, which decides whether the 7-10% survives. A night, not
+  arithmetic.
+- **Whether the mount tracks long subs**, as in D109.
