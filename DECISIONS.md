@@ -3316,3 +3316,23 @@ note calls an upper bound on the loss. Tonight's numbers are on sky and register
 cadence. Whether the model takes them is a conversation, not a default.
 
 `36_cadence_read.ipynb` is drafted as the explainer; its purpose waits on Denis's agreement.
+
+---
+
+## 2026-10-06 - The stacking loss past 18 frames stays where it is
+
+### D116. The model keeps the bias-stack `eta_comb`; session 08's ladder is evidence, not a constant
+D115 left open whether the model takes session 08's on-sky ladder past N = 18. **It does not.**
+`model_constants` `eta_comb` stays the bias stack (0.79 at 32, 0.67 at 64), the upper bound on the
+loss its note already calls it. Session 08's 0.90 at 32 and at 56 is on sky and registered, but
+dithered every fourth frame, and D115 measured that cadence carrying fixed-pattern noise that every
+frame does not. It is the wrong cadence for the setting we keep.
+
+**It changes no decision, which is why it is not adopted.** `31`'s curve was drawn with
+`eta_comb = 1`, not with either ladder. D109 showed any real loss that grows with N can only hurt
+gain 200, which needs the bigger stacks. Session 08 now shows that loss is real on sky past N = 18,
+so the curve's assumption is shown to favour gain 200, and gain 50's lead is safer for it. No
+number in `results/` moves.
+
+**Reopens only** if a night dithered every frame stacks past N = 18; that ladder would replace the
+bias stack as the measured value.
