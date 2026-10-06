@@ -3354,3 +3354,20 @@ What remained needed one twenty-minute trace from a cold panel. **Denis chose no
 - `Lnn` labels in the code stay. They mark where each claim landed.
 
 **Reopens only** if a light session's data shows a drift the warm-up does not explain.
+
+### D118. FINDINGS.md is deleted; its one unique line moves to CLAUDE.md
+Denis asked whether `FINDINGS.md` held anything not recorded elsewhere. Almost nothing:
+- the 12-bit container is CLAUDE.md's units rule;
+- the MAD floor and whole-frame `std` are in `stats.py` and notebooks `00`-`02`;
+- the NGC 7000 grid is D45 and notebook `02`;
+- the 14% of archive frames off setpoint is D36.
+
+Two parts were behind the record. It said the pedestal is digital and does not vary; session 03
+found discrete black-level states, and `09` found them analog (`offset_state_mechanism` = H2). It
+said the 684 `light`-as-`dark` frames were open; they were resolved into four populations.
+
+**The one thing found nowhere else was why -10 C.** -20 C is out of reach on summer nights:
+archive flats commanded -20 C read up to +4.5 C, rechecked against `frame_index.csv` today. That
+line, and "match calibration by achieved temperature", now sit in CLAUDE.md's rig section.
+
+`test_nothing_cites_findings` goes with the file. The repo is down to three Markdown files.

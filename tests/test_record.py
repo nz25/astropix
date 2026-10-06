@@ -76,17 +76,17 @@ def test_only_numbered_notebooks_write_to_results():
 
 
 # --------------------------------------------------------------------------
-# The document graph: canonical, archive, and Denis's
+# The document graph: canonical and archive
 # --------------------------------------------------------------------------
 #
-# D42 split the four Markdown files three ways and made the citation graph
+# D42 split the Markdown files by role and made the citation graph
 # one-way and downhill.  Prose policies decay silently -- the two-hop lookup it
 # replaced grew back over three sessions without anyone deciding to -- so the
 # shape is asserted here rather than remembered.
 
 CANONICAL = ("MISSION.md", "CLAUDE.md")
 
-# The one block allowed to name the other two files, because its purpose is to
+# The one block allowed to name the archive, because its purpose is to
 # say they are not read for rules.  A de-reference is the opposite of a citation.
 DEREF_HEADING = "## Document status"
 
@@ -120,37 +120,6 @@ def test_canonical_docs_cite_nothing_out():
     assert not offenders, (
         "canonical documents must state rules in full, not cite them: "
         f"{offenders}")
-
-
-def test_nothing_cites_findings():
-    """D43: FINDINGS.md is Denis's, and a leaf.  It cites `results/`; nothing
-    cites it.  That is what lets him rewrite or empty it without breaking
-    anything.
-
-    DECISIONS.md is exempt entirely.  It is append-only history that is never
-    edited, its pre-D42 mentions stand as written, and D42-D45 are the very
-    entries that de-reference the file.  What this guards is everything still
-    live: the canonical documents, the notebooks and the package."""
-    root = _repo_root()
-    offenders = {}
-    for path in sorted(root.rglob("*")):
-        if path.suffix not in (".md", ".py", ".ipynb") or not path.is_file():
-            continue
-        rel = path.relative_to(root).as_posix()
-        if rel.startswith((".git/", "venv/", "astro/", "learn_astro/")):
-            continue
-        if rel in ("FINDINGS.md", "DECISIONS.md", "tests/test_record.py"):
-            continue
-        body = path.read_text(encoding="utf-8", errors="replace")
-        if rel == "CLAUDE.md":
-            body = _without_deref_block(body)
-        hits = [line.strip()[:70] for line in body.splitlines()
-                if "FINDINGS" in line]
-        if hits:
-            offenders[rel] = hits
-    assert not offenders, (
-        "FINDINGS.md is Denis's and is cited from nowhere; a measured number "
-        f"belongs in results/ and a rule in CLAUDE.md: {offenders}")
 
 
 # --------------------------------------------------------------------------

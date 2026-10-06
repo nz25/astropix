@@ -17,16 +17,13 @@ opening a second document, the rule is in the wrong place. If a rule turns out t
 change it *here* — deliberately, in conversation — never work around it, and never leave the
 written rule and the working practice disagreeing.
 
-The repo holds two other Markdown files, and neither is read for rules. They are named here
-once, so a new session knows not to reach for them, and are cited from nowhere:
+The repo holds one other Markdown file, and it is not read for rules. It is named here once,
+so a new session knows not to reach for it, and is cited from nowhere:
 
 - **`DECISIONS.md` is the archive.** Append-only history of what changed and why: choices made,
   choices rejected, and the work that followed from them. It is a log, and the name is older
   than the habit. Open it when you want the reasoning *behind* a rule — never to find out what the
   rule is. Never edit it; a reversal is a new dated entry.
-- **`FINDINGS.md` is Denis's.** His own notes on what he has learned. Do not cite it, do not
-  treat it as authority, and do not write to it unless he asks. It is overwritten freely as his
-  understanding improves; git is its log.
 
 ## The user
 
@@ -265,4 +262,6 @@ on a SharpStar SQA55 (263-264 mm, f/4.8), ZWO AM5N mount, ASIAIR Plus, ZWO EAF.
 
 **Cooling: -10 C** for every bench run and for the model's first pass, which treats temperature
 as fixed rather than as an axis — a simplification to be revisited when the thermal term is
-explored.
+explored. **Why -10 and not -20: -20 is out of reach on summer nights.** The cooler gives what it
+can without complaint; the archive holds flats commanded -20 C that read +4.5 C. So match
+calibration by *achieved* temperature, never by setpoint.
