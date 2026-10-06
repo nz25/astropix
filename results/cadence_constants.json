@@ -1,0 +1,339 @@
+{
+  "download_s": {
+    "value": 0.686014,
+    "unit": "s",
+    "uncertainty": 0.006467,
+    "source_frames": 112,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 4: mean gap over frames with no dither in front.  Measured, where session 06 could only bound it.  gap in front of a frame = its DATE-OBS minus the previous one's, minus 120 s.  Dither gaps are those over 3x the night's median gap, checked against the cadence and the ASIAIR log (disagreements: none / none).  Interruptions over 3x the median dither gap are excluded: frames [29, 57, 113] (the flip and two autofocus runs, each also holding a dither)"
+  },
+  "dither_settle_s": {
+    "value": 34.165305,
+    "unit": "s",
+    "uncertainty": 1.916407,
+    "source_frames": 34,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 4: mean dither gap minus the download.  The ASIAIR log's own settle times give 34.46 s over 37 dithers at 1 s resolution, 1 of them a timeout.  gap in front of a frame = its DATE-OBS minus the previous one's, minus 120 s.  Dither gaps are those over 3x the night's median gap, checked against the cadence and the ASIAIR log (disagreements: none / none).  Interruptions over 3x the median dither gap are excluded: frames [29, 57, 113] (the flip and two autofocus runs, each also holding a dither)"
+  },
+  "t_dead": {
+    "value": 9.22734,
+    "unit": "s",
+    "uncertainty": 0.479145,
+    "source_frames": 146,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "[the model's t_dead at one dither every 4 frames] download + settle / 4: a clean night at this cadence.  Chosen over rule 4's night mean (t_dead_rule4) with Denis, 2026-10-06, because the excluded interruptions each hold a dither and leave the night under one in 4.  gap in front of a frame = its DATE-OBS minus the previous one's, minus 120 s.  Dither gaps are those over 3x the night's median gap, checked against the cadence and the ASIAIR log (disagreements: none / none).  Interruptions over 3x the median dither gap are excluded: frames [29, 57, 113] (the flip and two autofocus runs, each also holding a dither)"
+  },
+  "t_dead_rule4": {
+    "value": 8.642318,
+    "unit": "s",
+    "uncertainty": 1.277805,
+    "source_frames": 146,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 4 as written: mean of every gap, interruptions excluded.  0.2329 of these gaps are dithers, against 1/4.  gap in front of a frame = its DATE-OBS minus the previous one's, minus 120 s.  Dither gaps are those over 3x the night's median gap, checked against the cadence and the ASIAIR log (disagreements: none / none).  Interruptions over 3x the median dither gap are excluded: frames [29, 57, 113] (the flip and two autofocus runs, each also holding a dither)"
+  },
+  "t_dead_every_frame": {
+    "value": 34.851319,
+    "unit": "s",
+    "uncertainty": 1.916407,
+    "source_frames": 146,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "download + settle: what this rig costs per sub dithering every frame, from tonight's own split.  Beside sky_constants t_dead (session 06, measured that way directly)"
+  },
+  "dither_cadence": {
+    "value": "every 4 frames",
+    "unit": "frames per dither",
+    "uncertainty": null,
+    "source_frames": 150,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "as the ASIAIR was set, and as the gaps and the log both show"
+  },
+  "eta_comb_cadence": {
+    "value": {
+      "3": 0.878461,
+      "4": 0.916622,
+      "8": 0.949479,
+      "16": 0.94372,
+      "18": 0.961993,
+      "32": 0.900677,
+      "56": 0.898145
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N) of a registered sub",
+    "uncertainty": {
+      "3": 0.010562,
+      "4": 0.006411,
+      "8": 0.009427,
+      "16": 0.00507,
+      "18": 0.011892,
+      "32": 0.020525,
+      "56": 0.021791
+    },
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 5 at 4 frames per dither position, keyed by N; 29 positions in all, a stack of N holds N/4.  The top rung is the half-stack, 56: two disjoint stacks of 64 need 128 frames and the flip left 122.  Winsorized sigma clip 4.0/3.0, average, additive normalisation, equal weights, Lanczos-3 registration of each Bayer plane separately (SplitCFA, no debayer), 4x4 binning, signal ROI (675, 186, 512, 512) in plane pixels of tonight's reference, moved onto session 06's sky.  Twins split by dither position, so a twin pair shares no position; the ideal is the across-position single frame.  Uncertainty is the spread over the four planes"
+  },
+  "eta_comb_cadence_no_rejection": {
+    "value": {
+      "3": 0.917244,
+      "4": 0.919308,
+      "8": 0.959828,
+      "16": 0.945868,
+      "18": 0.979761,
+      "32": 0.91941,
+      "56": 0.923554
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N) of a registered sub",
+    "uncertainty": {
+      "3": 0.013261,
+      "4": 0.015953,
+      "8": 0.004179,
+      "16": 0.010293,
+      "18": 0.017353,
+      "32": 0.012324,
+      "56": 0.012392
+    },
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "the same ladder with rejection off.  Winsorized sigma clip 4.0/3.0, average, additive normalisation, equal weights, Lanczos-3 registration of each Bayer plane separately (SplitCFA, no debayer), 4x4 binning, signal ROI (675, 186, 512, 512) in plane pixels of tonight's reference, moved onto session 06's sky.  Twins split by dither position, so a twin pair shares no position; the ideal is the across-position single frame"
+  },
+  "eta_comb_one_per_position": {
+    "value": {
+      "3": 0.951477,
+      "4": 1.009495,
+      "8": 0.974899,
+      "14": 0.993676
+    },
+    "unit": "measured sd reduction against the ideal sqrt(N) of a registered sub",
+    "uncertainty": {
+      "3": 0.017824,
+      "4": 0.027233,
+      "8": 0.011279,
+      "14": 0.008155
+    },
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "the same-night control: one frame per position, so a stack dithered every frame, from tonight.  A check on the cross-night comparison, not the verdict.  Winsorized sigma clip 4.0/3.0, average, additive normalisation, equal weights, Lanczos-3 registration of each Bayer plane separately (SplitCFA, no debayer), 4x4 binning, signal ROI (675, 186, 512, 512) in plane pixels of tonight's reference, moved onto session 06's sky.  Twins split by dither position, so a twin pair shares no position; the ideal is the across-position single frame"
+  },
+  "eta_ratio_vs_every_frame": {
+    "value": {
+      "3": 0.898288,
+      "4": 0.901975,
+      "8": 0.936503,
+      "16": 0.966554,
+      "18": 1.006549
+    },
+    "unit": "eta_comb_cadence / stack_constants eta_comb_registered (session 06), at matched N",
+    "uncertainty": {
+      "3": 0.024387,
+      "4": 0.022462,
+      "8": 0.017321,
+      "16": 0.010418,
+      "18": 0.02202
+    },
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "the protocol's decision quantity.  Across nights and setpoints (-10 C tonight, -20 C then); the same-night control is eta_comb_one_per_position.  Uncertainty combines tonight's spread over planes with 25's published one"
+  },
+  "cadence_decision": {
+    "value": {
+      "verdict": "drop it; dither every frame",
+      "threshold": 0.92,
+      "download_regime": "fast",
+      "break_even_measured": 0.913524,
+      "snr_gain_if_no_loss_pct": 9.466253,
+      "rungs_above": [
+        8,
+        16,
+        18
+      ]
+    },
+    "unit": "verdict and its inputs",
+    "uncertainty": null,
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "protocols/08-dither-cadence.md, fixed before the data: keep if the ratio is at or above 0.92 (fast download) or 0.94 (slow) at every matched rung [3, 4, 8, 16, 18].  break_even_measured is 1 / sqrt((t + t_dead_every_frame) / (t + t_dead)) at t = 120 s, from tonight's own dead times, given for comparison only"
+  },
+  "fixed_pattern_share": {
+    "value": {
+      "R": {
+        "1": 0.34878,
+        "4": 0.4358
+      },
+      "G1": {
+        "1": 0.314488,
+        "4": 0.403095
+      },
+      "G2": {
+        "1": 0.313285,
+        "4": 0.398408
+      },
+      "B": {
+        "1": 0.241184,
+        "4": 0.298466
+      }
+    },
+    "unit": "share of a registered single frame's noise fixed to the sensor, keyed by bin size",
+    "uncertainty": null,
+    "source_frames": 116,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "sqrt(across^2 - within^2) / across: pairs at different dither positions against pairs at the same one, in the signal ROI.  What a dither protects against, measured directly"
+  },
+  "clipped_star_fraction": {
+    "value": {
+      "tonight": {
+        "clipped": {
+          "B": 0.005806,
+          "G1": 0.012036,
+          "G2": 0.011611,
+          "R": 0.012886,
+          "any": 0.01416
+        },
+        "clipped_safe": {
+          "B": 0.006089,
+          "G1": 0.012461,
+          "G2": 0.011753,
+          "R": 0.013594,
+          "any": 0.014727
+        }
+      },
+      "session06_B": {
+        "clipped": {
+          "B": 0.004703,
+          "G1": 0.009683,
+          "G2": 0.009822,
+          "R": 0.010513,
+          "any": 0.012173
+        },
+        "clipped_safe": {
+          "B": 0.004703,
+          "G1": 0.009822,
+          "G2": 0.00996,
+          "R": 0.011205,
+          "any": 0.012727
+        }
+      }
+    },
+    "unit": "fraction of the star list whose median peak reaches the level, per plane and any plane",
+    "uncertainty": null,
+    "source_frames": 122,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 6: 29's method on tonight's 122 usable subs, against session 06's cell B (same gain and exposure) read from star_peaks.csv.  Only stars at least 64 plane px inside both nights' frames: 7062 tonight, 7229 then.  'clipped' is at 4095; 'clipped_safe' at linear_to_at_least, 3958.4.  Not pass/fail: the difference is the night-to-night spread.  Across setpoints, -10 C and -20 C, where the dark term is negligible at both"
+  },
+  "clipped_star_fraction_by_focus": {
+    "value": {
+      "6792": 0.014585,
+      "6736": 0.014727,
+      "6703": 0.015293
+    },
+    "unit": "fraction of tonight's shared-patch list clipped at 4095 in any plane, per focus position",
+    "uncertainty": null,
+    "source_frames": 122,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "the median is taken over each block's own subs.  The spread inside one night, as a yardstick for the spread between two"
+  },
+  "F_sky": {
+    "value": {
+      "R": 1.97625,
+      "G1": 2.126592,
+      "G2": 2.125443,
+      "B": 1.238591
+    },
+    "unit": "e-/px/s",
+    "uncertainty": {
+      "R": 0.006261,
+      "G1": 0.006261,
+      "G2": 0.006261,
+      "B": 0.006261
+    },
+    "source_frames": 122,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "session 06's rule 3: modal level of the sky ROI (3210, 1380, 512, 512) (mosaic px, moved onto session 06's sky), minus the bracket pedestal, x g = 5.38903 (-10 C), / 120 s, averaged over usable frames.  Uncertainty is the pedestal's: the scatter inside the populated offset state and half the 0.278-count step to the other, which a light cannot be assigned to on its own.  A by-product"
+  },
+  "F_sky_green": {
+    "value": 2.126017,
+    "unit": "e-/px/s",
+    "uncertainty": 0.077045,
+    "source_frames": 122,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "mean of G1 and G2.  Uncertainty is the frame-to-frame scatter across the night"
+  },
+  "pedestal_brackets": {
+    "value": {
+      "R": 64.640344,
+      "G1": 64.636317,
+      "G2": 64.659012,
+      "B": 64.66102
+    },
+    "unit": "ADC counts",
+    "uncertainty": 0.139427,
+    "source_frames": 27,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "rule 2: per-plane mean of the 20 + 20 bracket frames in the populated offset state; 13 sat in a second state 0.278 counts away.  Uncertainty: sd inside the state (0.012) and half the step, in quadrature.  bias_sweep.csv has 64.759 at this gain and offset"
+  },
+  "white_balance_gate": {
+    "value": true,
+    "unit": "boolean: modal value step 16 on R, G1, G2, B",
+    "uncertainty": null,
+    "source_frames": 40,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "gate 1, on every bracket frame, in stored units"
+  },
+  "frames": {
+    "value": {
+      "lights": 150,
+      "before_flip": 28,
+      "rejected": 0,
+      "usable": 122,
+      "in_ladder": 116,
+      "temp_flagged": 0
+    },
+    "unit": "frames",
+    "uncertainty": null,
+    "source_frames": 150,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "before_flip: the protocol's transit time was wrong by an hour and the flip came after frame 28 (D114).  Timing uses every light; pixel work only the post-flip ones"
+  },
+  "roi": {
+    "value": {
+      "signal_roi": [
+        1350,
+        372,
+        1024,
+        1024
+      ],
+      "sky_roi": [
+        3210,
+        1380,
+        512,
+        512
+      ],
+      "turn_deg": 0.27993,
+      "reference": "Light_NGC 7000_120.0s_Bin1_20261005-233443_182deg_0090.fit",
+      "reference_session06": "Light_NGC 7000_120.0s_Bin1_20260906-013224_181deg_0022.fit"
+    },
+    "unit": "x, y, w, h in mosaic pixels of tonight's reference",
+    "uncertainty": null,
+    "source_frames": 1,
+    "measured_on": "2026-10-05",
+    "notebook": "35_cadence.ipynb",
+    "note": "session 06's ROIs followed onto the same sky through both references' plate solves (agreed with Denis, 2026-10-06).  The turn is not followed; its effect on a corner is printed in section 3"
+  }
+}

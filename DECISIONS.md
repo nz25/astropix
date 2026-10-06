@@ -3224,3 +3224,95 @@ for its predicted +6.4% to +8.6% SNR. 120 s rather than 180 s was Denis's choice
 
 The protocol opens with a checklist, at Denis's request, whose first item is the −10 °C setpoint
 session 06 missed.
+
+---
+
+## 2026-10-06 - Session 08 is checked before any notebook, and it ran
+
+### D114. Session 08 passes its blocking gates; three things it did not deliver as planned
+Checked from headers, pixels and the ASIAIR and PHD2 logs before `35` exists. 150 lights and
+20 + 20 bias, gain 50, offset 15, 120 s, every frame −10.0 to −10.5 °C. Gate 1: step 16 on all four
+planes of all 40 bias frames. Gate 5: a long gap before every fourth frame, 37 of 37. Bracket
+pedestal 64.73 counts at both ends against `bias_sweep.csv`'s 64.76. Session 06's green cloud test
+rejects nothing.
+
+**What did not go to plan.**
+- **The meridian flip came after frame 28, at 21:19 local.** The protocol said NGC 7000 transits
+  "around 20:10 local"; it transits at about **21:20 CEST**. A flip before the first frame was
+  impossible without waiting an hour. The error was in the protocol, not at the mount. Timing uses
+  all 150 frames, since rotation moves no gap; anything that compares pixels uses the 122 after the
+  flip, as `17` did.
+- **The ASIAIR refocused every 2 hours**, before frames 57 and 113 (6792 → 6736 → 6703 steps). Not
+  in the protocol, and not harmful: rule 3 excludes both gaps and the flip's.
+- **The framing is off session 06's**, measured from both nights' plate solves: 204 px between the
+  two reference frames, up to about 320 px between others.
+
+**Decided with Denis.**
+- **The ROIs follow the sky, not the pixels.** Both boxes are moved by the plate-solved offset so
+  they cover the patch session 06 measured. Every cross-night number tonight is "same field", and a
+  shift of 200 px near the centre changes the vignetting less than it would change the stars.
+- **`data/session08` stays on C:**, the second on-sky exception beside session 06, for the same
+  reason: PixInsight re-reads it many times. 5.5 GB for both. `CLAUDE.md` is changed to say so, and
+  the protocol's "copy to Z:" line with it.
+
+**The logs settle one more thing.** The ASIAIR log times every dither: 37 settles, mean 34.5 s,
+one of them a timeout at 61 s before frame 101. The gaps give 34.2 s. The guide log is kept, but
+gate 3 stays the cloud test: a guiding threshold chosen after seeing the night would be fitted to it.
+
+---
+
+## 2026-10-06 - Dithering every fourth frame is dropped
+
+### D115. Session 08's verdict: keep dithering every frame
+`35` ran the analysis half of `protocols/08-dither-cadence.md` and wrote
+`results/cadence_constants.json` and `results/cadence_frames.csv`.
+
+**The dead time is measured, not inferred.** Download 0.686 ± 0.006 s, on 112 frames with no dither
+in front: the archive's 0.68 s, now ours. Settle 34.2 ± 1.9 s, against the ASIAIR log's 34.5 s over
+37 dithers. Every timing prediction in the protocol landed inside its range. The 7.99 s bound in
+`sky_constants` `t_dead_decomposition` is superseded as the working figure; it stays where it is.
+
+**The download came out fast, so the threshold is 0.92.** The ratio
+`eta_comb(4 per position) / eta_comb(every frame)` at matched N:
+
+| N | 3 | 4 | 8 | 16 | 18 |
+|---|---|---|---|---|---|
+| ratio | 0.898 ± 0.024 | 0.902 ± 0.022 | 0.937 ± 0.017 | 0.967 ± 0.010 | 1.007 ± 0.022 |
+
+It fails at 3 and 4, and the rule asks for every rung. **Verdict: drop it, dither every frame.**
+
+**It is a wash, not a loss.** Tonight's own break-even, from tonight's dead times, is 0.914. The two
+failing rungs sit under it by less than one standard error. Dithering every fourth frame neither
+clearly wins nor clearly loses, and the rule was written to keep it only on a clear win.
+
+**The loss is real, not the cross-night comparison.** The same-night control, one frame per
+position, gives tonight's ladder at 0.92 of it at N = 3, 0.91 at 4 and 0.97 at 8: the same shape,
+with no second night or setpoint involved. The mechanism is measured directly: 40% of a registered
+single frame's noise in the greens is fixed to the sensor at 4x4 (R 44%, B 30%), and four frames at
+one position carry that share together instead of averaging it.
+
+**`t_dead` at this cadence, decided with Denis.** Published as `download + settle / 4`,
+9.23 ± 0.48 s, not as rule 4's night mean, 8.64 ± 1.28 s. The three excluded interruptions, the flip
+and two autofocus runs, each held a dither. That leaves 23.3% of the counted gaps as dithers instead
+of 25%, so the night mean describes a night slightly better than a clean one. Both are published,
+and they agree within their errors, which is the test of the cadence formula the protocol asked for.
+This departs from rule 4 as written; the note on `t_dead` says so.
+
+**What it changes.**
+- **No model constant moves.** `model_constants` `t_dead` stays session 06's every-frame
+  31.5 ± 10.4 s. Tonight's every-frame equivalent, 34.9 ± 1.9 s, is inside it.
+- **The flip is not pursued.** With a fast download, gain 200 could have reached its 3.4 s only by
+  dithering every 12th frame or rarer (D111). Every fourth frame already gives its gain back, and a
+  rarer cadence has fewer positions still. **Gain 50 stays the setting**, and so does dithering
+  every frame.
+- **Star clipping, second night:** 1.42% of the shared star list clipped in some plane, against
+  1.22% on session 06's cell B for the same stars. Across tonight's three focus positions,
+  1.46-1.53%. A curve drawn from one night is good to about a sixth of its value on another.
+- **`F_sky` green 2.13 e-/px/s**, against session 06's 1.93. A by-product, recorded and not acted on.
+
+**Open, named rather than fixed.** Past N = 18 tonight's registered ladder reads 0.90 at 32 and at 56.
+The model's `eta_comb` there still comes from the bias stack (0.79 at 32, 0.67 at 64), which its
+note calls an upper bound on the loss. Tonight's numbers are on sky and registered, but at the wrong
+cadence. Whether the model takes them is a conversation, not a default.
+
+`36_cadence_read.ipynb` is drafted as the explainer; its purpose waits on Denis's agreement.

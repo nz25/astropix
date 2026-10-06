@@ -101,8 +101,8 @@ is the thing that stops the model ever being finished.
   1. **`data/` — frames captured for this project.** Bench runs and deliberate on-sky tests, shot
      to a protocol in `protocols/` at -10 C. Gitignored. **Headers are trusted in full, type
      label included**, because the protocol is what set them. Every published constant comes from
-     here. **Most of it no longer sits on C:** — only `data/session06`, the on-sky set, is local;
-     the retired bench sessions are on `Z:`. The working-drive rule under *Environment* gives the
+     here. **Most of it no longer sits on C:** — only `data/session06` and `data/session08`, the
+     on-sky sets, are local; the retired bench sessions are on `Z:`. The working-drive rule under *Environment* gives the
      paths and the reason for the split.
   2. **`Z:\pix\_astro\raw\_by_type\{light,dark,flat,bias}` — the historic archive.** Frames
      from a year of ordinary imaging, shot before this project or any of its conventions existed.
@@ -225,7 +225,8 @@ astropix/     one frame at a time -- fits (bytes) | spatial (where) | stats (how
 tests/        one test_<module>.py per library module
 notebooks/    numbered, narrative, markdown + code
 data/         gitignored; frames captured *for* this project (bench and tests).
-              Only session06 is on C:; the retired bench sessions are on Z: -- see Environment
+              Only session06 and session08 are on C:; the retired bench sessions are on Z:
+              -- see Environment
 protocols/    numbered capture protocols, `light-source.md`, and the panel itself
               (grey-patch.html + patch-server.py); these are *run*, not just read
 pjsr/         headless PixInsight scripts
@@ -247,8 +248,10 @@ vendor/       third-party binaries and vendor documents; licence or source besid
   caches and anything small stay local. Frames do not, with one deliberate exception.
   - **`Z:` is a NAS over the wire** (`\\ds1513\red`), not a disk. Every read of it crosses the
     network, which is the only reason the exception below exists.
-  - **`data/session06` stays on C:.** It is the only on-sky set this project shot, and contract 3
-    re-reads its 160 frames many times per PixInsight run. Nothing else in `data/` is local.
+  - **The on-sky sets stay on C:: `data/session06` and `data/session08`.** PixInsight re-reads
+    their frames many times per run — contract 3 for session 06's 160, the cadence ladder for
+    session 08's 150 — and 5.5 GB together fits. Nothing else in `data/` is local. A third on-sky
+    session is a conversation about disk, not a default.
   - **The retired bench sessions live at `Z:\pix\_astro\astropix\data\`** — sessions 01-05 and 07,
     moved there on 2026-09-19 once their constants were published. Their notebooks still say
     `data/sessionNN`, so **re-running one means pointing it at the remote path by hand.** Windows

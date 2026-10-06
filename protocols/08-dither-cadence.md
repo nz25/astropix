@@ -18,8 +18,9 @@ repair session (07) existed only because of it.
       them.
 - [ ] NGC 7000, framed as session 06: **Gulf of Mexico in the bottom-right corner**. Plate-solve
       and write the solution down.
-- [ ] **Meridian flip done before the first light frame.** NGC 7000 transits around 20:10 local in
-      early October. Last time the flip came 22 minutes in and cost 13 frames.
+- [ ] **Meridian flip done before the first light frame.** NGC 7000 transits around **21:20 CEST** in
+      early October — this line first said 20:10, which was wrong, and session 08 flipped after
+      frame 28 because of it (D114). Last time the flip came 22 minutes in and cost 13 frames.
 - [ ] Autofocus.
 - [ ] **20 bias frames**: gain 50, offset 15, shortest exposure.
 - [ ] **Gate 1**: pull one of those bias frames to the laptop and run, from the repo root:
@@ -41,8 +42,9 @@ repair session (07) existed only because of it.
 **After**
 
 - [ ] **20 bias frames** again, same settings as before.
-- [ ] Copy the night to `Z:\pix\_astro\astropix\data\session08\` — not to C: (the working-drive
-      rule in `CLAUDE.md`).
+- [ ] Copy the night to `data/session08` on C:, with the ASIAIR autorun log and the PHD2 guide
+      log beside the frames. It is the second on-sky exception to the working-drive rule in
+      `CLAUDE.md` (D114); this line first said Z:.
 
 ---
 
