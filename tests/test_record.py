@@ -76,64 +76,6 @@ def test_only_numbered_notebooks_write_to_results():
 
 
 # --------------------------------------------------------------------------
-# LEGACY.md is a queue, not a library
-# --------------------------------------------------------------------------
-#
-# It is the one file in this repo whose success condition is its own deletion
-# (DECISIONS D38).  The failure mode is obvious: entries get harvested and never
-# removed, and it quietly becomes a fifth permanent document -- exactly what
-# D13's four-file rule exists to prevent.  These tests make "queue, not library"
-# a property the suite checks rather than a habit anyone has to remember.
-
-# `Source` was dropped when `astro/` and `learn_astro/` were deleted: a field
-# whose stated purpose was "so it can be re-read" is dead once there is nothing
-# left to read.  What remains is a claim and the work it implies.
-LEGACY_FIELDS = ("**Claim.**", "**Consumed by.**",
-                 "**How to check.**", "**Lands in.**")
-
-
-def legacy_entries():
-    """Map entry heading -> body, for every `### Lnn.` section in LEGACY.md."""
-    path = _repo_root() / "LEGACY.md"
-    if not path.exists():
-        return {}
-    text = path.read_text(encoding="utf-8")
-    parts = re.split(r"(?m)^### (L\d+\..*)$", text)
-    return {parts[i].strip(): parts[i + 1] for i in range(1, len(parts), 2)}
-
-
-def test_every_legacy_entry_names_its_exit():
-    """`Consumed by` and `Lands in` are what make the queue drain.  An entry
-    without them is a note, and notes accumulate."""
-    missing = {}
-    for head, body in legacy_entries().items():
-        absent = [f for f in LEGACY_FIELDS if f not in body]
-        if absent:
-            missing[head.split(".")[0]] = absent
-    assert not missing, f"LEGACY entries missing required fields: {missing}"
-
-
-def test_legacy_entry_numbers_are_unique():
-    """Entries are cited by number from wherever they land, so the number has to
-    stay a stable identifier even as neighbours are deleted."""
-    nums = [h.split(".")[0] for h in legacy_entries()]
-    dupes = sorted({n for n in nums if nums.count(n) > 1})
-    assert not dupes, f"duplicate LEGACY ids: {dupes}"
-
-
-def test_legacy_is_deleted_once_empty():
-    """The termination condition, asserted rather than hoped for: when the last
-    entry is harvested the file goes, and the repo is back to four Markdown
-    files (D13)."""
-    path = _repo_root() / "LEGACY.md"
-    if not path.exists():
-        return
-    assert legacy_entries(), (
-        "LEGACY.md has no entries left -- delete it, and drop its row from "
-        "CLAUDE.md's boot list (D38)")
-
-
-# --------------------------------------------------------------------------
 # The document graph: canonical, archive, and Denis's
 # --------------------------------------------------------------------------
 #
@@ -163,11 +105,7 @@ def _without_deref_block(text):
 def test_canonical_docs_cite_nothing_out():
     """D42: every live rule is stated in MISSION.md or CLAUDE.md, in full.  A
     citation out of them means a rule you cannot follow without opening a second
-    document -- which is how three copies of the units rule came to exist.
-
-    `LEGACY` and `Lnn` are deliberately still allowed: LEGACY.md is a boot
-    document until it empties itself, and its entries are hypotheses to check,
-    not rules to follow."""
+    document -- which is how three copies of the units rule came to exist."""
     offenders = {}
     for name in CANONICAL:
         path = _repo_root() / name
@@ -192,7 +130,7 @@ def test_nothing_cites_findings():
     DECISIONS.md is exempt entirely.  It is append-only history that is never
     edited, its pre-D42 mentions stand as written, and D42-D45 are the very
     entries that de-reference the file.  What this guards is everything still
-    live: the canonical documents, LEGACY, the notebooks and the package."""
+    live: the canonical documents, the notebooks and the package."""
     root = _repo_root()
     offenders = {}
     for path in sorted(root.rglob("*")):
@@ -213,15 +151,6 @@ def test_nothing_cites_findings():
     assert not offenders, (
         "FINDINGS.md is Denis's and is cited from nowhere; a measured number "
         f"belongs in results/ and a rule in CLAUDE.md: {offenders}")
-
-
-def test_legacy_lands_somewhere_real():
-    """D42 retargeted `Lands in`.  "Lands in prose" is not a destination: it is
-    how a number arrives with no unit, uncertainty or source frame, which D14
-    exists to forbid."""
-    bad = {h.split(".")[0]: "Lands in FINDINGS" for h, b in legacy_entries().items()
-           if re.search(r"\*\*Lands in\.\*\*[^\n]*FINDINGS", b)}
-    assert not bad, f"LEGACY entries still landing in FINDINGS: {bad}"
 
 
 # --------------------------------------------------------------------------

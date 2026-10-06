@@ -5,13 +5,9 @@ How a session boots. Read these first, in this order:
 1. `MISSION.md` — what we are optimising and how we know we succeeded
 2. this file — how we work, and the rules that are not negotiable
 3. `results/` — the numbers themselves, with provenance
-4. `LEGACY.md` — claims inherited from the retired attempts, none of them verified here.
-   A **queue that exists to be emptied**, not a fifth permanent document: each entry is checked
-   when the build step that needs it arrives, moved to its destination, and deleted. When it is
-   empty the file goes and this repo is back to four Markdown files.
-   **Scan it whenever a build step or a notebook begins** — entries are grouped by the step that
-   consumes them, and each carries a `Consumed by` line saying when it is due. Reading L14 before
-   the dark session is the difference between an honest upper bound and a negative dark current.
+
+`Lnn` labels in the code and below name claims inherited from the retired attempts. The queue
+that held them is gone; each label marks where its claim was checked and landed.
 
 ## Document status
 
@@ -145,10 +141,6 @@ work that outruns its record is work that has to be done again.
   where they can be read and changed without touching the library. What must never move into a
   notebook is physics: a measurement, a threshold, a correction. If a notebook cell starts
   deciding what a number *means*, the meaning is in the wrong place.
-- **A build step opens by harvesting its `LEGACY` entries, and closes by deleting them.** Before
-  writing the code, read what the retired attempts claimed about it and decide which claims this
-  step will check. Afterwards, each verified entry moves to its destination and leaves `LEGACY`.
-  A step that ends with its entries still queued has not finished.
 - **Every notebook has a purpose, agreed before it is created.** A numbered notebook opens by
   saying what it is for and what it is not for, and that purpose is agreed in conversation
   first. A notebook nobody asked for is scope growth with a table of contents. The purpose is

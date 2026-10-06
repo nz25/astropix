@@ -23,15 +23,14 @@ the page reports its own wake-lock state rather than implying it holds one.
 Power the iPad, set brightness to **100%**, open `grey-patch.html`, and then **leave it alone for
 ten minutes** before capturing anything.
 
-**Status: a precaution against an untested hypothesis, not a verified fact.** L31 records an
-unexplained **1.79%** frame-to-frame instability at gain 100 (against 0.011% at gain 200) that the
-retired project could not account for, on a timescale of tens of seconds. LED backlights dim as
-they warm, and a panel at full brightness reaches thermal equilibrium over minutes — which fits
-the timescale and survives the "settling" check that was run, because re-running minutes later
-does not help if the panel is still heating.
+**Status: a precaution, untested, and staying that way.** The retired project's 1.79%
+instability at gain 100 (L31) did not reproduce: session 05 measured 0.089% repeat scatter at that
+gain. What is left is a real drift of **+0.314 ± 0.047 ADC counts/min**, upstream of the sensor,
+measured with the panel already warm. LED backlights dim as they warm, so a panel still heating
+would do this, but no trace from cold was ever taken, and none is planned (2026-10-06).
 
-It costs ten minutes of a session that runs for hours. **If the L31 stability trace shows a flat
-line from cold, delete this item** — do not keep a ritual whose reason has been falsified.
+It costs ten minutes of a session that runs for hours, which is cheaper than the test that would
+retire it. Keep it.
 
 ## 2. Settle the iOS settings
 

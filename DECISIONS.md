@@ -3336,3 +3336,21 @@ number in `results/` moves.
 
 **Reopens only** if a night dithered every frame stacks past N = 18; that ladder would replace the
 bias stack as the measured value.
+
+---
+
+## 2026-10-06 - LEGACY.md is deleted with one claim untested
+
+### D117. The panel warm-up stays a precaution, and the queue goes
+LEGACY.md held one entry, L31: whether the bench panel drifts while it warms. Its other half had
+already been settled by session 05, which did not reproduce the retired project's 1.79% scatter.
+What remained needed one twenty-minute trace from a cold panel. **Denis chose not to run it.**
+
+**What it changes.**
+- `protocols/light-source.md` item 1, the ten-minute warm-up, **stays** as an untested precaution.
+  It costs less than the test that would retire it. Its status note now says so.
+- LEGACY.md is deleted, its boot-list item and the harvesting rule leave CLAUDE.md, and its tests
+  leave `tests/test_record.py` and `tests/__main__.py`. The repo is back to four Markdown files.
+- `Lnn` labels in the code stay. They mark where each claim landed.
+
+**Reopens only** if a light session's data shows a drift the warm-up does not explain.
